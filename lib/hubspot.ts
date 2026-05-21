@@ -148,8 +148,12 @@ export async function fetchAllDeals(): Promise<FetchResult> {
     for (const deal of (data.results ?? [])) {
       const props = deal.properties ?? {}
       const farmerId = props.sdrfarmer_responsavel ?? ''
-      const dateMs = props.pipedrive___data_de_qualificacao
-        ? parseInt(props.pipedrive___data_de_qualificacao, 10)
+      const rawDate = props.pipedrive___data_de_qualificacao ?? ''
+      // HubSpot pode retornar ms timestamp ("1746057600000") ou string de data ("2026-05-01")
+      const dateMs = rawDate
+        ? /^\d{10,}$/.test(rawDate)
+          ? parseInt(rawDate, 10)          // timestamp em ms
+          : new Date(rawDate).getTime()    // string "YYYY-MM-DD"
         : 0
 
       rawDeals.push({
