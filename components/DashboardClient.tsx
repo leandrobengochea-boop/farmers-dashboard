@@ -10,6 +10,9 @@ import FarmerRanking from './FarmerRanking'
 import ScoreDistribution from './ScoreDistribution'
 import CriteriaAnalysis from './CriteriaAnalysis'
 import DealsTable from './DealsTable'
+import { MacroKPIBar, InsightList } from './insights/InsightCards'
+import FarmerMatrix from './insights/FarmerMatrix'
+import StaleDealsTable from './insights/StaleDealsTable'
 import {
   computeFarmerRanking,
   computeScoreDistribution,
@@ -18,6 +21,12 @@ import {
   filterDealsByMonth,
   getAvailableMonths,
 } from '@/lib/analytics'
+import {
+  computeFarmerMatrix,
+  computeMacroKPIs,
+  computeStaleDeals,
+  generateInsights,
+} from '@/lib/insights'
 
 interface DashboardClientProps {
   initialDeals: Deal[]
@@ -74,6 +83,10 @@ export default function DashboardClient({
   const scoreDistribution = useMemo(() => computeScoreDistribution(filteredDeals), [filteredDeals])
   const { absence, impact } = useMemo(() => computeCriteriaAnalysis(filteredDeals), [filteredDeals])
   const summaryStats = useMemo(() => computeSummaryStats(filteredDeals), [filteredDeals])
+  const farmerMatrix = useMemo(() => computeFarmerMatrix(filteredDeals), [filteredDeals])
+  const macroKPIs = useMemo(() => computeMacroKPIs(filteredDeals, farmerMatrix), [filteredDeals, farmerMatrix])
+  const staleDeals = useMemo(() => computeStaleDeals(filteredDeals, 15), [filteredDeals])
+  const insights = useMemo(() => generateInsights(filteredDeals, farmerMatrix), [filteredDeals, farmerMatrix])
 
   return (
     <div className="min-h-screen bg-slate-900">
@@ -153,6 +166,35 @@ export default function DashboardClient({
 
         {/* Deals Table */}
         <DealsTable deals={filteredDeals} />
+
+        {/* ── INTELIGÊNCIA ─────────────────────────────── */}
+        <div className="border-t border-slate-700/50 pt-8 space-y-6">
+          <div>
+            <h2 className="text-white font-bold text-xl">Inteligência de Pipeline</h2>
+            <p className="text-slate-400 text-sm mt-0.5">Análise macro, pontos de atenção e insights automáticos com base nos dados do período selecionado.</p>
+          </div>
+
+          {/* KPIs macro */}
+          <MacroKPIBar kpis={macroKPIs} />
+
+          {/* Insights automáticos + Stale lado a lado em lg */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <h3 className="text-slate-300 font-semibold text-sm uppercase tracking-wide">Insights automáticos</h3>
+              <InsightList insights={insights} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-slate-300 font-semibold text-sm uppercase tracking-wide">Deals parados (+15 dias)</h3>
+              <StaleDealsTable deals={staleDeals} />
+            </div>
+          </div>
+
+          {/* Matriz Farmer × Critério */}
+          <div className="space-y-2">
+            <h3 className="text-slate-300 font-semibold text-sm uppercase tracking-wide">Matriz de qualificação por Farmer</h3>
+            <FarmerMatrix matrix={farmerMatrix} />
+          </div>
+        </div>
       </main>
     </div>
   )

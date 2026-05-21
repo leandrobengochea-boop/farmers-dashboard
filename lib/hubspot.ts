@@ -7,10 +7,13 @@ export interface Deal {
   farmerName: string
   score: number
   criteria: string[]
-  date: string
+  date: string           // pipedrive___data_de_qualificacao
   hubspotUrl: string
   pipeline: string
   closedLostReason: string
+  createDate: string     // createdate
+  lastModifiedDate: string // hs_lastmodifieddate
+  dealStage: string      // dealstage
 }
 
 export interface FetchValidation {
@@ -118,6 +121,9 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         'pipedrive___data_de_qualificacao',
         'pipeline',
         'closed_lost_reason',
+        'createdate',
+        'hs_lastmodifieddate',
+        'dealstage',
       ],
       limit: 200,
     }
@@ -167,6 +173,9 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         hubspotUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/record/0-3/${deal.id}`,
         pipeline: props.pipeline ?? '',
         closedLostReason: props.closed_lost_reason ?? '',
+        createDate: props.createdate ? new Date(props.createdate).toISOString() : '',
+        lastModifiedDate: props.hs_lastmodifieddate ? new Date(props.hs_lastmodifieddate).toISOString() : '',
+        dealStage: props.dealstage ?? '',
       })
     }
 
