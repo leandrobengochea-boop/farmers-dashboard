@@ -12,7 +12,6 @@ import CriteriaAnalysis from './CriteriaAnalysis'
 import DealsTable from './DealsTable'
 import { MacroKPIBar, InsightList } from './insights/InsightCards'
 import FarmerMatrix from './insights/FarmerMatrix'
-import StaleDealsTable from './insights/StaleDealsTable'
 import {
   computeFarmerRanking,
   computeScoreDistribution,
@@ -24,7 +23,6 @@ import {
 import {
   computeFarmerMatrix,
   computeMacroKPIs,
-  computeStaleDeals,
   generateInsights,
 } from '@/lib/insights'
 
@@ -85,7 +83,6 @@ export default function DashboardClient({
   const summaryStats = useMemo(() => computeSummaryStats(filteredDeals), [filteredDeals])
   const farmerMatrix = useMemo(() => computeFarmerMatrix(filteredDeals), [filteredDeals])
   const macroKPIs = useMemo(() => computeMacroKPIs(filteredDeals, farmerMatrix), [filteredDeals, farmerMatrix])
-  const staleDeals = useMemo(() => computeStaleDeals(filteredDeals, 15), [filteredDeals])
   const insights = useMemo(() => generateInsights(filteredDeals, farmerMatrix), [filteredDeals, farmerMatrix])
 
   return (
@@ -177,16 +174,10 @@ export default function DashboardClient({
           {/* KPIs macro */}
           <MacroKPIBar kpis={macroKPIs} />
 
-          {/* Insights automáticos + Stale lado a lado em lg */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <h3 className="text-slate-300 font-semibold text-sm uppercase tracking-wide">Insights automáticos</h3>
-              <InsightList insights={insights} />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-slate-300 font-semibold text-sm uppercase tracking-wide">Deals parados (+15 dias)</h3>
-              <StaleDealsTable deals={staleDeals} />
-            </div>
+          {/* Insights automáticos */}
+          <div className="space-y-2">
+            <h3 className="text-slate-300 font-semibold text-sm uppercase tracking-wide">Insights automáticos</h3>
+            <InsightList insights={insights} />
           </div>
 
           {/* Matriz Farmer × Critério */}
