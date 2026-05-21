@@ -22,7 +22,6 @@ import {
 interface DashboardClientProps {
   initialDeals: Deal[]
   validation: FetchValidation
-  userEmail: string
   fetchError: string | null
 }
 
@@ -35,7 +34,6 @@ function formatMonthLabel(monthKey: string): string {
 export default function DashboardClient({
   initialDeals,
   validation: initialValidation,
-  userEmail,
   fetchError: initialError,
 }: DashboardClientProps) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals)
@@ -79,7 +77,7 @@ export default function DashboardClient({
 
   return (
     <div className="min-h-screen bg-slate-900">
-      <Navbar userEmail={userEmail} onRefresh={handleRefresh} refreshing={refreshing} />
+      <Navbar onRefresh={handleRefresh} refreshing={refreshing} />
 
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
