@@ -15,6 +15,7 @@ export const FARMERS: Record<string, string> = {
   '89632494': 'Willker',
   '82410958': 'Maria Eduarda',
   '92333469': 'Rafael',
+  '92335488': 'Thaina',
 }
 
 export const HUBSPOT_PORTAL_ID = '49656171'
