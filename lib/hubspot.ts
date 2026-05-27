@@ -155,20 +155,21 @@ export async function fetchAllDeals(): Promise<FetchResult> {
       const props = deal.properties ?? {}
       const farmerId = props.sdrfarmer_responsavel ?? ''
       const rawDate = props.pipedrive___data_de_qualificacao ?? ''
-      // HubSpot pode retornar ms timestamp ("1746057600000") ou string de data ("2026-05-01").
-      // Para strings YYYY-MM-DD, construir como data local (evita shift de fuso UTC→Brasília).
-      let dateMs = 0
+      // HubSpot retorna "YYYY-MM-DD" ou ms timestamp.
+      // Armazenamos ao meio-dia UTC (T12:00:00Z) para que o browser
+      // em qualquer timezone (incluindo BRT UTC-3) exiba o dia correto.
+      let dateIso = ''
       if (rawDate) {
         if (/^\d{10,}$/.test(rawDate)) {
-          dateMs = parseInt(rawDate, 10)
+          // ms timestamp → extrair YYYY-MM-DD e fixar ao meio-dia UTC
+          const d = new Date(parseInt(rawDate, 10))
+          const ymd = d.toISOString().slice(0, 10)
+          dateIso = `${ymd}T12:00:00.000Z`
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+          // string de data — fixar ao meio-dia UTC diretamente
+          dateIso = `${rawDate}T12:00:00.000Z`
         } else {
-          const parts = rawDate.split('-').map(Number)
-          if (parts.length === 3) {
-            // new Date(year, month-1, day) — local time, sem offset UTC
-            dateMs = new Date(parts[0], parts[1] - 1, parts[2]).getTime()
-          } else {
-            dateMs = new Date(rawDate).getTime()
-          }
+          dateIso = new Date(rawDate).toISOString()
         }
       }
 
@@ -179,7 +180,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         farmerName: FARMERS[farmerId] ?? farmerId,
         score: parseFloat(props.pontuacao_leadscore ?? '0') || 0,
         criteria: matchCriteria(props.criterios_atendidos),
-        date: dateMs ? new Date(dateMs).toISOString() : '',
+        date: dateIso,
         hubspotUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/record/0-3/${deal.id}`,
         pipeline: props.pipeline ?? '',
         closedLostReason: props.closed_lost_reason ?? '',
