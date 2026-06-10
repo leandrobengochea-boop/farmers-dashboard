@@ -23,9 +23,14 @@ interface FarmerRankingProps {
 }
 
 function getBarColor(avgScore: number): string {
-  if (avgScore >= 9) return '#22c55e'
-  if (avgScore >= 7) return '#eab308'
-  return '#ef4444'
+  const s = Math.floor(avgScore)
+  if (s <= 6)  return '#dc2626'  // vermelho
+  if (s === 7) return '#FF5200'  // laranja PSA
+  if (s === 8) return '#f97316'  // laranja
+  if (s === 9) return '#eab308'  // amarelo
+  if (s === 10) return '#86efac' // verde claro
+  if (s === 11) return '#22c55e' // verde médio
+  return '#15803d'               // verde escuro
 }
 
 function getScoreColor(score: number): string {
