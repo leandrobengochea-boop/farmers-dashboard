@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Deal, FetchValidation, ForaDoMOAEntry } from '@/lib/hubspot'
+import { Deal, FetchValidation, ExcludedDeal, ForaDoMOAEntry } from '@/lib/hubspot'
 import { TEAMS } from '@/lib/constants'
 import Navbar from './Navbar'
 import SummaryCards from './SummaryCards'
@@ -18,6 +18,7 @@ import {
   computeScoreDistribution,
   computeCriteriaAnalysis,
   computeSummaryStats,
+  computeForaDoMOA,
   filterDealsByMonth,
   filterDealsByTeam,
   getAvailableMonths,
@@ -31,7 +32,7 @@ import {
 interface DashboardClientProps {
   initialDeals: Deal[]
   validation: FetchValidation
-  foraDoMOA: ForaDoMOAEntry[]
+  excludedDeals: ExcludedDeal[]
   fetchError: string | null
 }
 
@@ -49,12 +50,12 @@ const TEAM_OPTIONS = [
 export default function DashboardClient({
   initialDeals,
   validation: initialValidation,
-  foraDoMOA: initialForaDoMOA,
+  excludedDeals: initialExcludedDeals,
   fetchError: initialError,
 }: DashboardClientProps) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals)
   const [validation, setValidation] = useState<FetchValidation>(initialValidation)
-  const [foraDoMOA, setForaDoMOA] = useState<ForaDoMOAEntry[]>(initialForaDoMOA)
+  const [excludedDeals, setExcludedDeals] = useState<ExcludedDeal[]>(initialExcludedDeals)
   const [fetchError, setFetchError] = useState<string | null>(initialError)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
@@ -70,10 +71,10 @@ export default function DashboardClient({
         const err = await res.json() as { error?: string }
         throw new Error(err.error ?? `HTTP ${res.status}`)
       }
-      const data = await res.json() as { deals: Deal[]; validation: FetchValidation; foraDoMOA: ForaDoMOAEntry[] }
+      const data = await res.json() as { deals: Deal[]; validation: FetchValidation; excludedDeals: ExcludedDeal[] }
       setDeals(data.deals)
       setValidation(data.validation)
-      setForaDoMOA(data.foraDoMOA ?? [])
+      setExcludedDeals(data.excludedDeals ?? [])
       setLastUpdated(new Date())
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : 'Erro ao atualizar dados')
@@ -88,6 +89,11 @@ export default function DashboardClient({
     const byTeam = filterDealsByTeam(deals, selectedTeam)
     return filterDealsByMonth(byTeam, selectedMonth)
   }, [deals, selectedMonth, selectedTeam])
+
+  const foraDoMOA: ForaDoMOAEntry[] = useMemo(
+    () => computeForaDoMOA(excludedDeals, selectedTeam, selectedMonth),
+    [excludedDeals, selectedTeam, selectedMonth],
+  )
 
   const farmerRanking = useMemo(() => computeFarmerRanking(filteredDeals), [filteredDeals])
   const scoreDistribution = useMemo(() => computeScoreDistribution(filteredDeals), [filteredDeals])

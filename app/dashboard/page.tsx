@@ -1,5 +1,5 @@
 import { fetchAllDeals } from '@/lib/hubspot'
-import { Deal, FetchValidation, ForaDoMOAEntry } from '@/lib/hubspot'
+import { Deal, FetchValidation, ExcludedDeal } from '@/lib/hubspot'
 import DashboardClient from '@/components/DashboardClient'
 
 export const dynamic = 'force-dynamic'
@@ -7,14 +7,14 @@ export const dynamic = 'force-dynamic'
 export default async function DashboardPage() {
   let deals: Deal[] = []
   let validation: FetchValidation = { totalBruto: 0, excludedFora: 0, totalLiquido: 0 }
-  let foraDoMOA: ForaDoMOAEntry[] = []
+  let excludedDeals: ExcludedDeal[] = []
   let fetchError: string | null = null
 
   try {
     const result = await fetchAllDeals()
     deals = result.deals
     validation = result.validation
-    foraDoMOA = result.foraDoMOA
+    excludedDeals = result.excludedDeals
   } catch (error) {
     fetchError = error instanceof Error ? error.message : 'Erro ao buscar dados'
     console.error('Dashboard fetch error:', error)
@@ -24,7 +24,7 @@ export default async function DashboardPage() {
     <DashboardClient
       initialDeals={deals}
       validation={validation}
-      foraDoMOA={foraDoMOA}
+      excludedDeals={excludedDeals}
       fetchError={fetchError}
     />
   )

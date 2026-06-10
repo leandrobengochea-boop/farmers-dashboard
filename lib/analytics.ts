@@ -1,4 +1,4 @@
-import { Deal } from './hubspot'
+import { Deal, ExcludedDeal, ForaDoMOAEntry } from './hubspot'
 import { CRITERIA, FARMERS, MAX_SCORE, TEAMS } from './constants'
 
 export interface FarmerStats {
@@ -187,4 +187,38 @@ export function filterDealsByTeam(deals: Deal[], teamId: string | null): Deal[] 
   if (!team) return deals
   const ids = new Set(team.farmerIds)
   return deals.filter((d) => ids.has(d.farmerId))
+}
+
+export function computeForaDoMOA(
+  excludedDeals: ExcludedDeal[],
+  teamId: string | null,
+  monthKey: string | null,
+): ForaDoMOAEntry[] {
+  let filtered = excludedDeals
+
+  if (teamId) {
+    const team = TEAMS[teamId]
+    if (team) {
+      const ids = new Set(team.farmerIds)
+      filtered = filtered.filter((d) => ids.has(d.farmerId))
+    }
+  }
+
+  if (monthKey) {
+    filtered = filtered.filter((d) => {
+      if (!d.date) return false
+      const date = new Date(d.date)
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      return key === monthKey
+    })
+  }
+
+  const byFarmer: Record<string, number> = {}
+  for (const d of filtered) {
+    byFarmer[d.farmerName] = (byFarmer[d.farmerName] ?? 0) + 1
+  }
+
+  return Object.entries(byFarmer)
+    .map(([farmerName, count]) => ({ farmerName, count }))
+    .sort((a, b) => b.count - a.count)
 }
