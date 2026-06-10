@@ -3,6 +3,7 @@
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -10,6 +11,14 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { ScoreDistributionItem } from '@/lib/analytics'
+
+function scoreColor(score: number): string {
+  if (score <= 5) return '#ef4444'   // red — rejeitado
+  if (score <= 7) return '#f97316'   // orange — limiar
+  if (score <= 8) return '#FF5200'   // PSA orange — condicional
+  if (score <= 10) return '#22c55e'  // green — qualificado
+  return '#16a34a'                    // dark green — excelente
+}
 
 interface ScoreDistributionProps {
   data: ScoreDistributionItem[]
@@ -60,8 +69,12 @@ export default function ScoreDistribution({ data }: ScoreDistributionProps) {
               axisLine={false}
               allowDecimals={false}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(99,102,241,0.1)' }} />
-            <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={60} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,82,0,0.08)' }} />
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={60}>
+              {data.map((entry) => (
+                <Cell key={`cell-${entry.score}`} fill={scoreColor(entry.score)} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       )}

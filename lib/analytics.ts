@@ -1,5 +1,5 @@
 import { Deal } from './hubspot'
-import { CRITERIA, FARMERS, MAX_SCORE } from './constants'
+import { CRITERIA, FARMERS, MAX_SCORE, TEAMS } from './constants'
 
 export interface FarmerStats {
   farmerId: string
@@ -179,4 +179,12 @@ export function getAvailableMonths(deals: Deal[]): string[] {
   }
 
   return Array.from(months).sort()
+}
+
+export function filterDealsByTeam(deals: Deal[], teamId: string | null): Deal[] {
+  if (!teamId) return deals
+  const team = TEAMS[teamId]
+  if (!team) return deals
+  const ids = new Set(team.farmerIds)
+  return deals.filter((d) => ids.has(d.farmerId))
 }

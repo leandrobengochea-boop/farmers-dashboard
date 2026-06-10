@@ -4,7 +4,7 @@ export const FARMERS: Record<string, string> = {
   '79760745': 'Thiago',
   '86256444': 'Ana Carolina',
   '84497577': 'Vitória',
-  '85002012': 'Bruna',
+  '85002012': 'Bruna Machado',
   '85002282': 'Sotoriva',
   '85846972': 'Daniela',
   '85846971': 'Lenz',
@@ -16,9 +16,25 @@ export const FARMERS: Record<string, string> = {
   '82410958': 'Maria Eduarda',
   '92333469': 'Rafael',
   '92335488': 'Thaina',
+  '93599591': 'Bruna Saraiva',
 }
 
 export const HUBSPOT_PORTAL_ID = '49656171'
+
+export const TEAMS: Record<string, { label: string; farmerIds: string[] }> = {
+  leticia: {
+    label: 'Time Leticia',
+    farmerIds: ['89632494', '87159365', '88200239', '86256444', '84015882'],
+  },
+  katyeli: {
+    label: 'Time Katyeli',
+    farmerIds: ['85002282', '84497577', '85002012', '85846972', '93599591', '79760745'],
+  },
+  dani: {
+    label: 'Time Dani',
+    farmerIds: ['92333469', '85846971', '82410958', '81033487', '92335488'],
+  },
+}
 
 export const CRITERIA: Array<{ key: string; label: string; weight: number }> = [
   { key: 'reuniao_agendada', label: 'Reunião agendada', weight: 3 },

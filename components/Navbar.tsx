@@ -34,7 +34,10 @@ export default function Navbar({ onRefresh, refreshing }: NavbarProps) {
         <button
           onClick={onRefresh}
           disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg transition focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed rounded-lg transition focus:outline-none focus:ring-2 focus:ring-orange-500"
+          style={{ background: refreshing ? '#c94400' : '#FF5200' }}
+          onMouseEnter={e => { if (!refreshing) (e.currentTarget as HTMLButtonElement).style.background = '#e04800' }}
+          onMouseLeave={e => { if (!refreshing) (e.currentTarget as HTMLButtonElement).style.background = '#FF5200' }}
         >
           <svg
             className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
