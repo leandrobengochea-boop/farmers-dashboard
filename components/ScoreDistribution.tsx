@@ -13,11 +13,13 @@ import {
 import { ScoreDistributionItem } from '@/lib/analytics'
 
 function scoreColor(score: number): string {
-  if (score <= 5) return '#ef4444'   // red — rejeitado
-  if (score <= 7) return '#f97316'   // orange — limiar
-  if (score <= 8) return '#FF5200'   // PSA orange — condicional
-  if (score <= 10) return '#22c55e'  // green — qualificado
-  return '#16a34a'                    // dark green — excelente
+  if (score <= 6)  return '#dc2626'  // vermelho forte
+  if (score === 7) return '#f97316'  // laranja
+  if (score === 8) return '#FF5200'  // laranja PSA (mais intenso)
+  if (score === 9) return '#eab308'  // amarelo
+  if (score === 10) return '#86efac' // verde claro
+  if (score === 11) return '#22c55e' // verde médio
+  return '#15803d'                   // verde escuro
 }
 
 interface ScoreDistributionProps {
