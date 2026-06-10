@@ -22,9 +22,15 @@ export interface FetchValidation {
   totalLiquido: number
 }
 
+export interface ForaDoMOAEntry {
+  farmerName: string
+  count: number
+}
+
 export interface FetchResult {
   deals: Deal[]
   validation: FetchValidation
+  foraDoMOA: ForaDoMOAEntry[]
 }
 
 function normalizeCriterionKey(value: string): string {
@@ -200,12 +206,18 @@ export async function fetchAllDeals(): Promise<FetchResult> {
   const excludedFora = excluded.length
   const deals = rawDeals.filter((d) => !isForaDoMOA(d.closedLostReason))
 
+  // Group excluded deals by farmer
+  const foraByFarmer: Record<string, number> = {}
+  for (const d of excluded) {
+    foraByFarmer[d.farmerName] = (foraByFarmer[d.farmerName] ?? 0) + 1
+  }
+  const foraDoMOA = Object.entries(foraByFarmer)
+    .map(([farmerName, count]) => ({ farmerName, count }))
+    .sort((a, b) => b.count - a.count)
+
   return {
     deals,
-    validation: {
-      totalBruto,
-      excludedFora,
-      totalLiquido: deals.length,
-    },
+    validation: { totalBruto, excludedFora, totalLiquido: deals.length },
+    foraDoMOA,
   }
 }

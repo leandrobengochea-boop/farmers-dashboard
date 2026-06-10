@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Deal, FetchValidation } from '@/lib/hubspot'
+import { Deal, FetchValidation, ForaDoMOAEntry } from '@/lib/hubspot'
 import { TEAMS } from '@/lib/constants'
 import Navbar from './Navbar'
 import SummaryCards from './SummaryCards'
@@ -31,6 +31,7 @@ import {
 interface DashboardClientProps {
   initialDeals: Deal[]
   validation: FetchValidation
+  foraDoMOA: ForaDoMOAEntry[]
   fetchError: string | null
 }
 
@@ -48,10 +49,12 @@ const TEAM_OPTIONS = [
 export default function DashboardClient({
   initialDeals,
   validation: initialValidation,
+  foraDoMOA: initialForaDoMOA,
   fetchError: initialError,
 }: DashboardClientProps) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals)
   const [validation, setValidation] = useState<FetchValidation>(initialValidation)
+  const [foraDoMOA, setForaDoMOA] = useState<ForaDoMOAEntry[]>(initialForaDoMOA)
   const [fetchError, setFetchError] = useState<string | null>(initialError)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
@@ -67,9 +70,10 @@ export default function DashboardClient({
         const err = await res.json() as { error?: string }
         throw new Error(err.error ?? `HTTP ${res.status}`)
       }
-      const data = await res.json() as { deals: Deal[]; validation: FetchValidation }
+      const data = await res.json() as { deals: Deal[]; validation: FetchValidation; foraDoMOA: ForaDoMOAEntry[] }
       setDeals(data.deals)
       setValidation(data.validation)
+      setForaDoMOA(data.foraDoMOA ?? [])
       setLastUpdated(new Date())
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : 'Erro ao atualizar dados')
@@ -131,6 +135,34 @@ export default function DashboardClient({
             <span className="text-slate-500 text-xs">
               Atualizado às {format(lastUpdated, "HH:mm 'de' dd/MM", { locale: ptBR })}
             </span>
+          </div>
+        )}
+
+        {/* Fora do MOA breakdown */}
+        {foraDoMOA.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 bg-amber-950/30 border border-amber-800/40 rounded-xl px-5 py-3">
+            <div className="flex items-center gap-1.5 mr-1">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span className="text-amber-400 text-xs font-semibold uppercase tracking-wider whitespace-nowrap">Fora do MOA</span>
+            </div>
+            {foraDoMOA.map(({ farmerName, count }) => (
+              <span
+                key={farmerName}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium"
+                style={{ background: 'rgba(217,119,6,0.12)', border: '1px solid rgba(217,119,6,0.3)', color: '#fbbf24' }}
+              >
+                {farmerName}
+                <span
+                  className="inline-flex items-center justify-center rounded-full text-xs font-bold"
+                  style={{ background: 'rgba(217,119,6,0.25)', color: '#f59e0b', width: 18, height: 18 }}
+                >
+                  {count}
+                </span>
+              </span>
+            ))}
           </div>
         )}
 
