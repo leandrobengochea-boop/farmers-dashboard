@@ -46,17 +46,20 @@ interface TooltipPayload {
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
   if (!active || !payload?.length) return null
-  const data = payload[0].payload
+  const d = payload[0].payload
+  const color = getBarColor(d.avgScore)
   return (
     <div className="bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 shadow-xl">
-      <p className="text-white font-semibold">{data.farmerName}</p>
+      <p className="text-white font-semibold mb-2">{d.farmerName}</p>
       <p className="text-slate-300 text-sm">
-        Média: <span className="text-white font-medium">{data.avgScore.toFixed(2)}</span>
+        Negócios: <span className="text-white font-semibold">{d.dealCount}</span>
       </p>
-      <p className="text-slate-300 text-sm">
-        Negócios: <span className="text-white font-medium">{data.dealCount}</span>
+      <p className="text-slate-300 text-sm flex items-center gap-1.5">
+        Nota média:{' '}
+        <span className="font-semibold" style={{ color }}>{d.avgScore.toFixed(1)}</span>
+        <span className="text-slate-500">/ 12</span>
       </p>
-      <p className="text-indigo-400 text-xs mt-1">Clique para ver detalhes</p>
+      <p className="text-slate-500 text-xs mt-1">Clique para ver detalhes</p>
     </div>
   )
 }
@@ -172,14 +175,18 @@ function FarmerModal({ farmerName, deals, onClose }: FarmerModalProps) {
 export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
   const [selectedFarmer, setSelectedFarmer] = useState<string | null>(null)
 
-  const chartData = data.map((f) => ({
-    name: `${f.farmerName} (${f.dealCount})`,
+  // Sort by deal count (volume) descending
+  const sorted = [...data].sort((a, b) => b.dealCount - a.dealCount)
+
+  const chartData = sorted.map((f) => ({
+    name: f.farmerName,
     farmerName: f.farmerName,
     farmerId: f.farmerId,
     avgScore: parseFloat(f.avgScore.toFixed(2)),
     dealCount: f.dealCount,
   }))
 
+  const maxDeals = Math.max(...chartData.map((d) => d.dealCount), 1)
   const chartHeight = Math.max(300, chartData.length * 40)
 
   const selectedFarmerDeals = selectedFarmer
@@ -196,7 +203,10 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
   return (
     <>
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 className="text-white font-semibold text-lg mb-6">Ranking de Farmers</h2>
+        <div className="flex items-baseline gap-2 mb-6">
+          <h2 className="text-white font-semibold text-lg">Volume por Farmer</h2>
+          <span className="text-slate-500 text-xs">barra = nº negócios · cor = nota média</span>
+        </div>
 
         {data.length === 0 ? (
           <div className="flex items-center justify-center h-48 text-slate-400">
@@ -218,21 +228,22 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
               <XAxis
                 type="number"
-                domain={[0, 12]}
+                domain={[0, maxDeals]}
                 tick={{ fill: '#94a3b8', fontSize: 12 }}
                 tickLine={false}
                 axisLine={{ stroke: '#334155' }}
+                allowDecimals={false}
               />
               <YAxis
                 type="category"
                 dataKey="name"
-                width={160}
+                width={130}
                 tick={<CustomYAxisTick />}
                 tickLine={false}
                 axisLine={false}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-              <Bar dataKey="avgScore" radius={[0, 4, 4, 0]} maxBarSize={24}>
+              <Bar dataKey="dealCount" radius={[0, 4, 4, 0]} maxBarSize={24}>
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={getBarColor(entry.avgScore)} />
                 ))}
@@ -241,19 +252,22 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
           </ResponsiveContainer>
         )}
 
-        <div className="flex items-center gap-6 mt-4 pt-4 border-t border-slate-700">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span className="text-slate-400 text-xs">Excelente (9+)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-yellow-500" />
-            <span className="text-slate-400 text-xs">Bom (7–9)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500" />
-            <span className="text-slate-400 text-xs">Abaixo (7)</span>
-          </div>
+        <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-slate-700">
+          <span className="text-slate-500 text-xs">Cor = nota média:</span>
+          {[
+            { color: '#dc2626', label: '≤6' },
+            { color: '#FF5200', label: '7' },
+            { color: '#f97316', label: '8' },
+            { color: '#eab308', label: '9' },
+            { color: '#86efac', label: '10' },
+            { color: '#22c55e', label: '11' },
+            { color: '#15803d', label: '12' },
+          ].map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-sm" style={{ background: color }} />
+              <span className="text-slate-400 text-xs">{label}</span>
+            </div>
+          ))}
         </div>
       </div>
 
