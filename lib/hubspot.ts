@@ -16,6 +16,7 @@ export interface Deal {
   dealStage: string      // dealstage
   meetingScheduled: boolean  // conseguiu_agendar_a_meet_
   meetingCompleted: boolean  // has associated meeting with hs_meeting_outcome=COMPLETED
+  ownerName: string      // hubspot_owner_id → owner display name
 }
 
 export interface FetchValidation {
@@ -101,6 +102,22 @@ function isForaDoMOA(closedLostReason: string | null | undefined): boolean {
   return normalized.includes('fora') && normalized.includes('moa')
 }
 
+async function fetchOwnerMap(pat: string): Promise<Record<string, string>> {
+  const resp = await fetch('https://api.hubapi.com/crm/v3/owners?limit=200', {
+    headers: { Authorization: `Bearer ${pat}` },
+  })
+  if (!resp.ok) return {}
+  const data = await resp.json() as {
+    results?: Array<{ id: string; firstName?: string; lastName?: string; email?: string }>
+  }
+  const map: Record<string, string> = {}
+  for (const o of data.results ?? []) {
+    const name = [o.firstName, o.lastName].filter(Boolean).join(' ').trim() || o.email || o.id
+    map[o.id] = name
+  }
+  return map
+}
+
 async function fetchCompletedMeetingDealIds(pat: string, dealIds: string[]): Promise<Set<string>> {
   if (dealIds.length === 0) return new Set()
 
@@ -161,7 +178,10 @@ export async function fetchAllDeals(): Promise<FetchResult> {
   const pat = process.env.HUBSPOT_PAT
   if (!pat) throw new Error('HUBSPOT_PAT environment variable is not set')
 
-  const farmerIds = Object.keys(FARMERS)
+  const [farmerIds, ownerMap] = await Promise.all([
+    Promise.resolve(Object.keys(FARMERS)),
+    fetchOwnerMap(pat),
+  ])
   const rawDeals: Deal[] = []
   let after: string | undefined = undefined
 
@@ -199,6 +219,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         'hs_lastmodifieddate',
         'dealstage',
         'conseguiu_agendar_a_meet_',
+        'hubspot_owner_id',
       ],
       limit: 200,
     }
@@ -264,6 +285,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         dealStage: props.dealstage ?? '',
         meetingScheduled: props.conseguiu_agendar_a_meet_ === 'true',
         meetingCompleted: false,
+        ownerName: ownerMap[props.hubspot_owner_id ?? ''] ?? '',
       })
     }
 

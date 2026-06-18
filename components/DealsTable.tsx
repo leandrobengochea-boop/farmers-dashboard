@@ -50,7 +50,7 @@ function MeetingBadge({ scheduled, completed }: { scheduled: boolean; completed:
   )
 }
 
-type SortKey = 'date' | 'score' | 'name' | 'farmerName'
+type SortKey = 'date' | 'score' | 'name' | 'farmerName' | 'ownerName'
 type SortDir = 'asc' | 'desc'
 
 export default function DealsTable({ deals }: DealsTableProps) {
@@ -90,6 +90,10 @@ export default function DealsTable({ deals }: DealsTableProps) {
         case 'farmerName':
           aVal = a.farmerName.toLowerCase()
           bVal = b.farmerName.toLowerCase()
+          break
+        case 'ownerName':
+          aVal = a.ownerName.toLowerCase()
+          bVal = b.ownerName.toLowerCase()
           break
       }
 
@@ -160,6 +164,14 @@ export default function DealsTable({ deals }: DealsTableProps) {
                   <th className="text-left py-3 px-4">
                     <button
                       className="flex items-center gap-1 hover:text-slate-200 transition"
+                      onClick={() => handleSort('ownerName')}
+                    >
+                      Curador <SortIcon field="ownerName" />
+                    </button>
+                  </th>
+                  <th className="text-left py-3 px-4">
+                    <button
+                      className="flex items-center gap-1 hover:text-slate-200 transition"
                       onClick={() => handleSort('date')}
                     >
                       Data <SortIcon field="date" />
@@ -195,6 +207,7 @@ export default function DealsTable({ deals }: DealsTableProps) {
                       </a>
                     </td>
                     <td className="py-3 px-4 text-slate-300">{deal.farmerName}</td>
+                    <td className="py-3 px-4 text-slate-400 text-sm whitespace-nowrap">{deal.ownerName || '—'}</td>
                     <td className="py-3 px-4 text-slate-400 whitespace-nowrap">
                       {deal.date
                         ? format(new Date(deal.date), "dd/MM/yyyy", { locale: ptBR })
