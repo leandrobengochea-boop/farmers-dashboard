@@ -1,6 +1,7 @@
 'use client'
 
-const MONTHLY_GOAL = 300
+const GOAL_TOTAL = 300
+const GOAL_TEAM  = 100
 
 interface MTDBarProps {
   deals: { date: string }[]
@@ -21,7 +22,8 @@ function getDaysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate()
 }
 
-export default function MTDBar({ deals, selectedTeam: _ }: MTDBarProps) {
+export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
+  const MONTHLY_GOAL = selectedTeam ? GOAL_TEAM : GOAL_TOTAL
   const now = new Date()
   const monthKey = getCurrentMonthKey()
   const todayKey = getTodayKey()

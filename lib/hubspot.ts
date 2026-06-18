@@ -30,9 +30,12 @@ export interface ForaDoMOAEntry {
 }
 
 export interface ExcludedDeal {
+  id: string
+  name: string
   farmerId: string
   farmerName: string
   date: string
+  hubspotUrl: string
 }
 
 export interface FetchResult {
@@ -284,9 +287,12 @@ export async function fetchAllDeals(): Promise<FetchResult> {
   const deals = rawDeals.filter((d) => !isForaDoMOA(d.closedLostReason))
 
   const excludedDeals: ExcludedDeal[] = excluded.map((d) => ({
+    id: d.id,
+    name: d.name,
     farmerId: d.farmerId,
     farmerName: d.farmerName,
     date: d.date,
+    hubspotUrl: d.hubspotUrl,
   }))
 
   // Group excluded deals by farmer (global, unfiltered — used as fallback)

@@ -14,6 +14,7 @@ import DealsTable from './DealsTable'
 import { MacroKPIBar, InsightList } from './insights/InsightCards'
 import MTDBar from './MTDBar'
 import MeetingConversionTable from './MeetingConversionTable'
+import ForaDoMOABar from './ForaDoMOABar'
 import FarmerMatrix from './insights/FarmerMatrix'
 import {
   computeFarmerRanking,
@@ -153,30 +154,7 @@ export default function DashboardClient({
 
         {/* Fora do MOA breakdown */}
         {foraDoMOA.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 bg-amber-950/30 border border-amber-800/40 rounded-xl px-5 py-3">
-            <div className="flex items-center gap-1.5 mr-1">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
-              <span className="text-amber-400 text-xs font-semibold uppercase tracking-wider whitespace-nowrap">Fora do MOA</span>
-            </div>
-            {foraDoMOA.map(({ farmerName, count }) => (
-              <span
-                key={farmerName}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium"
-                style={{ background: 'rgba(217,119,6,0.12)', border: '1px solid rgba(217,119,6,0.3)', color: '#fbbf24' }}
-              >
-                {farmerName}
-                <span
-                  className="inline-flex items-center justify-center rounded-full text-xs font-bold"
-                  style={{ background: 'rgba(217,119,6,0.25)', color: '#f59e0b', width: 18, height: 18 }}
-                >
-                  {count}
-                </span>
-              </span>
-            ))}
-          </div>
+          <ForaDoMOABar foraDoMOA={foraDoMOA} excludedDeals={excludedDeals} selectedTeam={selectedTeam} selectedMonth={selectedMonth} />
         )}
 
         {/* Filters Bar */}
