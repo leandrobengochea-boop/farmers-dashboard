@@ -32,6 +32,24 @@ function MissingCriterionPill({ label }: { label: string }) {
   )
 }
 
+function MeetingBadge({ scheduled, completed }: { scheduled: boolean; completed: boolean }) {
+  if (!scheduled) return null
+  if (completed) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-900/40 text-green-300 border border-green-800 whitespace-nowrap">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Realizada
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-900/40 text-amber-300 border border-amber-800 whitespace-nowrap">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Agendada
+    </span>
+  )
+}
+
 type SortKey = 'date' | 'score' | 'name' | 'farmerName'
 type SortDir = 'asc' | 'desc'
 
@@ -94,7 +112,7 @@ export default function DealsTable({ deals }: DealsTableProps) {
       )
     }
     return (
-      <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         {sortDir === 'asc' ? (
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
         ) : (
@@ -155,6 +173,7 @@ export default function DealsTable({ deals }: DealsTableProps) {
                       Pontuação <SortIcon field="score" />
                     </button>
                   </th>
+                  <th className="text-left py-3 px-4 font-medium">Reunião</th>
                   <th className="text-left py-3 px-4 font-medium">Critérios faltantes</th>
                 </tr>
               </thead>
@@ -183,6 +202,9 @@ export default function DealsTable({ deals }: DealsTableProps) {
                     </td>
                     <td className="py-3 px-4">
                       <ScoreBadge score={deal.score} />
+                    </td>
+                    <td className="py-3 px-4">
+                      <MeetingBadge scheduled={deal.meetingScheduled} completed={deal.meetingCompleted} />
                     </td>
                     <td className="py-3 px-4">
                       {(() => {

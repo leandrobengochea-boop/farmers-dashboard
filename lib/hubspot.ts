@@ -14,6 +14,8 @@ export interface Deal {
   createDate: string     // createdate
   lastModifiedDate: string // hs_lastmodifieddate
   dealStage: string      // dealstage
+  meetingScheduled: boolean  // conseguiu_agendar_a_meet_
+  meetingCompleted: boolean  // has associated meeting with hs_meeting_outcome=COMPLETED
 }
 
 export interface FetchValidation {
@@ -96,6 +98,62 @@ function isForaDoMOA(closedLostReason: string | null | undefined): boolean {
   return normalized.includes('fora') && normalized.includes('moa')
 }
 
+async function fetchCompletedMeetingDealIds(pat: string, dealIds: string[]): Promise<Set<string>> {
+  if (dealIds.length === 0) return new Set()
+
+  const completed = new Set<string>()
+  const CHUNK = 100
+
+  for (let i = 0; i < dealIds.length; i += CHUNK) {
+    const chunk = dealIds.slice(i, i + CHUNK)
+
+    // Step 1: get meeting IDs associated with each deal
+    const assocResp = await fetch('https://api.hubapi.com/crm/v4/associations/deals/meetings/batch/read', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputs: chunk.map((id) => ({ id })) }),
+    })
+    if (!assocResp.ok) continue
+
+    const assocData = await assocResp.json() as {
+      results?: Array<{ from: { id: string }; to: Array<{ toObjectId: string }> }>
+    }
+
+    const dealByMeeting: Record<string, string> = {}
+    const meetingIds: string[] = []
+    for (const row of assocData.results ?? []) {
+      for (const t of row.to ?? []) {
+        dealByMeeting[t.toObjectId] = row.from.id
+        meetingIds.push(t.toObjectId)
+      }
+    }
+    if (meetingIds.length === 0) continue
+
+    // Step 2: batch read meeting outcomes
+    const meetResp = await fetch('https://api.hubapi.com/crm/v3/objects/meetings/batch/read', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        inputs: meetingIds.map((id) => ({ id })),
+        properties: ['hs_meeting_outcome'],
+      }),
+    })
+    if (!meetResp.ok) continue
+
+    const meetData = await meetResp.json() as {
+      results?: Array<{ id: string; properties: { hs_meeting_outcome?: string } }>
+    }
+    for (const m of meetData.results ?? []) {
+      if (m.properties.hs_meeting_outcome === 'COMPLETED') {
+        const dealId = dealByMeeting[m.id]
+        if (dealId) completed.add(dealId)
+      }
+    }
+  }
+
+  return completed
+}
+
 export async function fetchAllDeals(): Promise<FetchResult> {
   const pat = process.env.HUBSPOT_PAT
   if (!pat) throw new Error('HUBSPOT_PAT environment variable is not set')
@@ -137,6 +195,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         'createdate',
         'hs_lastmodifieddate',
         'dealstage',
+        'conseguiu_agendar_a_meet_',
       ],
       limit: 200,
     }
@@ -200,12 +259,23 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         createDate: props.createdate ? new Date(props.createdate).toISOString() : '',
         lastModifiedDate: props.hs_lastmodifieddate ? new Date(props.hs_lastmodifieddate).toISOString() : '',
         dealStage: props.dealstage ?? '',
+        meetingScheduled: props.conseguiu_agendar_a_meet_ === 'true',
+        meetingCompleted: false,
       })
     }
 
     const nextAfter = data.paging?.next?.after
     if (!nextAfter) break
     after = nextAfter
+  }
+
+  // Batch-fetch meeting outcomes for deals that have a meeting scheduled
+  const completedDealIds = await fetchCompletedMeetingDealIds(
+    pat,
+    rawDeals.filter((d) => d.meetingScheduled).map((d) => d.id),
+  )
+  for (const d of rawDeals) {
+    if (completedDealIds.has(d.id)) d.meetingCompleted = true
   }
 
   const totalBruto = rawDeals.length

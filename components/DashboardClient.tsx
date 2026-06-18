@@ -12,6 +12,7 @@ import ScoreDistribution from './ScoreDistribution'
 import CriteriaAnalysis from './CriteriaAnalysis'
 import DealsTable from './DealsTable'
 import { MacroKPIBar, InsightList } from './insights/InsightCards'
+import MTDBar from './MTDBar'
 import FarmerMatrix from './insights/FarmerMatrix'
 import {
   computeFarmerRanking,
@@ -143,6 +144,9 @@ export default function DashboardClient({
             </span>
           </div>
         )}
+
+        {/* MTD progress bar */}
+        <MTDBar deals={filteredDeals} selectedTeam={selectedTeam} />
 
         {/* Fora do MOA breakdown */}
         {foraDoMOA.length > 0 && (

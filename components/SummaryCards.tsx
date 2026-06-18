@@ -68,9 +68,21 @@ function Card({
   )
 }
 
+const ICON_MEETING = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <polyline points="16 11 18 13 22 9"/>
+  </svg>
+)
+
 export default function SummaryCards({ stats }: SummaryCardsProps) {
+  const meetingRate = stats.meetingScheduled > 0
+    ? Math.round((stats.meetingCompleted / stats.meetingScheduled) * 100)
+    : null
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
       <Card
         title="Total de Negócios"
         value={stats.totalDeals.toLocaleString('pt-BR')}
@@ -95,6 +107,12 @@ export default function SummaryCards({ stats }: SummaryCardsProps) {
         value={stats.activeFarmers.toString()}
         subtitle="com ao menos 1 negócio"
         icon={ICONS.farmers}
+      />
+      <Card
+        title="Reuniões"
+        value={meetingRate !== null ? `${meetingRate}%` : '—'}
+        subtitle={`${stats.meetingCompleted} realizadas / ${stats.meetingScheduled} agendadas`}
+        icon={ICON_MEETING}
       />
     </div>
   )

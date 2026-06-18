@@ -38,6 +38,8 @@ export interface SummaryStats {
   activeFarmers: number
   totalPossiblePoints: number
   totalActualPoints: number
+  meetingScheduled: number
+  meetingCompleted: number
 }
 
 export function computeFarmerRanking(deals: Deal[]): FarmerStats[] {
@@ -144,6 +146,9 @@ export function computeSummaryStats(deals: Deal[]): SummaryStats {
 
   const activeFarmerIds = new Set(deals.map((d) => d.farmerId).filter(Boolean))
 
+  const meetingScheduled = deals.filter((d) => d.meetingScheduled).length
+  const meetingCompleted = deals.filter((d) => d.meetingCompleted).length
+
   return {
     totalDeals,
     avgScore,
@@ -151,6 +156,8 @@ export function computeSummaryStats(deals: Deal[]): SummaryStats {
     activeFarmers: activeFarmerIds.size,
     totalPossiblePoints,
     totalActualPoints,
+    meetingScheduled,
+    meetingCompleted,
   }
 }
 
