@@ -13,6 +13,7 @@ import CriteriaAnalysis from './CriteriaAnalysis'
 import DealsTable from './DealsTable'
 import { MacroKPIBar, InsightList } from './insights/InsightCards'
 import MTDBar from './MTDBar'
+import MeetingConversionTable from './MeetingConversionTable'
 import FarmerMatrix from './insights/FarmerMatrix'
 import {
   computeFarmerRanking,
@@ -20,6 +21,7 @@ import {
   computeCriteriaAnalysis,
   computeSummaryStats,
   computeForaDoMOA,
+  computeMeetingConversion,
   filterDealsByMonth,
   filterDealsByTeam,
   getAvailableMonths,
@@ -100,6 +102,7 @@ export default function DashboardClient({
   const scoreDistribution = useMemo(() => computeScoreDistribution(filteredDeals), [filteredDeals])
   const { absence, impact } = useMemo(() => computeCriteriaAnalysis(filteredDeals), [filteredDeals])
   const summaryStats = useMemo(() => computeSummaryStats(filteredDeals), [filteredDeals])
+  const meetingConversion = useMemo(() => computeMeetingConversion(filteredDeals), [filteredDeals])
   const farmerMatrix = useMemo(() => computeFarmerMatrix(filteredDeals), [filteredDeals])
   const macroKPIs = useMemo(() => computeMacroKPIs(filteredDeals, farmerMatrix), [filteredDeals, farmerMatrix])
   const insights = useMemo(() => generateInsights(filteredDeals, farmerMatrix), [filteredDeals, farmerMatrix])
@@ -244,7 +247,32 @@ export default function DashboardClient({
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <FarmerRanking data={farmerRanking} deals={filteredDeals} />
-          <ScoreDistribution data={scoreDistribution} />
+          <div className="flex flex-col gap-6">
+            <ScoreDistribution data={scoreDistribution} />
+            {meetingConversion.length > 0 && (
+              <div className="bg-slate-800 rounded-xl border border-slate-700 p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <polyline points="16 11 18 13 22 9"/>
+                  </svg>
+                  <h2 className="text-white font-semibold text-base">Conversão de reuniões por farmer</h2>
+                </div>
+                <div className="flex gap-4 mb-3 text-xs text-slate-500">
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-1.5 rounded-full bg-orange-500" />
+                    % negócios com agendamento
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-1.5 rounded-full bg-green-500" />
+                    % reuniões realizadas
+                  </span>
+                </div>
+                <MeetingConversionTable data={meetingConversion} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Criteria Analysis */}

@@ -229,3 +229,39 @@ export function computeForaDoMOA(
     .map(([farmerName, count]) => ({ farmerName, count }))
     .sort((a, b) => b.count - a.count)
 }
+
+export interface FarmerMeetingStats {
+  farmerId: string
+  farmerName: string
+  totalDeals: number
+  scheduled: number
+  scheduledPct: number
+  completed: number
+  completedPct: number
+}
+
+export function computeMeetingConversion(deals: Deal[]): FarmerMeetingStats[] {
+  const map = new Map<string, { name: string; total: number; scheduled: number; completed: number }>()
+
+  for (const d of deals) {
+    if (!d.farmerId) continue
+    const e = map.get(d.farmerId) ?? { name: d.farmerName, total: 0, scheduled: 0, completed: 0 }
+    e.total += 1
+    if (d.meetingScheduled) e.scheduled += 1
+    if (d.meetingCompleted) e.completed += 1
+    map.set(d.farmerId, e)
+  }
+
+  return Array.from(map.entries())
+    .map(([farmerId, e]) => ({
+      farmerId,
+      farmerName: e.name,
+      totalDeals: e.total,
+      scheduled: e.scheduled,
+      scheduledPct: e.total > 0 ? Math.round((e.scheduled / e.total) * 100) : 0,
+      completed: e.completed,
+      completedPct: e.scheduled > 0 ? Math.round((e.completed / e.scheduled) * 100) : 0,
+    }))
+    .filter((f) => f.scheduled > 0)
+    .sort((a, b) => b.completedPct - a.completedPct)
+}
