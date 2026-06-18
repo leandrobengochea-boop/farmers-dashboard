@@ -17,6 +17,7 @@ export const FARMERS: Record<string, string> = {
   '92333469': 'Rafael',
   '92335488': 'Thaina',
   '93599591': 'Bruna Saraiva',
+  '89632472': 'Maria Eduarda Porto',
 }
 
 export const HUBSPOT_PORTAL_ID = '49656171'
@@ -32,7 +33,7 @@ export const TEAMS: Record<string, { label: string; farmerIds: string[] }> = {
   },
   dani: {
     label: 'Time Dani',
-    farmerIds: ['92333469', '85846971', '82410958', '81033487', '92335488'],
+    farmerIds: ['92333469', '85846971', '82410958', '81033487', '92335488', '89632472'],
   },
 }
 
