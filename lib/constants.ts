@@ -30,8 +30,8 @@ export const FARMER_ALIASES: Record<string, string> = {
 // fromDate: ignore deals before this date (YYYY-MM-DD)
 // untilDate: ignore deals from this date onwards — keeps history, removes future
 export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; untilDate?: string }> = {
-  '81033487': { fromDate: '2025-03-01' },  // Gustavo: entra em março/25
-  '84497577': { fromDate: '2025-03-01' },  // Vitória: entra em março/25
+  '81033487': { fromDate: '2026-03-01' },  // Gustavo: entra em março/26
+  '84497577': { fromDate: '2026-03-01' },  // Vitória: entra em março/26
   '88200222': { untilDate: '2026-06-01' }, // Kennedy: saiu em junho/26
   '87371619': { untilDate: '2026-06-01' }, // Maryna: saiu em junho/26
 }

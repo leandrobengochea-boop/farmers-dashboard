@@ -199,7 +199,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
             {
               propertyName: 'pipedrive___data_de_qualificacao',
               operator: 'GTE',
-              value: '1735689600000', // 2025-01-01
+              value: '1767225600000', // 2026-01-01
             },
           ],
         },
