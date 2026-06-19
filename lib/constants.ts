@@ -6,6 +6,7 @@ export const FARMERS: Record<string, string> = {
   '84497577': 'Vitória',
   '85002012': 'Bruna Machado',
   '85002282': 'Sotoriva',
+  '93238814': 'Sotoriva',   // conta nova — alias para 85002282
   '85846972': 'Daniela',
   '85846971': 'Lenz',
   '81033487': 'Gustavo',
@@ -20,6 +21,11 @@ export const FARMERS: Record<string, string> = {
   '89632472': 'Maria Eduarda Porto',
 }
 
+// Maps old/extra farmer IDs to their canonical ID so deals are merged in analytics
+export const FARMER_ALIASES: Record<string, string> = {
+  '93238814': '85002282',  // Sotoriva nova conta → ID canônico
+}
+
 export const HUBSPOT_PORTAL_ID = '49656171'
 
 export const TEAMS: Record<string, { label: string; farmerIds: string[] }> = {
@@ -29,7 +35,7 @@ export const TEAMS: Record<string, { label: string; farmerIds: string[] }> = {
   },
   katyeli: {
     label: 'Time Katyeli',
-    farmerIds: ['85002282', '84497577', '85002012', '85846972', '93599591', '79760745'],
+    farmerIds: ['85002282', '93238814', '84497577', '85002012', '85846972', '93599591', '79760745'],
   },
   dani: {
     label: 'Time Dani',

@@ -1,4 +1,4 @@
-import { FARMERS, CRITERIA, HUBSPOT_PORTAL_ID } from './constants'
+import { FARMERS, FARMER_ALIASES, CRITERIA, HUBSPOT_PORTAL_ID } from './constants'
 
 export interface Deal {
   id: string
@@ -246,7 +246,8 @@ export async function fetchAllDeals(): Promise<FetchResult> {
 
     for (const deal of (data.results ?? [])) {
       const props = deal.properties ?? {}
-      const farmerId = props.sdrfarmer_responsavel ?? ''
+      const rawFarmerId = props.sdrfarmer_responsavel ?? ''
+      const farmerId = FARMER_ALIASES[rawFarmerId] ?? rawFarmerId
       const rawDate = props.pipedrive___data_de_qualificacao ?? ''
       // HubSpot retorna "YYYY-MM-DD" ou ms timestamp.
       // Armazenamos ao meio-dia UTC (T12:00:00Z) para que o browser
