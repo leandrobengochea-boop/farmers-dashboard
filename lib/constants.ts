@@ -26,6 +26,16 @@ export const FARMER_ALIASES: Record<string, string> = {
   '93238814': '85002282',  // Sotoriva nova conta → ID canônico
 }
 
+// Per-farmer date restrictions applied after fetching
+// fromDate: ignore deals before this date (YYYY-MM-DD)
+// untilDate: ignore deals from this date onwards — keeps history, removes future
+export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; untilDate?: string }> = {
+  '81033487': { fromDate: '2025-03-01' },  // Gustavo: entra em março/25
+  '84497577': { fromDate: '2025-03-01' },  // Vitória: entra em março/25
+  '88200222': { untilDate: '2026-06-01' }, // Kennedy: saiu em junho/26
+  '87371619': { untilDate: '2026-06-01' }, // Maryna: saiu em junho/26
+}
+
 export const HUBSPOT_PORTAL_ID = '49656171'
 
 export const TEAMS: Record<string, { label: string; farmerIds: string[] }> = {

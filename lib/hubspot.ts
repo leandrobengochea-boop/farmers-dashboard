@@ -1,4 +1,4 @@
-import { FARMERS, FARMER_ALIASES, CRITERIA, HUBSPOT_PORTAL_ID } from './constants'
+import { FARMERS, FARMER_ALIASES, FARMER_DATE_RESTRICTIONS, CRITERIA, HUBSPOT_PORTAL_ID } from './constants'
 
 export interface Deal {
   id: string
@@ -199,7 +199,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
             {
               propertyName: 'pipedrive___data_de_qualificacao',
               operator: 'GTE',
-              value: '1746057600000',
+              value: '1735689600000', // 2025-01-01
             },
           ],
         },
@@ -292,6 +292,19 @@ export async function fetchAllDeals(): Promise<FetchResult> {
     if (!nextAfter) break
     after = nextAfter
   }
+
+  // Apply per-farmer date restrictions (fromDate / untilDate)
+  const restrictedRaw = rawDeals.filter((d) => {
+    const restriction = FARMER_DATE_RESTRICTIONS[d.farmerId]
+    if (!restriction) return true
+    if (!d.date) return true
+    const ts = new Date(d.date).getTime()
+    if (restriction.fromDate && ts < new Date(restriction.fromDate).getTime()) return false
+    if (restriction.untilDate && ts >= new Date(restriction.untilDate).getTime()) return false
+    return true
+  })
+  rawDeals.length = 0
+  restrictedRaw.forEach((d) => rawDeals.push(d))
 
   // Batch-fetch meeting outcomes for deals that have a meeting scheduled
   const completedDealIds = await fetchCompletedMeetingDealIds(
