@@ -17,6 +17,7 @@ export interface Deal {
   meetingScheduled: boolean  // conseguiu_agendar_a_meet_
   meetingCompleted: boolean  // has associated meeting with hs_meeting_outcome=COMPLETED
   ownerName: string      // hubspot_owner_id → owner display name
+  isScored: boolean      // has pontuacao_leadscore — false = "Fora do SAL"
 }
 
 export interface FetchValidation {
@@ -200,10 +201,6 @@ export async function fetchAllDeals(): Promise<FetchResult> {
               operator: 'GTE',
               value: '1746057600000',
             },
-            {
-              propertyName: 'pontuacao_leadscore',
-              operator: 'HAS_PROPERTY',
-            },
           ],
         },
       ],
@@ -286,6 +283,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         meetingScheduled: props.conseguiu_agendar_a_meet_ === 'true',
         meetingCompleted: false,
         ownerName: ownerMap[props.hubspot_owner_id ?? ''] ?? '',
+        isScored: !!props.pontuacao_leadscore,
       })
     }
 

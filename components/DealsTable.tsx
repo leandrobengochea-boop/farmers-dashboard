@@ -12,7 +12,14 @@ interface DealsTableProps {
 
 const PAGE_SIZE = 20
 
-function ScoreBadge({ score }: { score: number }) {
+function ScoreBadge({ score, isScored }: { score: number; isScored: boolean }) {
+  if (!isScored) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border bg-slate-700/60 text-slate-400 border-slate-600">
+        Fora do SAL
+      </span>
+    )
+  }
   let colorClass = 'bg-red-900/50 text-red-300 border-red-700'
   if (score >= 9) colorClass = 'bg-green-900/50 text-green-300 border-green-700'
   else if (score >= 7) colorClass = 'bg-yellow-900/50 text-yellow-300 border-yellow-700'
@@ -214,7 +221,7 @@ export default function DealsTable({ deals }: DealsTableProps) {
                         : '—'}
                     </td>
                     <td className="py-3 px-4">
-                      <ScoreBadge score={deal.score} />
+                      <ScoreBadge score={deal.score} isScored={deal.isScored} />
                     </td>
                     <td className="py-3 px-4">
                       <MeetingBadge scheduled={deal.meetingScheduled} completed={deal.meetingCompleted} />

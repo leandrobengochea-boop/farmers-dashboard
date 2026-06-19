@@ -141,9 +141,15 @@ function FarmerModal({ farmerName, deals, onClose }: FarmerModalProps) {
                       {deal.date ? format(new Date(deal.date), 'dd/MM', { locale: ptBR }) : '—'}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-sm font-semibold border ${getScoreColor(deal.score)}`}>
-                        {deal.score}
-                      </span>
+                      {deal.isScored ? (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-sm font-semibold border ${getScoreColor(deal.score)}`}>
+                          {deal.score}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border bg-slate-700/60 text-slate-400 border-slate-600">
+                          Fora do SAL
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       {missing.length === 0 ? (

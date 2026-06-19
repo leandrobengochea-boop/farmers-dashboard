@@ -43,31 +43,30 @@ export interface SummaryStats {
 }
 
 export function computeFarmerRanking(deals: Deal[]): FarmerStats[] {
-  const map = new Map<string, { name: string; total: number; count: number }>()
+  const map = new Map<string, { name: string; totalScore: number; scoredCount: number; dealCount: number }>()
 
   for (const deal of deals) {
     if (!deal.farmerId) continue
-    const existing = map.get(deal.farmerId)
-    if (existing) {
-      existing.total += deal.score
-      existing.count += 1
-    } else {
-      map.set(deal.farmerId, {
-        name: deal.farmerName || FARMERS[deal.farmerId] || deal.farmerId,
-        total: deal.score,
-        count: 1,
-      })
+    const existing = map.get(deal.farmerId) ?? {
+      name: deal.farmerName || FARMERS[deal.farmerId] || deal.farmerId,
+      totalScore: 0, scoredCount: 0, dealCount: 0,
     }
+    existing.dealCount += 1
+    if (deal.isScored) {
+      existing.totalScore += deal.score
+      existing.scoredCount += 1
+    }
+    map.set(deal.farmerId, existing)
   }
 
   const result: FarmerStats[] = []
-  for (const [farmerId, stats] of map.entries()) {
+  for (const [farmerId, s] of map.entries()) {
     result.push({
       farmerId,
-      farmerName: stats.name,
-      avgScore: stats.count > 0 ? stats.total / stats.count : 0,
-      dealCount: stats.count,
-      totalScore: stats.total,
+      farmerName: s.name,
+      avgScore: s.scoredCount > 0 ? s.totalScore / s.scoredCount : 0,
+      dealCount: s.dealCount,
+      totalScore: s.totalScore,
     })
   }
 
@@ -81,6 +80,7 @@ export function computeScoreDistribution(deals: Deal[]): ScoreDistributionItem[]
   for (const s of scores) counts.set(s, 0)
 
   for (const deal of deals) {
+    if (!deal.isScored) continue
     const s = Math.round(deal.score)
     if (counts.has(s)) {
       counts.set(s, (counts.get(s) || 0) + 1)
@@ -139,9 +139,10 @@ export function computeCriteriaAnalysis(deals: Deal[]): {
 
 export function computeSummaryStats(deals: Deal[]): SummaryStats {
   const totalDeals = deals.length
-  const totalActualPoints = deals.reduce((sum, d) => sum + d.score, 0)
-  const avgScore = totalDeals > 0 ? totalActualPoints / totalDeals : 0
-  const totalPossiblePoints = totalDeals * MAX_SCORE
+  const scoredDeals = deals.filter((d) => d.isScored)
+  const totalActualPoints = scoredDeals.reduce((sum, d) => sum + d.score, 0)
+  const avgScore = scoredDeals.length > 0 ? totalActualPoints / scoredDeals.length : 0
+  const totalPossiblePoints = scoredDeals.length * MAX_SCORE
   const efficiency = totalPossiblePoints > 0 ? (totalActualPoints / totalPossiblePoints) * 100 : 0
 
   const activeFarmerIds = new Set(deals.map((d) => d.farmerId).filter(Boolean))
