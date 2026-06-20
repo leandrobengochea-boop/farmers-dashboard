@@ -1,5 +1,7 @@
 'use client'
 
+import { useState, useMemo } from 'react'
+
 const GOAL_TOTAL = 300
 const GOAL_TEAM  = 100
 
@@ -22,6 +24,16 @@ function getDaysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate()
 }
 
+function formatDayKey(isoKey: string) {
+  const [, m, d] = isoKey.split('-')
+  return `${d}/${m}`
+}
+
+function getWeekdayAbbr(isoKey: string) {
+  const date = new Date(`${isoKey}T12:00:00Z`)
+  return date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+}
+
 export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const MONTHLY_GOAL = selectedTeam ? GOAL_TEAM : GOAL_TOTAL
   const now = new Date()
@@ -32,20 +44,56 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const totalDays = getDaysInMonth(year, month)
   const dayOfMonth = now.getDate()
 
+  // Build sorted list of days in current month that have deals, up to today
+  const dealDaysInMonth = useMemo(() => {
+    const days = new Set<string>()
+    for (const d of deals) {
+      if (!d.date) continue
+      const key = d.date.slice(0, 10)
+      if (key <= todayKey && key.startsWith(monthKey)) days.add(key)
+    }
+    // Always include today
+    days.add(todayKey)
+    return Array.from(days).sort()
+  }, [deals, todayKey, monthKey])
+
+  const [selectedDayKey, setSelectedDayKey] = useState<string>(todayKey)
+  const isToday = selectedDayKey === todayKey
+
+  const currentIdx = dealDaysInMonth.indexOf(selectedDayKey)
+
+  // Navigate by calendar day (not just days with deals)
+  function prevDay() {
+    const current = new Date(`${selectedDayKey}T12:00:00Z`)
+    current.setUTCDate(current.getUTCDate() - 1)
+    const prev = current.toISOString().slice(0, 10)
+    if (prev >= `${monthKey}-01`) setSelectedDayKey(prev)
+  }
+
+  function nextDay() {
+    if (isToday) return
+    const current = new Date(`${selectedDayKey}T12:00:00Z`)
+    current.setUTCDate(current.getUTCDate() + 1)
+    const next = current.toISOString().slice(0, 10)
+    if (next <= todayKey) setSelectedDayKey(next)
+  }
+
+  const canGoPrev = selectedDayKey > `${monthKey}-01`
+  const canGoNext = !isToday
+
   const monthDeals = deals.filter((d) => {
     if (!d.date) return false
-    const date = new Date(d.date)
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    const key = `${new Date(d.date).getFullYear()}-${String(new Date(d.date).getMonth() + 1).padStart(2, '0')}`
     return key === monthKey
   })
 
-  const todayDeals = deals.filter((d) => {
+  const selectedDayDeals = deals.filter((d) => {
     if (!d.date) return false
-    return new Date(d.date).toISOString().slice(0, 10) === todayKey
+    return d.date.slice(0, 10) === selectedDayKey
   })
 
   const count = monthDeals.length
-  const todayCount = todayDeals.length
+  const selectedDayCount = selectedDayDeals.length
   const paceTarget = Math.round((dayOfMonth / totalDays) * MONTHLY_GOAL)
   const pacePercent = (paceTarget / MONTHLY_GOAL) * 100
   const actualPercent = Math.min((count / MONTHLY_GOAL) * 100, 100)
@@ -57,24 +105,61 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
 
   const monthName = now.toLocaleDateString('pt-BR', { month: 'long' })
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ` ${year}`
-  const todayFormatted = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 
   return (
     <div className="bg-slate-800/60 border border-slate-700 rounded-xl px-5 py-4">
       <div className="flex items-center gap-4 mb-3">
 
-        {/* Hoje — destaque principal */}
+        {/* Card do dia com navegação */}
         <div
-          className="flex-shrink-0 flex flex-col items-center justify-center rounded-xl px-4 py-2 min-w-[72px]"
-          style={{ background: 'rgba(255,82,0,0.12)', border: '1px solid rgba(255,82,0,0.3)' }}
+          className="flex-shrink-0 flex flex-col items-center justify-center rounded-xl px-2 py-2"
+          style={{ background: 'rgba(255,82,0,0.12)', border: '1px solid rgba(255,82,0,0.3)', minWidth: 110 }}
         >
-          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#FF5200' }}>
-            Hoje
-          </span>
+          {/* Linha de navegação */}
+          <div className="flex items-center justify-between w-full gap-1 mb-1">
+            <button
+              onClick={prevDay}
+              disabled={!canGoPrev}
+              className="flex items-center justify-center rounded w-5 h-5 transition"
+              style={{ color: canGoPrev ? '#94a3b8' : 'rgba(100,116,139,0.25)', background: 'transparent', border: 'none', cursor: canGoPrev ? 'pointer' : 'default', fontSize: 16, lineHeight: 1, padding: 0 }}
+              aria-label="Dia anterior"
+            >
+              ‹
+            </button>
+
+            <div className="flex items-center justify-center flex-1">
+              {isToday ? (
+                <span
+                  className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                  style={{ background: 'rgba(255,82,0,0.2)', color: '#FF5200', border: '1px solid rgba(255,82,0,0.3)' }}
+                >
+                  Hoje
+                </span>
+              ) : (
+                <span className="text-[10px] text-slate-500">
+                  {getWeekdayAbbr(selectedDayKey)}
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={nextDay}
+              disabled={!canGoNext}
+              className="flex items-center justify-center rounded w-5 h-5 transition"
+              style={{ color: canGoNext ? '#94a3b8' : 'rgba(100,116,139,0.25)', background: 'transparent', border: 'none', cursor: canGoNext ? 'pointer' : 'default', fontSize: 16, lineHeight: 1, padding: 0 }}
+              aria-label="Próximo dia"
+            >
+              ›
+            </button>
+          </div>
+
+          {/* Número */}
           <span className="text-3xl font-bold leading-none" style={{ color: '#FF5200' }}>
-            {todayCount}
+            {selectedDayCount}
           </span>
-          <span className="text-[10px] text-slate-500">{todayFormatted}</span>
+
+          {/* Data */}
+          <span className="text-[10px] text-slate-500 mt-1">{formatDayKey(selectedDayKey)}</span>
         </div>
 
         {/* Separador */}
