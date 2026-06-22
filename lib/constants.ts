@@ -19,6 +19,10 @@ export const FARMERS: Record<string, string> = {
   '92335488': 'Thaina',
   '93599591': 'Bruna Saraiva',
   '89632472': 'Maria Eduarda Porto',
+  '80228367': 'Jhuly',
+  '94028856': 'Andrei Felippe',
+  '94316537': 'Maria Julia',
+  '94316538': 'Gabriel Alves',
 }
 
 // Maps old/extra farmer IDs to their canonical ID so deals are merged in analytics
@@ -41,15 +45,15 @@ export const HUBSPOT_PORTAL_ID = '49656171'
 export const TEAMS: Record<string, { label: string; farmerIds: string[] }> = {
   leticia: {
     label: 'Time Leticia',
-    farmerIds: ['89632494', '87159365', '88200239', '86256444', '84015882'],
+    farmerIds: ['89632494', '87159365', '88200239', '86256444', '84015882', '94028856', '94316538'],
   },
   katyeli: {
     label: 'Time Katyeli',
-    farmerIds: ['85002282', '93238814', '84497577', '85002012', '85846972', '93599591', '79760745'],
+    farmerIds: ['85002282', '93238814', '84497577', '85002012', '85846972', '93599591', '79760745', '80228367'],
   },
   dani: {
     label: 'Time Dani',
-    farmerIds: ['92333469', '85846971', '82410958', '81033487', '92335488', '89632472'],
+    farmerIds: ['92333469', '85846971', '82410958', '81033487', '92335488', '89632472', '94316537'],
   },
 }
 
