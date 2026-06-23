@@ -6,6 +6,7 @@ export interface FarmerStats {
   farmerName: string
   avgScore: number
   dealCount: number
+  companyCount: number
   totalScore: number
 }
 
@@ -43,15 +44,16 @@ export interface SummaryStats {
 }
 
 export function computeFarmerRanking(deals: Deal[]): FarmerStats[] {
-  const map = new Map<string, { name: string; totalScore: number; scoredCount: number; dealCount: number }>()
+  const map = new Map<string, { name: string; totalScore: number; scoredCount: number; dealCount: number; companies: Set<string> }>()
 
   for (const deal of deals) {
     if (!deal.farmerId) continue
     const existing = map.get(deal.farmerId) ?? {
       name: deal.farmerName || FARMERS[deal.farmerId] || deal.farmerId,
-      totalScore: 0, scoredCount: 0, dealCount: 0,
+      totalScore: 0, scoredCount: 0, dealCount: 0, companies: new Set<string>(),
     }
     existing.dealCount += 1
+    if (deal.companyId) existing.companies.add(deal.companyId)
     if (deal.isScored) {
       existing.totalScore += deal.score
       existing.scoredCount += 1
@@ -66,6 +68,7 @@ export function computeFarmerRanking(deals: Deal[]): FarmerStats[] {
       farmerName: s.name,
       avgScore: s.scoredCount > 0 ? s.totalScore / s.scoredCount : 0,
       dealCount: s.dealCount,
+      companyCount: s.companies.size,
       totalScore: s.totalScore,
     })
   }

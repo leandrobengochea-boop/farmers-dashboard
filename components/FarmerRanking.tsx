@@ -41,7 +41,7 @@ function getScoreColor(score: number): string {
 
 interface TooltipPayload {
   value: number
-  payload: { farmerName: string; dealCount: number; avgScore: number }
+  payload: { farmerName: string; dealCount: number; companyCount: number; avgScore: number }
 }
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
@@ -53,6 +53,12 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
       <p className="text-white font-semibold mb-2">{d.farmerName}</p>
       <p className="text-slate-300 text-sm">
         Negócios: <span className="text-white font-semibold">{d.dealCount}</span>
+      </p>
+      <p className="text-slate-300 text-sm">
+        Empresas únicas: <span className="text-white font-semibold">{d.companyCount}</span>
+        {d.dealCount > d.companyCount && (
+          <span className="text-slate-500 text-xs ml-1">({d.dealCount - d.companyCount} repetidas)</span>
+        )}
       </p>
       <p className="text-slate-300 text-sm flex items-center gap-1.5">
         Nota média:{' '}
@@ -180,9 +186,12 @@ function FarmerModal({ farmerName, deals, onClose }: FarmerModalProps) {
 
 export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
   const [selectedFarmer, setSelectedFarmer] = useState<string | null>(null)
+  const [metric, setMetric] = useState<'deals' | 'companies'>('deals')
 
-  // Sort by deal count (volume) descending
-  const sorted = [...data].sort((a, b) => b.dealCount - a.dealCount)
+  // Sort by the active metric (volume) descending
+  const sorted = [...data].sort((a, b) =>
+    metric === 'deals' ? b.dealCount - a.dealCount : b.companyCount - a.companyCount,
+  )
 
   const chartData = sorted.map((f) => ({
     name: f.farmerName,
@@ -190,9 +199,11 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
     farmerId: f.farmerId,
     avgScore: parseFloat(f.avgScore.toFixed(2)),
     dealCount: f.dealCount,
+    companyCount: f.companyCount,
+    value: metric === 'deals' ? f.dealCount : f.companyCount,
   }))
 
-  const maxDeals = Math.max(...chartData.map((d) => d.dealCount), 1)
+  const maxValue = Math.max(...chartData.map((d) => d.value), 1)
   const chartHeight = Math.max(300, chartData.length * 40)
 
   const selectedFarmerDeals = selectedFarmer
@@ -209,9 +220,27 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
   return (
     <>
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <div className="flex items-baseline gap-2 mb-6">
-          <h2 className="text-white font-semibold text-lg">Volume por Farmer</h2>
-          <span className="text-slate-500 text-xs">barra = nº negócios · cor = nota média</span>
+        <div className="flex items-center justify-between gap-2 mb-6 flex-wrap">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-white font-semibold text-lg">Volume por Farmer</h2>
+            <span className="text-slate-500 text-xs">
+              barra = {metric === 'deals' ? 'nº negócios' : 'nº empresas únicas'} · cor = nota média
+            </span>
+          </div>
+          <div className="flex items-center rounded-lg border border-slate-700 overflow-hidden text-xs">
+            <button
+              onClick={() => setMetric('deals')}
+              className={`px-3 py-1.5 transition ${metric === 'deals' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              Negócios
+            </button>
+            <button
+              onClick={() => setMetric('companies')}
+              className={`px-3 py-1.5 transition ${metric === 'companies' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              Empresas únicas
+            </button>
+          </div>
         </div>
 
         {data.length === 0 ? (
@@ -234,7 +263,7 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
               <XAxis
                 type="number"
-                domain={[0, maxDeals]}
+                domain={[0, maxValue]}
                 tick={{ fill: '#94a3b8', fontSize: 12 }}
                 tickLine={false}
                 axisLine={{ stroke: '#334155' }}
@@ -249,7 +278,7 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
                 axisLine={false}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-              <Bar dataKey="dealCount" radius={[0, 4, 4, 0]} maxBarSize={24}>
+              <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={24}>
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={getBarColor(entry.avgScore)} />
                 ))}

@@ -14,10 +14,11 @@ export interface Deal {
   createDate: string     // createdate
   lastModifiedDate: string // hs_lastmodifieddate
   dealStage: string      // dealstage
-  meetingScheduled: boolean  // conseguiu_agendar_a_meet_
-  meetingCompleted: boolean  // has associated meeting with hs_meeting_outcome=COMPLETED
+  meetingScheduled: boolean  // tem reunião real associada no CRM (qualquer outcome)
+  meetingCompleted: boolean  // tem reunião associada com hs_meeting_outcome=COMPLETED
   ownerName: string      // hubspot_owner_id → owner display name
   isScored: boolean      // has pontuacao_leadscore — false = "Fora do SAL"
+  companyId: string      // empresa associada (associação primária) — '' se nenhuma
 }
 
 export interface FetchValidation {
@@ -119,10 +120,15 @@ async function fetchOwnerMap(pat: string): Promise<Record<string, string>> {
   return map
 }
 
-async function fetchCompletedMeetingDealIds(pat: string, dealIds: string[]): Promise<Set<string>> {
-  if (dealIds.length === 0) return new Set()
+export interface MeetingStatus {
+  scheduled: boolean  // tem ≥1 reunião associada (qualquer outcome)
+  completed: boolean  // tem ≥1 reunião com outcome COMPLETED
+}
 
-  const completed = new Set<string>()
+async function fetchMeetingStatusByDeal(pat: string, dealIds: string[]): Promise<Map<string, MeetingStatus>> {
+  const status = new Map<string, MeetingStatus>()
+  if (dealIds.length === 0) return status
+
   const CHUNK = 100
 
   for (let i = 0; i < dealIds.length; i += CHUNK) {
@@ -143,6 +149,8 @@ async function fetchCompletedMeetingDealIds(pat: string, dealIds: string[]): Pro
     const dealByMeeting: Record<string, string> = {}
     const meetingIds: string[] = []
     for (const row of assocData.results ?? []) {
+      // qualquer reunião associada = agendada
+      status.set(row.from.id, { scheduled: true, completed: status.get(row.from.id)?.completed ?? false })
       for (const t of row.to ?? []) {
         dealByMeeting[t.toObjectId] = row.from.id
         meetingIds.push(t.toObjectId)
@@ -150,7 +158,7 @@ async function fetchCompletedMeetingDealIds(pat: string, dealIds: string[]): Pro
     }
     if (meetingIds.length === 0) continue
 
-    // Step 2: batch read meeting outcomes
+    // Step 2: batch read meeting outcomes → marca realizadas
     const meetResp = await fetch('https://api.hubapi.com/crm/v3/objects/meetings/batch/read', {
       method: 'POST',
       headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
@@ -167,12 +175,47 @@ async function fetchCompletedMeetingDealIds(pat: string, dealIds: string[]): Pro
     for (const m of meetData.results ?? []) {
       if (m.properties.hs_meeting_outcome === 'COMPLETED') {
         const dealId = dealByMeeting[m.id]
-        if (dealId) completed.add(dealId)
+        if (dealId) status.set(dealId, { scheduled: true, completed: true })
       }
     }
   }
 
-  return completed
+  return status
+}
+
+async function fetchCompanyIdByDeal(pat: string, dealIds: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>()
+  if (dealIds.length === 0) return map
+
+  const CHUNK = 100
+
+  for (let i = 0; i < dealIds.length; i += CHUNK) {
+    const chunk = dealIds.slice(i, i + CHUNK)
+
+    const resp = await fetch('https://api.hubapi.com/crm/v4/associations/deals/companies/batch/read', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputs: chunk.map((id) => ({ id })) }),
+    })
+    if (!resp.ok) continue
+
+    const data = await resp.json() as {
+      results?: Array<{
+        from: { id: string }
+        to: Array<{ toObjectId: number | string; associationTypes?: Array<{ label?: string | null }> }>
+      }>
+    }
+
+    for (const row of data.results ?? []) {
+      const tos = row.to ?? []
+      if (tos.length === 0) continue
+      // prefere a associação "Primary"; senão pega a primeira
+      const primary = tos.find((t) => t.associationTypes?.some((a) => a.label === 'Primary')) ?? tos[0]
+      map.set(row.from.id, String(primary.toObjectId))
+    }
+  }
+
+  return map
 }
 
 export async function fetchAllDeals(): Promise<FetchResult> {
@@ -281,10 +324,11 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         createDate: props.createdate ? new Date(props.createdate).toISOString() : '',
         lastModifiedDate: props.hs_lastmodifieddate ? new Date(props.hs_lastmodifieddate).toISOString() : '',
         dealStage: props.dealstage ?? '',
-        meetingScheduled: props.conseguiu_agendar_a_meet_ === 'true',
-        meetingCompleted: false,
+        meetingScheduled: false,  // preenchido via fetchMeetingStatusByDeal
+        meetingCompleted: false,  // preenchido via fetchMeetingStatusByDeal
         ownerName: ownerMap[props.hubspot_owner_id ?? ''] ?? '',
         isScored: !!props.pontuacao_leadscore,
+        companyId: '',            // preenchido via fetchCompanyIdByDeal
       })
     }
 
@@ -306,13 +350,19 @@ export async function fetchAllDeals(): Promise<FetchResult> {
   rawDeals.length = 0
   restrictedRaw.forEach((d) => rawDeals.push(d))
 
-  // Batch-fetch meeting outcomes for deals that have a meeting scheduled
-  const completedDealIds = await fetchCompletedMeetingDealIds(
-    pat,
-    rawDeals.filter((d) => d.meetingScheduled).map((d) => d.id),
-  )
+  // Busca reuniões reais e empresa associada para TODOS os negócios (em paralelo)
+  const allDealIds = rawDeals.map((d) => d.id)
+  const [meetingStatus, companyByDeal] = await Promise.all([
+    fetchMeetingStatusByDeal(pat, allDealIds),
+    fetchCompanyIdByDeal(pat, allDealIds),
+  ])
   for (const d of rawDeals) {
-    if (completedDealIds.has(d.id)) d.meetingCompleted = true
+    const ms = meetingStatus.get(d.id)
+    if (ms) {
+      d.meetingScheduled = ms.scheduled
+      d.meetingCompleted = ms.completed
+    }
+    d.companyId = companyByDeal.get(d.id) ?? ''
   }
 
   const totalBruto = rawDeals.length
