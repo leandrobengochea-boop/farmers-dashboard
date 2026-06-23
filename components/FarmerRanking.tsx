@@ -1,16 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from 'recharts'
 import { FarmerStats } from '@/lib/analytics'
 import { Deal } from '@/lib/hubspot'
 import { CRITERIA } from '@/lib/constants'
@@ -37,46 +27,6 @@ function getScoreColor(score: number): string {
   if (score >= 9) return 'bg-green-900/50 text-green-300 border-green-700'
   if (score >= 7) return 'bg-yellow-900/50 text-yellow-300 border-yellow-700'
   return 'bg-red-900/50 text-red-300 border-red-700'
-}
-
-interface TooltipPayload {
-  value: number
-  payload: { farmerName: string; dealCount: number; companyCount: number; avgScore: number }
-}
-
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
-  if (!active || !payload?.length) return null
-  const d = payload[0].payload
-  const color = getBarColor(d.avgScore)
-  return (
-    <div className="bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 shadow-xl">
-      <p className="text-white font-semibold mb-2">{d.farmerName}</p>
-      <p className="text-slate-300 text-sm">
-        Negócios: <span className="text-white font-semibold">{d.dealCount}</span>
-      </p>
-      <p className="text-slate-300 text-sm">
-        Empresas únicas: <span className="text-white font-semibold">{d.companyCount}</span>
-        {d.dealCount > d.companyCount && (
-          <span className="text-slate-500 text-xs ml-1">({d.dealCount - d.companyCount} repetidas)</span>
-        )}
-      </p>
-      <p className="text-slate-300 text-sm flex items-center gap-1.5">
-        Nota média:{' '}
-        <span className="font-semibold" style={{ color }}>{d.avgScore.toFixed(1)}</span>
-        <span className="text-slate-500">/ 12</span>
-      </p>
-      <p className="text-slate-500 text-xs mt-1">Clique para ver detalhes</p>
-    </div>
-  )
-}
-
-function CustomYAxisTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
-  if (x === undefined || y === undefined || !payload) return null
-  return (
-    <text x={x} y={y} dy={4} textAnchor="end" fill="#94a3b8" fontSize={12}>
-      {payload.value}
-    </text>
-  )
 }
 
 interface FarmerModalProps {
@@ -186,25 +136,15 @@ function FarmerModal({ farmerName, deals, onClose }: FarmerModalProps) {
 
 export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
   const [selectedFarmer, setSelectedFarmer] = useState<string | null>(null)
-  const [metric, setMetric] = useState<'deals' | 'companies'>('deals')
+  const [sortBy, setSortBy] = useState<'deals' | 'companies'>('deals')
 
-  // Sort by the active metric (volume) descending
   const sorted = [...data].sort((a, b) =>
-    metric === 'deals' ? b.dealCount - a.dealCount : b.companyCount - a.companyCount,
+    sortBy === 'deals' ? b.dealCount - a.dealCount : b.companyCount - a.companyCount,
   )
 
-  const chartData = sorted.map((f) => ({
-    name: f.farmerName,
-    farmerName: f.farmerName,
-    farmerId: f.farmerId,
-    avgScore: parseFloat(f.avgScore.toFixed(2)),
-    dealCount: f.dealCount,
-    companyCount: f.companyCount,
-    value: metric === 'deals' ? f.dealCount : f.companyCount,
-  }))
-
-  const maxValue = Math.max(...chartData.map((d) => d.value), 1)
-  const chartHeight = Math.max(300, chartData.length * 40)
+  // Escala compartilhada: as barras de negócios e empresas usam o mesmo
+  // máximo para que os comprimentos sejam comparáveis entre si.
+  const maxDeals = Math.max(...sorted.map((f) => f.dealCount), 1)
 
   const selectedFarmerDeals = selectedFarmer
     ? deals.filter((d) => d.farmerId === selectedFarmer)
@@ -213,33 +153,42 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
   const selectedFarmerName =
     data.find((f) => f.farmerId === selectedFarmer)?.farmerName ?? ''
 
-  function handleBarClick(entry: { farmerId: string }) {
-    setSelectedFarmer(entry.farmerId)
-  }
-
   return (
     <>
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <div className="flex items-center justify-between gap-2 mb-6 flex-wrap">
+        <div className="flex items-center justify-between gap-2 mb-5 flex-wrap">
           <div className="flex items-baseline gap-2">
             <h2 className="text-white font-semibold text-lg">Volume por Farmer</h2>
-            <span className="text-slate-500 text-xs">
-              barra = {metric === 'deals' ? 'nº negócios' : 'nº empresas únicas'} · cor = nota média
-            </span>
+            <span className="text-slate-500 text-xs">cor = nota média</span>
           </div>
-          <div className="flex items-center rounded-lg border border-slate-700 overflow-hidden text-xs">
-            <button
-              onClick={() => setMetric('deals')}
-              className={`px-3 py-1.5 transition ${metric === 'deals' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              Negócios
-            </button>
-            <button
-              onClick={() => setMetric('companies')}
-              className={`px-3 py-1.5 transition ${metric === 'companies' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              Empresas únicas
-            </button>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 text-xs">ordenar:</span>
+            <div className="flex items-center rounded-lg border border-slate-700 overflow-hidden text-xs">
+              <button
+                onClick={() => setSortBy('deals')}
+                className={`px-3 py-1.5 transition ${sortBy === 'deals' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Negócios
+              </button>
+              <button
+                onClick={() => setSortBy('companies')}
+                className={`px-3 py-1.5 transition ${sortBy === 'companies' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Empresas
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Legenda das duas barras */}
+        <div className="flex items-center gap-4 mb-4 text-xs">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-2.5 rounded-sm" style={{ background: '#f97316' }} />
+            <span className="text-slate-400">empresas únicas</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-2.5 rounded-sm" style={{ background: 'rgba(249,115,22,0.28)' }} />
+            <span className="text-slate-400">negócios repetidos (mesma empresa)</span>
           </div>
         </div>
 
@@ -248,46 +197,47 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
             Nenhum dado disponível
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <BarChart
-              data={chartData}
-              layout="vertical"
-              margin={{ top: 0, right: 40, left: 10, bottom: 0 }}
-              onClick={(e) => {
-                if (e?.activePayload?.[0]?.payload) {
-                  handleBarClick(e.activePayload[0].payload)
-                }
-              }}
-              style={{ cursor: 'pointer' }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
-              <XAxis
-                type="number"
-                domain={[0, maxValue]}
-                tick={{ fill: '#94a3b8', fontSize: 12 }}
-                tickLine={false}
-                axisLine={{ stroke: '#334155' }}
-                allowDecimals={false}
-              />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={130}
-                tick={<CustomYAxisTick />}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-              <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={24}>
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={getBarColor(entry.avgScore)} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="space-y-2.5">
+            {sorted.map((f) => {
+              const color = getBarColor(f.avgScore)
+              const dealsPct = (f.dealCount / maxDeals) * 100
+              const companiesPct = (f.companyCount / maxDeals) * 100
+              const repeated = f.dealCount - f.companyCount
+              return (
+                <button
+                  key={f.farmerId}
+                  onClick={() => setSelectedFarmer(f.farmerId)}
+                  className="group flex items-center gap-3 w-full text-left hover:bg-slate-700/30 rounded-lg px-2 py-1 -mx-2 transition"
+                  title={`${f.farmerName}: ${f.dealCount} negócios · ${f.companyCount} empresas únicas${repeated > 0 ? ` · ${repeated} repetidos` : ''} · nota ${f.avgScore.toFixed(1)}`}
+                >
+                  <span className="w-28 flex-shrink-0 text-slate-300 text-sm truncate">{f.farmerName}</span>
+
+                  <div className="flex-1 min-w-0">
+                    {/* Barra de negócios (faded) com empresas únicas (sólida) sobreposta */}
+                    <div className="relative h-5 rounded bg-slate-700/40">
+                      <div
+                        className="absolute left-0 top-0 h-full rounded transition-all"
+                        style={{ width: `${dealsPct}%`, background: color, opacity: 0.28 }}
+                      />
+                      <div
+                        className="absolute left-0 top-0 h-full rounded transition-all"
+                        style={{ width: `${companiesPct}%`, background: color }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Números: empresas / negócios */}
+                  <span className="flex-shrink-0 w-24 text-right text-xs tabular-nums">
+                    <span className="text-white font-semibold">{f.companyCount}</span>
+                    <span className="text-slate-500"> / {f.dealCount}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-slate-700">
+        <div className="flex flex-wrap items-center gap-4 mt-5 pt-4 border-t border-slate-700">
           <span className="text-slate-500 text-xs">Cor = nota média:</span>
           {[
             { color: '#dc2626', label: '≤6' },
