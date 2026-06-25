@@ -234,6 +234,73 @@ export function computeForaDoMOA(
     .sort((a, b) => b.count - a.count)
 }
 
+export interface OppsByDayResult {
+  monthKey: string
+  owners: { name: string; total: number }[]   // top-N + "Outros", ordem de empilhamento
+  rows: Array<Record<string, number | string>> // { day:'01', <farmer>:n, ..., total:n }
+  grandTotal: number
+}
+
+const SEM_FARMER = 'Sem farmer'
+
+// Volume de oportunidades por dia do mês, empilhado por farmer.
+// Destaca os topN farmers; o restante é agrupado em "Outros".
+export function computeOpportunitiesByDay(deals: Deal[], monthKey: string, topN = 7): OppsByDayResult {
+  const monthDeals = deals.filter((d) => d.date && d.date.slice(0, 7) === monthKey)
+
+  // total por farmer → escolhe os topN
+  const totalByOwner = new Map<string, number>()
+  for (const d of monthDeals) {
+    const owner = d.farmerName || SEM_FARMER
+    totalByOwner.set(owner, (totalByOwner.get(owner) ?? 0) + 1)
+  }
+  const ranked = Array.from(totalByOwner.entries()).sort((a, b) => b[1] - a[1])
+  const topOwners = ranked.slice(0, topN).map(([name]) => name)
+  const topSet = new Set(topOwners)
+  const hasOutros = ranked.length > topN
+
+  const bucket = (owner: string) => (topSet.has(owner) ? owner : 'Outros')
+
+  // dias do mês: 01..último dia; se for o mês corrente, vai só até hoje
+  const [year, month] = monthKey.split('-').map(Number)
+  const daysInMonth = new Date(year, month, 0).getDate()
+  const now = new Date()
+  const isCurrentMonth = now.getFullYear() === year && now.getMonth() + 1 === month
+  const lastDay = isCurrentMonth ? now.getDate() : daysInMonth
+
+  const ownerOrder = [...topOwners]
+  if (hasOutros) ownerOrder.push('Outros')
+
+  const rows: Array<Record<string, number | string>> = []
+  for (let day = 1; day <= lastDay; day++) {
+    const dd = String(day).padStart(2, '0')
+    const row: Record<string, number | string> = { day: dd }
+    for (const o of ownerOrder) row[o] = 0
+    rows.push(row)
+  }
+
+  let grandTotal = 0
+  for (const d of monthDeals) {
+    const day = parseInt(d.date.slice(8, 10), 10)
+    if (day < 1 || day > lastDay) continue
+    const key = bucket(d.farmerName || SEM_FARMER)
+    const row = rows[day - 1]
+    row[key] = (row[key] as number) + 1
+    row.total = (row.total as number ?? 0) + 1
+    grandTotal += 1
+  }
+  for (const row of rows) if (row.total === undefined) row.total = 0
+
+  const owners = ownerOrder.map((name) => ({
+    name,
+    total: name === 'Outros'
+      ? ranked.slice(topN).reduce((s, [, c]) => s + c, 0)
+      : (totalByOwner.get(name) ?? 0),
+  }))
+
+  return { monthKey, owners, rows, grandTotal }
+}
+
 export interface FarmerMeetingStats {
   farmerId: string
   farmerName: string

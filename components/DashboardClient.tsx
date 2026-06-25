@@ -9,7 +9,7 @@ import Navbar from './Navbar'
 import SummaryCards from './SummaryCards'
 import FarmerRanking from './FarmerRanking'
 import ScoreDistribution from './ScoreDistribution'
-import CriteriaAnalysis from './CriteriaAnalysis'
+import OpportunitiesByDay from './OpportunitiesByDay'
 import DealsTable from './DealsTable'
 import { MacroKPIBar, InsightList } from './insights/InsightCards'
 import MTDBar from './MTDBar'
@@ -19,10 +19,10 @@ import FarmerMatrix from './insights/FarmerMatrix'
 import {
   computeFarmerRanking,
   computeScoreDistribution,
-  computeCriteriaAnalysis,
   computeSummaryStats,
   computeForaDoMOA,
   computeMeetingConversion,
+  computeOpportunitiesByDay,
   filterDealsByMonth,
   filterDealsByTeam,
   getAvailableMonths,
@@ -101,7 +101,22 @@ export default function DashboardClient({
 
   const farmerRanking = useMemo(() => computeFarmerRanking(filteredDeals), [filteredDeals])
   const scoreDistribution = useMemo(() => computeScoreDistribution(filteredDeals), [filteredDeals])
-  const { absence, impact } = useMemo(() => computeCriteriaAnalysis(filteredDeals), [filteredDeals])
+
+  // Mês do gráfico diário: o mês selecionado ou, se "todos os meses", o mês atual
+  const chartMonthKey = useMemo(() => {
+    if (selectedMonth) return selectedMonth
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  }, [selectedMonth])
+  const oppsByDay = useMemo(
+    () => computeOpportunitiesByDay(filterDealsByTeam(deals, selectedTeam), chartMonthKey, 7),
+    [deals, selectedTeam, chartMonthKey],
+  )
+  const chartMonthLabel = useMemo(() => {
+    const [y, m] = chartMonthKey.split('-').map(Number)
+    const label = new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long' })
+    return label.charAt(0).toUpperCase() + label.slice(1) + ` ${y}`
+  }, [chartMonthKey])
   const summaryStats = useMemo(() => computeSummaryStats(filteredDeals), [filteredDeals])
   const meetingConversion = useMemo(() => computeMeetingConversion(filteredDeals), [filteredDeals])
   const farmerMatrix = useMemo(() => computeFarmerMatrix(filteredDeals), [filteredDeals])
@@ -253,8 +268,8 @@ export default function DashboardClient({
           </div>
         </div>
 
-        {/* Criteria Analysis */}
-        <CriteriaAnalysis absence={absence} impact={impact} />
+        {/* Oportunidades por dia · por curador */}
+        <OpportunitiesByDay data={oppsByDay} monthLabel={chartMonthLabel} />
 
         {/* Deals Table */}
         <DealsTable deals={filteredDeals} />
