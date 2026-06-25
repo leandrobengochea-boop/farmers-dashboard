@@ -17,7 +17,11 @@ interface Props {
   monthLabel: string
 }
 
-const PALETTE = ['#FF5200', '#3b82f6', '#a855f7', '#10b981', '#f59e0b', '#ec4899', '#14b8a6']
+const PALETTE = [
+  '#FF5200', '#3b82f6', '#a855f7', '#10b981', '#f59e0b', '#ec4899', '#14b8a6', '#ef4444',
+  '#8b5cf6', '#22c55e', '#eab308', '#06b6d4', '#f97316', '#d946ef', '#84cc16', '#0ea5e9',
+  '#fb7185', '#2dd4bf', '#c084fc', '#fbbf24', '#4ade80', '#60a5fa', '#f472b6', '#a3e635',
+]
 const OUTROS_COLOR = '#64748b'
 
 function colorFor(name: string, index: number): string {

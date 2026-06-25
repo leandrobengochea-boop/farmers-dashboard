@@ -109,7 +109,7 @@ export default function DashboardClient({
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   }, [selectedMonth])
   const oppsByDay = useMemo(
-    () => computeOpportunitiesByDay(filterDealsByTeam(deals, selectedTeam), chartMonthKey, 7),
+    () => computeOpportunitiesByDay(filterDealsByTeam(deals, selectedTeam), chartMonthKey, 100),
     [deals, selectedTeam, chartMonthKey],
   )
   const chartMonthLabel = useMemo(() => {
