@@ -3,6 +3,8 @@ import { Deal, FetchValidation, ExcludedDeal } from '@/lib/hubspot'
 import DashboardClient from '@/components/DashboardClient'
 
 export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+export const maxDuration = 60
 
 export default async function DashboardPage() {
   let deals: Deal[] = []

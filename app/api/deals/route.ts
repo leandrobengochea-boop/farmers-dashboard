@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { fetchAllDeals } from '@/lib/hubspot'
 
 export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+export const maxDuration = 60
 
 export async function GET() {
   try {

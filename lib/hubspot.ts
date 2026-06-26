@@ -107,6 +107,7 @@ function isForaDoMOA(closedLostReason: string | null | undefined): boolean {
 async function fetchOwnerMap(pat: string): Promise<Record<string, string>> {
   const resp = await fetch('https://api.hubapi.com/crm/v3/owners?limit=200', {
     headers: { Authorization: `Bearer ${pat}` },
+    cache: 'no-store',
   })
   if (!resp.ok) return {}
   const data = await resp.json() as {
