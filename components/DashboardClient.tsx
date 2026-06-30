@@ -262,7 +262,7 @@ export default function DashboardClient({
                     % reuniões realizadas
                   </span>
                 </div>
-                <MeetingConversionTable data={meetingConversion} />
+                <MeetingConversionTable data={meetingConversion} deals={filteredDeals} />
               </div>
             )}
           </div>
