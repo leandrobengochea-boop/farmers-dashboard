@@ -37,7 +37,7 @@ export default function MeetingConversionTable({ data }: Props) {
         <thead className="sticky top-0 bg-slate-800 z-10">
           <tr className="text-slate-500 text-xs uppercase tracking-wider">
             <th className="text-left py-2 px-3 font-medium">Farmer</th>
-            <th className="text-right py-2 px-3 font-medium whitespace-nowrap">Neg.</th>
+            <th className="text-right py-2 px-3 font-medium whitespace-nowrap" title="Empresas únicas">Empresas</th>
             <th className="py-2 px-3 font-medium min-w-[110px]">Agendadas</th>
             <th className="py-2 px-3 font-medium min-w-[110px]">Realizadas</th>
           </tr>
@@ -49,10 +49,10 @@ export default function MeetingConversionTable({ data }: Props) {
               className="border-t border-slate-700/50 hover:bg-slate-700/20 transition"
             >
               <td className="py-2 px-3 text-slate-300 font-medium whitespace-nowrap">{f.farmerName}</td>
-              <td className="py-2 px-3 text-slate-500 text-right tabular-nums">{f.totalDeals}</td>
+              <td className="py-2 px-3 text-slate-500 text-right tabular-nums" title={`${f.totalDeals} oportunidades`}>{f.totalCompanies}</td>
               <td className="py-2 px-3">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[11px] text-slate-500">{f.scheduled} de {f.totalDeals}</span>
+                  <span className="text-[11px] text-slate-500">{f.scheduled} de {f.totalCompanies}</span>
                   <MiniBar pct={f.scheduledPct} color="#f97316" />
                 </div>
               </td>

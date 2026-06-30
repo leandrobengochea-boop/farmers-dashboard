@@ -255,7 +255,7 @@ export default function DashboardClient({
                 <div className="flex gap-4 mb-3 text-xs text-slate-500">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-1.5 rounded-full bg-orange-500" />
-                    % negócios com agendamento
+                    % empresas com agendamento
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-1.5 rounded-full bg-green-500" />

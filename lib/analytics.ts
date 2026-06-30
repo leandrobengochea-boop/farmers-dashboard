@@ -150,8 +150,18 @@ export function computeSummaryStats(deals: Deal[]): SummaryStats {
 
   const activeFarmerIds = new Set(deals.map((d) => d.farmerId).filter(Boolean))
 
-  const meetingScheduled = deals.filter((d) => d.meetingScheduled).length
-  const meetingCompleted = deals.filter((d) => d.meetingCompleted).length
+  // Reuniões contadas por EMPRESA ÚNICA (mesma regra da conversão por farmer):
+  // uma empresa com várias demandas conta uma vez.
+  const companyMeetings = new Map<string, { scheduled: boolean; completed: boolean }>()
+  for (const d of deals) {
+    const ck = d.companyId || `deal:${d.id}`
+    const c = companyMeetings.get(ck) ?? { scheduled: false, completed: false }
+    if (d.meetingScheduled) c.scheduled = true
+    if (d.meetingCompleted) c.completed = true
+    companyMeetings.set(ck, c)
+  }
+  const meetingScheduled = Array.from(companyMeetings.values()).filter((c) => c.scheduled).length
+  const meetingCompleted = Array.from(companyMeetings.values()).filter((c) => c.completed).length
 
   return {
     totalDeals,
@@ -304,35 +314,54 @@ export function computeOpportunitiesByDay(deals: Deal[], monthKey: string, topN 
 export interface FarmerMeetingStats {
   farmerId: string
   farmerName: string
-  totalDeals: number
-  scheduled: number
+  totalCompanies: number   // empresas únicas (base da conversão)
+  totalDeals: number       // oportunidades (referência)
+  scheduled: number        // empresas com ≥1 reunião agendada
   scheduledPct: number
-  completed: number
+  completed: number        // empresas com ≥1 reunião realizada
   completedPct: number
 }
 
+// Conversão de reuniões por farmer, contada por EMPRESA ÚNICA (não por oportunidade):
+// uma empresa com várias demandas conta uma vez. Agendar reunião em qualquer
+// demanda da empresa marca a empresa como agendada.
 export function computeMeetingConversion(deals: Deal[]): FarmerMeetingStats[] {
-  const map = new Map<string, { name: string; total: number; scheduled: number; completed: number }>()
+  const map = new Map<string, {
+    name: string
+    deals: number
+    companies: Map<string, { scheduled: boolean; completed: boolean }>
+  }>()
 
   for (const d of deals) {
     if (!d.farmerId) continue
-    const e = map.get(d.farmerId) ?? { name: d.farmerName, total: 0, scheduled: 0, completed: 0 }
-    e.total += 1
-    if (d.meetingScheduled) e.scheduled += 1
-    if (d.meetingCompleted) e.completed += 1
+    const e = map.get(d.farmerId) ?? { name: d.farmerName, deals: 0, companies: new Map() }
+    e.deals += 1
+    // sem empresa associada → conta como entidade única própria (não dá pra deduplicar)
+    const ck = d.companyId || `deal:${d.id}`
+    const c = e.companies.get(ck) ?? { scheduled: false, completed: false }
+    if (d.meetingScheduled) c.scheduled = true
+    if (d.meetingCompleted) c.completed = true
+    e.companies.set(ck, c)
     map.set(d.farmerId, e)
   }
 
   return Array.from(map.entries())
-    .map(([farmerId, e]) => ({
-      farmerId,
-      farmerName: e.name,
-      totalDeals: e.total,
-      scheduled: e.scheduled,
-      scheduledPct: e.total > 0 ? Math.round((e.scheduled / e.total) * 100) : 0,
-      completed: e.completed,
-      completedPct: e.scheduled > 0 ? Math.round((e.completed / e.scheduled) * 100) : 0,
-    }))
+    .map(([farmerId, e]) => {
+      const comps = Array.from(e.companies.values())
+      const totalCompanies = comps.length
+      const scheduled = comps.filter((c) => c.scheduled).length
+      const completed = comps.filter((c) => c.completed).length
+      return {
+        farmerId,
+        farmerName: e.name,
+        totalCompanies,
+        totalDeals: e.deals,
+        scheduled,
+        scheduledPct: totalCompanies > 0 ? Math.round((scheduled / totalCompanies) * 100) : 0,
+        completed,
+        completedPct: scheduled > 0 ? Math.round((completed / scheduled) * 100) : 0,
+      }
+    })
     .filter((f) => f.scheduled > 0)
     .sort((a, b) => b.completedPct - a.completedPct)
 }
