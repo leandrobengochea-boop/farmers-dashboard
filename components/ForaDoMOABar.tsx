@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ExcludedDeal, ForaDoMOAEntry } from '@/lib/hubspot'
-import { TEAMS } from '@/lib/constants'
+import { dealInTeam } from '@/lib/constants'
 
 interface Props {
   foraDoMOA: ForaDoMOAEntry[]
@@ -22,11 +22,7 @@ function getFilteredDeals(
   let deals = excludedDeals.filter((d) => d.farmerName === farmerName)
 
   if (selectedTeam) {
-    const team = TEAMS[selectedTeam]
-    if (team) {
-      const ids = new Set(team.farmerIds)
-      deals = deals.filter((d) => ids.has(d.farmerId))
-    }
+    deals = deals.filter((d) => dealInTeam(d.farmerId, d.date, selectedTeam))
   }
 
   if (selectedMonth) {

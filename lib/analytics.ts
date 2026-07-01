@@ -1,5 +1,5 @@
 import { Deal, ExcludedDeal, ForaDoMOAEntry } from './hubspot'
-import { CRITERIA, FARMERS, MAX_SCORE, TEAMS } from './constants'
+import { CRITERIA, FARMERS, MAX_SCORE, dealInTeam } from './constants'
 
 export interface FarmerStats {
   farmerId: string
@@ -204,10 +204,8 @@ export function getAvailableMonths(deals: Deal[]): string[] {
 
 export function filterDealsByTeam(deals: Deal[], teamId: string | null): Deal[] {
   if (!teamId) return deals
-  const team = TEAMS[teamId]
-  if (!team) return deals
-  const ids = new Set(team.farmerIds)
-  return deals.filter((d) => ids.has(d.farmerId))
+  // Sensível à data: negócios antigos usam a formação antiga; jul/26+ a nova.
+  return deals.filter((d) => dealInTeam(d.farmerId, d.date, teamId))
 }
 
 export function computeForaDoMOA(
@@ -218,11 +216,7 @@ export function computeForaDoMOA(
   let filtered = excludedDeals
 
   if (teamId) {
-    const team = TEAMS[teamId]
-    if (team) {
-      const ids = new Set(team.farmerIds)
-      filtered = filtered.filter((d) => ids.has(d.farmerId))
-    }
+    filtered = filtered.filter((d) => dealInTeam(d.farmerId, d.date, teamId))
   }
 
   if (monthKey) {

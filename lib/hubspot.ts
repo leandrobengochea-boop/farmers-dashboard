@@ -1,4 +1,7 @@
-import { FARMERS, FARMER_ALIASES, FARMER_DATE_RESTRICTIONS, CRITERIA, HUBSPOT_PORTAL_ID } from './constants'
+import {
+  FARMERS, FARMER_ALIASES, FARMER_DATE_RESTRICTIONS, CRITERIA, HUBSPOT_PORTAL_ID,
+  ORIGIN_CUTOVER, ALLOWED_ORIGEM_DO_LEAD, ALLOWED_ORIGEM_QUALIFICACAO,
+} from './constants'
 
 export interface Deal {
   id: string
@@ -19,6 +22,8 @@ export interface Deal {
   ownerName: string      // hubspot_owner_id → owner display name
   isScored: boolean      // has pontuacao_leadscore — false = "Fora do SAL"
   companyId: string      // empresa associada (associação primária) — '' se nenhuma
+  origemDoLead: string   // origem_do_lead
+  origemQualificacao: string // origem_da_qualificacao
 }
 
 export interface FetchValidation {
@@ -261,6 +266,8 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         'dealstage',
         'conseguiu_agendar_a_meet_',
         'hubspot_owner_id',
+        'origem_do_lead',
+        'origem_da_qualificacao',
       ],
       limit: 200,
     }
@@ -330,6 +337,8 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         ownerName: ownerMap[props.hubspot_owner_id ?? ''] ?? '',
         isScored: !!props.pontuacao_leadscore,
         companyId: '',            // preenchido via fetchCompanyIdByDeal
+        origemDoLead: props.origem_do_lead ?? '',
+        origemQualificacao: props.origem_da_qualificacao ?? '',
       })
     }
 
@@ -339,13 +348,21 @@ export async function fetchAllDeals(): Promise<FetchResult> {
   }
 
   // Apply per-farmer date restrictions (fromDate / untilDate)
+  const originCutover = new Date(ORIGIN_CUTOVER).getTime()
   const restrictedRaw = rawDeals.filter((d) => {
     const restriction = FARMER_DATE_RESTRICTIONS[d.farmerId]
-    if (!restriction) return true
-    if (!d.date) return true
-    const ts = new Date(d.date).getTime()
-    if (restriction.fromDate && ts < new Date(restriction.fromDate).getTime()) return false
-    if (restriction.untilDate && ts >= new Date(restriction.untilDate).getTime()) return false
+    if (d.date && restriction) {
+      const ts = new Date(d.date).getTime()
+      if (restriction.fromDate && ts < new Date(restriction.fromDate).getTime()) return false
+      if (restriction.untilDate && ts >= new Date(restriction.untilDate).getTime()) return false
+    }
+    // Filtro de origem: vale só de ORIGIN_CUTOVER (jul/26) em diante.
+    // Histórico mantém todas as origens.
+    if (d.date && new Date(d.date).getTime() >= originCutover) {
+      const okLead = ALLOWED_ORIGEM_DO_LEAD.includes(d.origemDoLead)
+      const okQual = ALLOWED_ORIGEM_QUALIFICACAO.includes(d.origemQualificacao)
+      if (!okLead && !okQual) return false
+    }
     return true
   })
   rawDeals.length = 0

@@ -2,12 +2,17 @@
 
 import { useState, useMemo } from 'react'
 
-const GOAL_TOTAL = 300
-const GOAL_TEAM  = 100
+const GOAL_TOTAL = 336
+const GOAL_TEAM  = 112
 
 interface MTDBarProps {
-  deals: { date: string }[]
+  deals: { date: string; companyId: string; id: string }[]
   selectedTeam: string | null
+}
+
+// Conta empresas únicas (dedup por companyId; sem empresa → conta individual)
+function uniqueCompanies(deals: { companyId: string; id: string }[]): number {
+  return new Set(deals.map((d) => d.companyId || `deal:${d.id}`)).size
 }
 
 function getCurrentMonthKey() {
@@ -92,8 +97,8 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
     return d.date.slice(0, 10) === selectedDayKey
   })
 
-  const count = monthDeals.length
-  const selectedDayCount = selectedDayDeals.length
+  const count = uniqueCompanies(monthDeals)
+  const selectedDayCount = uniqueCompanies(selectedDayDeals)
   const paceTarget = Math.round((dayOfMonth / totalDays) * MONTHLY_GOAL)
   const pacePercent = (paceTarget / MONTHLY_GOAL) * 100
   const actualPercent = Math.min((count / MONTHLY_GOAL) * 100, 100)
@@ -154,12 +159,12 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
           </div>
 
           {/* Número */}
-          <span className="text-3xl font-bold leading-none" style={{ color: '#FF5200' }}>
+          <span className="text-3xl font-bold leading-none" style={{ color: '#FF5200' }} title="Empresas únicas no dia">
             {selectedDayCount}
           </span>
 
           {/* Data */}
-          <span className="text-[10px] text-slate-500 mt-1">{formatDayKey(selectedDayKey)}</span>
+          <span className="text-[10px] text-slate-500 mt-1">{formatDayKey(selectedDayKey)} · empresas</span>
         </div>
 
         {/* Separador */}
@@ -176,6 +181,7 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
               <span className="text-slate-600 hidden sm:inline">·</span>
               <span className="text-slate-300 text-sm font-medium">{count}</span>
               <span className="text-slate-500 text-sm">/ {MONTHLY_GOAL}</span>
+              <span className="text-slate-600 text-xs hidden sm:inline">empresas únicas</span>
             </div>
             <div className="flex items-center gap-3 text-xs">
               <span className="text-slate-500 hidden sm:inline">

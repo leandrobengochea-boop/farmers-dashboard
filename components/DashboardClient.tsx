@@ -89,10 +89,11 @@ export default function DashboardClient({
 
   const availableMonths = useMemo(() => getAvailableMonths(deals), [deals])
 
-  const filteredDeals = useMemo(() => {
-    const byTeam = filterDealsByTeam(deals, selectedTeam)
-    return filterDealsByMonth(byTeam, selectedMonth)
-  }, [deals, selectedMonth, selectedTeam])
+  const teamDeals = useMemo(() => filterDealsByTeam(deals, selectedTeam), [deals, selectedTeam])
+  const filteredDeals = useMemo(
+    () => filterDealsByMonth(teamDeals, selectedMonth),
+    [teamDeals, selectedMonth],
+  )
 
   const foraDoMOA: ForaDoMOAEntry[] = useMemo(
     () => computeForaDoMOA(excludedDeals, selectedTeam, selectedMonth),
@@ -109,8 +110,8 @@ export default function DashboardClient({
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   }, [selectedMonth])
   const oppsByDay = useMemo(
-    () => computeOpportunitiesByDay(filterDealsByTeam(deals, selectedTeam), chartMonthKey, 100),
-    [deals, selectedTeam, chartMonthKey],
+    () => computeOpportunitiesByDay(teamDeals, chartMonthKey, 100),
+    [teamDeals, chartMonthKey],
   )
   const chartMonthLabel = useMemo(() => {
     const [y, m] = chartMonthKey.split('-').map(Number)
@@ -165,7 +166,7 @@ export default function DashboardClient({
         )}
 
         {/* MTD progress bar */}
-        <MTDBar deals={filteredDeals} selectedTeam={selectedTeam} />
+        <MTDBar deals={teamDeals} selectedTeam={selectedTeam} />
 
         {/* Fora do MOA breakdown */}
         {foraDoMOA.length > 0 && (

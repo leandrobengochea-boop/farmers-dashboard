@@ -20,9 +20,10 @@ export const FARMERS: Record<string, string> = {
   '93599591': 'Bruna Saraiva',
   '89632472': 'Maria Eduarda Porto',
   '80228367': 'Jhuly',
-  '94028856': 'Andrei Felippe',
+  '94028856': 'Felippe',
   '94316537': 'Maria Julia',
   '94316538': 'Gabriel Alves',
+  '94399135': 'Gabriela',
 }
 
 // Maps old/extra farmer IDs to their canonical ID so deals are merged in analytics
@@ -38,23 +39,74 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; until
   '84497577': { fromDate: '2026-03-01' },  // Vitória: entra em março/26
   '88200222': { untilDate: '2026-06-01' }, // Kennedy: saiu em junho/26
   '87371619': { untilDate: '2026-06-01' }, // Maryna: saiu em junho/26
+  '87159365': { untilDate: '2026-07-01' }, // João Lucas: fora da formação nova (jul/26)
+  '86256444': { untilDate: '2026-07-01' }, // Ana Carolina: fora da formação nova (jul/26)
+  '89632494': { untilDate: '2026-07-01' }, // Willker: fora da formação nova (jul/26)
+  '82410958': { untilDate: '2026-07-01' }, // Maria Eduarda (conta antiga arquivada)
 }
+
+// ── Filtro de origem do lead (vale apenas de ORIGIN_CUTOVER em diante) ──
+// De julho/26 pra frente, só contam no resultado do farmer os leads com
+// origem_do_lead na allowlist OU origem_da_qualificacao = Farmer.
+// Histórico (antes do cutover) mantém todos os leads.
+export const ORIGIN_CUTOVER = '2026-07-01'
+export const ALLOWED_ORIGEM_DO_LEAD = ['Ação de CRM', 'Carteira do Farmer']
+export const ALLOWED_ORIGEM_QUALIFICACAO = ['Farmer']
 
 export const HUBSPOT_PORTAL_ID = '49656171'
 
-export const TEAMS: Record<string, { label: string; farmerIds: string[] }> = {
+type TeamMap = Record<string, { label: string; farmerIds: string[] }>
+
+// Data de virada das formações. Negócios com data < TEAM_CUTOVER usam a
+// formação antiga (TEAMS_BEFORE); a partir dela, a nova (TEAMS_FROM).
+export const TEAM_CUTOVER = '2026-07-01'
+
+// Formação até 30/06/2026 (preserva a leitura histórica por time)
+export const TEAMS_BEFORE: TeamMap = {
   leticia: {
     label: 'Time Leticia',
     farmerIds: ['89632494', '87159365', '88200239', '86256444', '84015882', '94028856', '94316538'],
   },
   katyeli: {
-    label: 'Time Katyeli',
+    label: 'Time Katy',
     farmerIds: ['85002282', '93238814', '84497577', '85002012', '85846972', '93599591', '79760745', '80228367'],
   },
   dani: {
     label: 'Time Dani',
     farmerIds: ['92333469', '85846971', '82410958', '81033487', '92335488', '89632472', '94316537'],
   },
+}
+
+// Formação a partir de 01/07/2026 (imagem das squads novas)
+export const TEAMS_FROM: TeamMap = {
+  leticia: {
+    label: 'Time Leticia',
+    // Bruna Machado, Gustavo, Gabriel Alves, Luiza, Amanda, Felippe
+    farmerIds: ['85002012', '81033487', '94316538', '88200239', '84015882', '94028856'],
+  },
+  dani: {
+    label: 'Time Dani',
+    // Vitória, Rafael, Thaina, Lenz, Gabriela Charlier, Maria Julia
+    farmerIds: ['84497577', '92333469', '92335488', '85846971', '94399135', '94316537'],
+  },
+  katyeli: {
+    label: 'Time Katy',
+    // Sotoriva, Maria Eduarda Porto, Thiago, Daniela, Bruna Saraiva, Jhuly
+    farmerIds: ['85002282', '93238814', '89632472', '79760745', '85846972', '93599591', '80228367'],
+  },
+}
+
+// Fonte de rótulos / botões de time (3 times, chaves estáveis)
+export const TEAMS: TeamMap = TEAMS_FROM
+
+// Verifica se um negócio (farmer + data) pertence ao time, respeitando a
+// virada de formação: < TEAM_CUTOVER usa a formação antiga, >= usa a nova.
+export function dealInTeam(farmerId: string, dateIso: string, teamId: string): boolean {
+  const cutover = new Date(TEAM_CUTOVER).getTime()
+  const ts = dateIso ? new Date(dateIso).getTime() : 0
+  const map = ts >= cutover ? TEAMS_FROM : TEAMS_BEFORE
+  const team = map[teamId]
+  return team ? team.farmerIds.includes(farmerId) : false
 }
 
 export const CRITERIA: Array<{ key: string; label: string; weight: number }> = [
