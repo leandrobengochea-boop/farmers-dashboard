@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { FarmerMeetingStats } from '@/lib/analytics'
 import { Deal } from '@/lib/hubspot'
+import { uniqueDemandKey } from '@/lib/constants'
 
 interface Props {
   data: FarmerMeetingStats[]
@@ -43,7 +44,7 @@ function companiesFor(deals: Deal[], farmerId: string, type: ModalType): Company
   const byCompany = new Map<string, Deal[]>()
   for (const d of deals) {
     if (d.farmerId !== farmerId) continue
-    const ck = d.companyId || `deal:${d.id}`
+    const ck = uniqueDemandKey(d)
     const arr = byCompany.get(ck) ?? []
     arr.push(d)
     byCompany.set(ck, arr)

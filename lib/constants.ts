@@ -55,6 +55,19 @@ export const ALLOWED_ORIGEM_QUALIFICACAO = ['Farmer']
 
 export const HUBSPOT_PORTAL_ID = '49656171'
 
+// Funis B2C: cada oportunidade é uma demanda única (pessoa/negócio individual),
+// então NÃO deduplica por empresa — mesmo que tenha (ou não tenha) empresa.
+export const B2C_PIPELINE_IDS = new Set(['725182862', '727938450', '904543067'])
+
+// Chave de "empresa/demanda única" usada em todas as contagens de empresas únicas:
+// - B2C: sempre única (usa o id do negócio)
+// - B2B com empresa: deduplica pela empresa
+// - sem empresa: conta como única (usa o id do negócio)
+export function uniqueDemandKey(deal: { id: string; pipeline: string; companyId: string }): string {
+  if (B2C_PIPELINE_IDS.has(deal.pipeline)) return `deal:${deal.id}`
+  return deal.companyId || `deal:${deal.id}`
+}
+
 type TeamMap = Record<string, { label: string; farmerIds: string[] }>
 
 // Data de virada das formações. Negócios com data < TEAM_CUTOVER usam a

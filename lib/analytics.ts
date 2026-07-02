@@ -1,5 +1,5 @@
 import { Deal, ExcludedDeal, ForaDoMOAEntry } from './hubspot'
-import { CRITERIA, FARMERS, MAX_SCORE, dealInTeam } from './constants'
+import { CRITERIA, FARMERS, MAX_SCORE, dealInTeam, uniqueDemandKey } from './constants'
 
 export interface FarmerStats {
   farmerId: string
@@ -53,7 +53,7 @@ export function computeFarmerRanking(deals: Deal[]): FarmerStats[] {
       totalScore: 0, scoredCount: 0, dealCount: 0, companies: new Set<string>(),
     }
     existing.dealCount += 1
-    if (deal.companyId) existing.companies.add(deal.companyId)
+    existing.companies.add(uniqueDemandKey(deal))
     if (deal.isScored) {
       existing.totalScore += deal.score
       existing.scoredCount += 1
@@ -154,7 +154,7 @@ export function computeSummaryStats(deals: Deal[]): SummaryStats {
   // uma empresa com várias demandas conta uma vez.
   const companyMeetings = new Map<string, { scheduled: boolean; completed: boolean }>()
   for (const d of deals) {
-    const ck = d.companyId || `deal:${d.id}`
+    const ck = uniqueDemandKey(d)
     const c = companyMeetings.get(ck) ?? { scheduled: false, completed: false }
     if (d.meetingScheduled) c.scheduled = true
     if (d.meetingCompleted) c.completed = true
@@ -330,8 +330,7 @@ export function computeMeetingConversion(deals: Deal[]): FarmerMeetingStats[] {
     if (!d.farmerId) continue
     const e = map.get(d.farmerId) ?? { name: d.farmerName, deals: 0, companies: new Map() }
     e.deals += 1
-    // sem empresa associada → conta como entidade única própria (não dá pra deduplicar)
-    const ck = d.companyId || `deal:${d.id}`
+    const ck = uniqueDemandKey(d)
     const c = e.companies.get(ck) ?? { scheduled: false, completed: false }
     if (d.meetingScheduled) c.scheduled = true
     if (d.meetingCompleted) c.completed = true

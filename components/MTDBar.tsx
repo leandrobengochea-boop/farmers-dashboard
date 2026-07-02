@@ -1,18 +1,19 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { uniqueDemandKey } from '@/lib/constants'
 
 const GOAL_TOTAL = 336
 const GOAL_TEAM  = 112
 
 interface MTDBarProps {
-  deals: { date: string; companyId: string; id: string }[]
+  deals: { date: string; companyId: string; id: string; pipeline: string }[]
   selectedTeam: string | null
 }
 
-// Conta empresas únicas (dedup por companyId; sem empresa → conta individual)
-function uniqueCompanies(deals: { companyId: string; id: string }[]): number {
-  return new Set(deals.map((d) => d.companyId || `deal:${d.id}`)).size
+// Conta empresas/demandas únicas (B2C sempre único; B2B deduplica por empresa)
+function uniqueCompanies(deals: { companyId: string; id: string; pipeline: string }[]): number {
+  return new Set(deals.map((d) => uniqueDemandKey(d))).size
 }
 
 function getCurrentMonthKey() {
