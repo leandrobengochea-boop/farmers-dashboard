@@ -30,6 +30,16 @@ function getDaysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate()
 }
 
+// Conta dias úteis (seg–sex) entre fromDay e toDay do mês (month = 1-based)
+function businessDaysInRange(year: number, month: number, fromDay: number, toDay: number) {
+  let count = 0
+  for (let d = fromDay; d <= toDay; d++) {
+    const wd = new Date(year, month - 1, d).getDay() // 0=dom, 6=sáb
+    if (wd !== 0 && wd !== 6) count++
+  }
+  return count
+}
+
 function formatDayKey(isoKey: string) {
   const [, m, d] = isoKey.split('-')
   return `${d}/${m}`
@@ -100,7 +110,11 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
 
   const count = uniqueCompanies(monthDeals)
   const selectedDayCount = uniqueCompanies(selectedDayDeals)
-  const paceTarget = Math.round((dayOfMonth / totalDays) * MONTHLY_GOAL)
+  const totalBusinessDays = businessDaysInRange(year, month, 1, totalDays)
+  const businessDaysElapsed = businessDaysInRange(year, month, 1, dayOfMonth)
+  const paceTarget = totalBusinessDays > 0
+    ? Math.round((businessDaysElapsed / totalBusinessDays) * MONTHLY_GOAL)
+    : 0
   const pacePercent = (paceTarget / MONTHLY_GOAL) * 100
   const actualPercent = Math.min((count / MONTHLY_GOAL) * 100, 100)
   const diff = count - paceTarget
