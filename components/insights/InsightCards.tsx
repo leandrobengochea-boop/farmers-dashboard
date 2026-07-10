@@ -51,12 +51,12 @@ export function MacroKPIBar({ kpis }: MacroKPIBarProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       {cards.map((c) => (
-        <div key={c.label} className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-          <p className="text-slate-400 text-xs font-medium mb-1">{c.label}</p>
+        <div key={c.label} className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+          <p className="text-zinc-400 text-xs font-medium mb-1">{c.label}</p>
           {c.value !== '—' && (
             <p className={`text-2xl font-bold ${c.color}`}>{c.value}</p>
           )}
-          <p className={`text-xs mt-0.5 ${c.value === '—' ? `font-semibold text-sm ${c.color}` : 'text-slate-500'}`}>{c.sub}</p>
+          <p className={`text-xs mt-0.5 ${c.value === '—' ? `font-semibold text-sm ${c.color}` : 'text-zinc-500'}`}>{c.sub}</p>
         </div>
       ))}
     </div>
@@ -82,7 +82,7 @@ const INSIGHT_STYLES = {
     border: 'border-blue-800',
     bg: 'bg-blue-900/20',
     dot: 'bg-blue-500',
-    label: 'text-blue-400',
+    label: 'text-orange-400',
     text: 'Informação',
   },
   positive: {
@@ -119,7 +119,7 @@ export function InsightList({ insights }: InsightListProps) {
                   </span>
                 </div>
                 <p className="text-white font-semibold text-sm">{insight.title}</p>
-                <p className="text-slate-400 text-sm mt-0.5 leading-relaxed">{insight.detail}</p>
+                <p className="text-zinc-400 text-sm mt-0.5 leading-relaxed">{insight.detail}</p>
               </div>
             </div>
           </div>

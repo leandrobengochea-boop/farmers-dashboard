@@ -41,15 +41,15 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   const total = payload.reduce((s, p) => s + (p.value || 0), 0)
   if (total === 0) return null
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 shadow-xl text-xs">
-      <p className="text-slate-300 font-medium mb-1.5">Dia {label}</p>
+    <div className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 shadow-xl text-xs">
+      <p className="text-zinc-300 font-medium mb-1.5">Dia {label}</p>
       {visible.map((p) => (
-        <p key={p.name} className="flex items-center gap-1.5 text-slate-300">
+        <p key={p.name} className="flex items-center gap-1.5 text-zinc-300">
           <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: p.color }} />
           {p.name}: <span className="text-white font-semibold">{p.value}</span>
         </p>
       ))}
-      <p className="text-slate-400 mt-1.5 pt-1.5 border-t border-slate-700">
+      <p className="text-zinc-400 mt-1.5 pt-1.5 border-t border-zinc-700">
         Total: <span className="text-white font-semibold">{total}</span>
       </p>
     </div>
@@ -60,13 +60,13 @@ export default function OpportunitiesByDay({ data, monthLabel }: Props) {
   const { owners, rows, grandTotal } = data
 
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+    <div className="bg-zinc-800 rounded-xl border border-zinc-700 p-6">
       <div className="flex items-baseline justify-between gap-2 mb-4 flex-wrap">
         <div className="flex items-baseline gap-2">
           <h2 className="text-white font-semibold text-lg">Oportunidades por dia</h2>
-          <span className="text-slate-500 text-xs">por farmer · {monthLabel}</span>
+          <span className="text-zinc-500 text-xs">por farmer · {monthLabel}</span>
         </div>
-        <span className="text-slate-400 text-sm">
+        <span className="text-zinc-400 text-sm">
           <span className="text-white font-semibold">{grandTotal}</span> no mês
         </span>
       </div>
@@ -74,21 +74,21 @@ export default function OpportunitiesByDay({ data, monthLabel }: Props) {
       {/* Legenda com totais */}
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-4 text-xs">
         {owners.map((o, i) => (
-          <span key={o.name} className="flex items-center gap-1.5 text-slate-400">
+          <span key={o.name} className="flex items-center gap-1.5 text-zinc-400">
             <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: colorFor(o.name, i) }} />
-            {o.name} <span className="text-slate-200 font-medium">{o.total}</span>
+            {o.name} <span className="text-zinc-200 font-medium">{o.total}</span>
           </span>
         ))}
       </div>
 
       {grandTotal === 0 ? (
-        <div className="flex items-center justify-center h-48 text-slate-400">
+        <div className="flex items-center justify-center h-48 text-zinc-400">
           Nenhuma oportunidade no período selecionado
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={320}>
           <BarChart data={rows} margin={{ top: 20, right: 8, left: -10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.12)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(161,161,170,0.12)" vertical={false} />
             <XAxis
               dataKey="day"
               tick={{ fill: '#94a3b8', fontSize: 11 }}

@@ -45,7 +45,7 @@ function Card({
   highlight?: boolean
 }) {
   return (
-    <div className={`relative bg-slate-800 rounded-xl p-5 border overflow-hidden ${highlight ? 'border-[#FF5200]/40' : 'border-slate-700'}`}>
+    <div className={`relative bg-zinc-800 rounded-xl p-5 border overflow-hidden ${highlight ? 'border-[#FF5200]/40' : 'border-zinc-700'}`}>
       {/* Top accent bar */}
       <div
         className="absolute top-0 left-0 right-0 h-[3px]"
@@ -53,8 +53,8 @@ function Card({
       />
 
       <div className="flex items-start justify-between mb-3">
-        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{title}</p>
-        <span className={`${highlight ? 'text-[#FF5200]' : 'text-slate-500'}`}>
+        <p className="text-zinc-400 text-xs font-semibold uppercase tracking-wider">{title}</p>
+        <span className={`${highlight ? 'text-[#FF5200]' : 'text-zinc-500'}`}>
           {icon}
         </span>
       </div>
@@ -63,7 +63,7 @@ function Card({
         {value}
       </p>
 
-      {subtitle && <p className="text-slate-500 text-xs mt-1">{subtitle}</p>}
+      {subtitle && <p className="text-zinc-500 text-xs mt-1">{subtitle}</p>}
     </div>
   )
 }

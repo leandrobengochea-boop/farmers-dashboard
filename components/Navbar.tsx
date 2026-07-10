@@ -7,7 +7,7 @@ interface NavbarProps {
 
 export default function Navbar({ onRefresh, refreshing }: NavbarProps) {
   return (
-    <nav className="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
+    <nav className="bg-zinc-950 border-b border-zinc-800 sticky top-0 z-50">
       <div className="max-w-screen-2xl mx-auto px-6 py-3 flex items-center justify-between">
 
         {/* Logo PSA. */}
@@ -24,8 +24,8 @@ export default function Navbar({ onRefresh, refreshing }: NavbarProps) {
           >
             PSA.
           </span>
-          <div className="w-px h-6 bg-slate-600" />
-          <span className="text-slate-300 font-medium text-sm tracking-wide">
+          <div className="w-px h-6 bg-zinc-600" />
+          <span className="text-zinc-300 font-medium text-sm tracking-wide">
             Farmers Dashboard
           </span>
         </div>

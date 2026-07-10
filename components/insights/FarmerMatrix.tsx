@@ -34,33 +34,33 @@ export default function FarmerMatrix({ matrix }: FarmerMatrixProps) {
   }
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-700">
+    <div className="bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-zinc-700">
         <h3 className="text-white font-semibold text-base">Matriz Farmer × Critério Faltante</h3>
-        <p className="text-slate-400 text-xs mt-0.5">% dos deals de cada farmer em que o critério está ausente</p>
+        <p className="text-zinc-400 text-xs mt-0.5">% dos deals de cada farmer em que o critério está ausente</p>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-900/50 border-b border-slate-700">
-              <th className="text-left py-3 px-4 text-slate-400 font-medium whitespace-nowrap">Farmer</th>
-              <th className="text-center py-3 px-3 text-slate-400 font-medium whitespace-nowrap">Deals</th>
-              <th className="text-center py-3 px-3 text-slate-400 font-medium whitespace-nowrap">Média</th>
+            <tr className="bg-zinc-900/50 border-b border-zinc-700">
+              <th className="text-left py-3 px-4 text-zinc-400 font-medium whitespace-nowrap">Farmer</th>
+              <th className="text-center py-3 px-3 text-zinc-400 font-medium whitespace-nowrap">Deals</th>
+              <th className="text-center py-3 px-3 text-zinc-400 font-medium whitespace-nowrap">Média</th>
               {CRITERIA.map((c) => (
-                <th key={c.key} className="text-center py-3 px-2 text-slate-400 font-medium whitespace-nowrap">
+                <th key={c.key} className="text-center py-3 px-2 text-zinc-400 font-medium whitespace-nowrap">
                   <span title={c.label}>{shortLabel[c.key] ?? c.label}</span>
-                  <span className="text-slate-600 font-normal"> ({c.weight}pt)</span>
+                  <span className="text-zinc-600 font-normal"> ({c.weight}pt)</span>
                 </th>
               ))}
-              <th className="text-center py-3 px-3 text-slate-400 font-medium whitespace-nowrap">Parados</th>
+              <th className="text-center py-3 px-3 text-zinc-400 font-medium whitespace-nowrap">Parados</th>
             </tr>
           </thead>
           <tbody>
             {matrix.map((row) => (
-              <tr key={row.farmerId} className="border-b border-slate-700/50 hover:bg-slate-700/20 transition">
-                <td className="py-3 px-4 text-slate-200 font-medium whitespace-nowrap">{row.farmerName}</td>
-                <td className="py-3 px-3 text-center text-slate-400">{row.dealCount}</td>
+              <tr key={row.farmerId} className="border-b border-zinc-700/50 hover:bg-zinc-700/20 transition">
+                <td className="py-3 px-4 text-zinc-200 font-medium whitespace-nowrap">{row.farmerName}</td>
+                <td className="py-3 px-3 text-center text-zinc-400">{row.dealCount}</td>
                 <td className={`py-3 px-3 text-center font-bold ${scoreColor(row.avgScore)}`}>
                   {row.avgScore.toFixed(1)}
                 </td>
@@ -80,7 +80,7 @@ export default function FarmerMatrix({ matrix }: FarmerMatrixProps) {
                       {row.staleDealCount}
                     </span>
                   ) : (
-                    <span className="text-slate-600 text-xs">—</span>
+                    <span className="text-zinc-600 text-xs">—</span>
                   )}
                 </td>
               </tr>
@@ -90,7 +90,7 @@ export default function FarmerMatrix({ matrix }: FarmerMatrixProps) {
       </div>
 
       {/* Legenda */}
-      <div className="px-6 py-3 border-t border-slate-700 flex flex-wrap gap-4">
+      <div className="px-6 py-3 border-t border-zinc-700 flex flex-wrap gap-4">
         {[
           { color: 'bg-green-900/60', label: '0%' },
           { color: 'bg-green-900/30', label: '1–25%' },
@@ -100,7 +100,7 @@ export default function FarmerMatrix({ matrix }: FarmerMatrixProps) {
         ].map((l) => (
           <div key={l.label} className="flex items-center gap-1.5">
             <div className={`w-3 h-3 rounded ${l.color}`} />
-            <span className="text-slate-400 text-xs">{l.label} ausente</span>
+            <span className="text-zinc-400 text-xs">{l.label} ausente</span>
           </div>
         ))}
       </div>

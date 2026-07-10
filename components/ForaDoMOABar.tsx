@@ -50,10 +50,10 @@ function DealListModal({ farmerName, deals, onClose }: DealListModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg max-h-[70vh] flex flex-col shadow-2xl"
+        className="bg-zinc-800 border border-zinc-700 rounded-2xl w-full max-w-lg max-h-[70vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-700">
           <div>
             <div className="flex items-center gap-2">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -62,11 +62,11 @@ function DealListModal({ farmerName, deals, onClose }: DealListModalProps) {
               </svg>
               <h3 className="text-white font-semibold">Fora do MOA — {farmerName}</h3>
             </div>
-            <p className="text-slate-400 text-sm mt-0.5">{deals.length} {deals.length === 1 ? 'negócio excluído' : 'negócios excluídos'}</p>
+            <p className="text-zinc-400 text-sm mt-0.5">{deals.length} {deals.length === 1 ? 'negócio excluído' : 'negócios excluídos'}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition p-1 rounded-lg hover:bg-slate-700"
+            className="text-zinc-400 hover:text-white transition p-1 rounded-lg hover:bg-zinc-700"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -76,25 +76,25 @@ function DealListModal({ farmerName, deals, onClose }: DealListModalProps) {
 
         <div className="overflow-y-auto flex-1">
           {deals.length === 0 ? (
-            <div className="flex items-center justify-center h-24 text-slate-400 text-sm">
+            <div className="flex items-center justify-center h-24 text-zinc-400 text-sm">
               Nenhum negócio encontrado
             </div>
           ) : (
-            <ul className="divide-y divide-slate-700/50">
+            <ul className="divide-y divide-zinc-700/50">
               {deals.map((deal) => (
-                <li key={deal.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-700/30 transition">
+                <li key={deal.id} className="flex items-center justify-between px-5 py-3 hover:bg-zinc-700/30 transition">
                   <div className="min-w-0">
                     <a
                       href={deal.hubspotUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-slate-200 font-medium hover:text-amber-400 transition text-sm truncate block"
+                      className="text-zinc-200 font-medium hover:text-amber-400 transition text-sm truncate block"
                       title={deal.name}
                     >
                       {deal.name}
                     </a>
                     {deal.date && (
-                      <span className="text-slate-500 text-xs">
+                      <span className="text-zinc-500 text-xs">
                         {format(new Date(deal.date), "dd/MM/yyyy", { locale: ptBR })}
                       </span>
                     )}
@@ -103,7 +103,7 @@ function DealListModal({ farmerName, deals, onClose }: DealListModalProps) {
                     href={deal.hubspotUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-3 flex-shrink-0 text-slate-500 hover:text-amber-400 transition"
+                    className="ml-3 flex-shrink-0 text-zinc-500 hover:text-amber-400 transition"
                     title="Abrir no HubSpot"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

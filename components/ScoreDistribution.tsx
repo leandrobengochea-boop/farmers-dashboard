@@ -36,9 +36,9 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
   if (!active || !payload?.length) return null
 
   return (
-    <div className="bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 shadow-xl">
+    <div className="bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 shadow-xl">
       <p className="text-white font-semibold">Pontuação: {label}</p>
-      <p className="text-slate-300 text-sm">
+      <p className="text-zinc-300 text-sm">
         Negócios: <span className="text-white font-medium">{payload[0].value}</span>
       </p>
     </div>
@@ -47,11 +47,11 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
 
 export default function ScoreDistribution({ data }: ScoreDistributionProps) {
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+    <div className="bg-zinc-800 rounded-xl border border-zinc-700 p-6">
       <h2 className="text-white font-semibold text-lg mb-6">Distribuição de Pontuações</h2>
 
       {data.every((d) => d.count === 0) ? (
-        <div className="flex items-center justify-center h-48 text-slate-400">
+        <div className="flex items-center justify-center h-48 text-zinc-400">
           Nenhum dado disponível
         </div>
       ) : (

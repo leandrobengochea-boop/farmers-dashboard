@@ -127,7 +127,7 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ` ${year}`
 
   return (
-    <div className="bg-slate-800/60 border border-slate-700 rounded-xl px-5 py-4">
+    <div className="bg-zinc-800/60 border border-zinc-700 rounded-xl px-5 py-4">
       <div className="flex items-center gap-4 mb-3">
 
         {/* Card do dia com navegação */}
@@ -141,7 +141,7 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
               onClick={prevDay}
               disabled={!canGoPrev}
               className="flex items-center justify-center rounded w-5 h-5 transition"
-              style={{ color: canGoPrev ? '#94a3b8' : 'rgba(100,116,139,0.25)', background: 'transparent', border: 'none', cursor: canGoPrev ? 'pointer' : 'default', fontSize: 16, lineHeight: 1, padding: 0 }}
+              style={{ color: canGoPrev ? '#94a3b8' : 'rgba(113,113,122,0.25)', background: 'transparent', border: 'none', cursor: canGoPrev ? 'pointer' : 'default', fontSize: 16, lineHeight: 1, padding: 0 }}
               aria-label="Dia anterior"
             >
               ‹
@@ -156,7 +156,7 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
                   Hoje
                 </span>
               ) : (
-                <span className="text-[10px] text-slate-500">
+                <span className="text-[10px] text-zinc-500">
                   {getWeekdayAbbr(selectedDayKey)}
                 </span>
               )}
@@ -166,7 +166,7 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
               onClick={nextDay}
               disabled={!canGoNext}
               className="flex items-center justify-center rounded w-5 h-5 transition"
-              style={{ color: canGoNext ? '#94a3b8' : 'rgba(100,116,139,0.25)', background: 'transparent', border: 'none', cursor: canGoNext ? 'pointer' : 'default', fontSize: 16, lineHeight: 1, padding: 0 }}
+              style={{ color: canGoNext ? '#94a3b8' : 'rgba(113,113,122,0.25)', background: 'transparent', border: 'none', cursor: canGoNext ? 'pointer' : 'default', fontSize: 16, lineHeight: 1, padding: 0 }}
               aria-label="Próximo dia"
             >
               ›
@@ -179,11 +179,11 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
           </span>
 
           {/* Data */}
-          <span className="text-[10px] text-slate-500 mt-1">{formatDayKey(selectedDayKey)} · empresas</span>
+          <span className="text-[10px] text-zinc-500 mt-1">{formatDayKey(selectedDayKey)} · empresas</span>
         </div>
 
         {/* Separador */}
-        <div className="w-px h-10 bg-slate-700 flex-shrink-0" />
+        <div className="w-px h-10 bg-zinc-700 flex-shrink-0" />
 
         {/* MTD + barra */}
         <div className="flex-1 min-w-0">
@@ -192,33 +192,33 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
-              <span className="text-slate-400 text-sm">{monthLabel}</span>
-              <span className="text-slate-600 hidden sm:inline">·</span>
-              <span className="text-slate-300 text-sm font-medium">{count}</span>
-              <span className="text-slate-500 text-sm">/ {MONTHLY_GOAL}</span>
-              <span className="text-slate-600 text-xs hidden sm:inline">empresas únicas</span>
+              <span className="text-zinc-400 text-sm">{monthLabel}</span>
+              <span className="text-zinc-600 hidden sm:inline">·</span>
+              <span className="text-zinc-300 text-sm font-medium">{count}</span>
+              <span className="text-zinc-500 text-sm">/ {MONTHLY_GOAL}</span>
+              <span className="text-zinc-600 text-xs hidden sm:inline">empresas únicas</span>
             </div>
             <div className="flex items-center gap-3 text-xs">
-              <span className="text-slate-500 hidden sm:inline">
+              <span className="text-zinc-500 hidden sm:inline">
                 Meta do dia <span className="text-amber-400 font-medium">{paceTarget}</span>
                 <span className="font-semibold ml-1" style={{ color: diffColor }}>{diffLabel}</span>
               </span>
             </div>
           </div>
 
-          <div className="relative h-2 bg-slate-700 rounded-full overflow-visible">
+          <div className="relative h-2 bg-zinc-700 rounded-full overflow-visible">
             <div
               className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
               style={{ width: `${actualPercent}%`, background: barColor }}
             />
             <div
-              className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-sm bg-amber-400"
+              className="absolute top-1/2 -tranzinc-y-1/2 w-0.5 h-4 rounded-sm bg-amber-400"
               style={{ left: `${Math.min(pacePercent, 99.5)}%` }}
               title={`Meta do dia: ${paceTarget}`}
             />
           </div>
 
-          <div className="flex justify-between mt-1 text-[10px] text-slate-600">
+          <div className="flex justify-between mt-1 text-[10px] text-zinc-600">
             <span>0</span>
             <span className="text-amber-600/60">meta hoje</span>
             <span>{MONTHLY_GOAL}</span>

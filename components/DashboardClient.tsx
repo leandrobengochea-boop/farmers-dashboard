@@ -127,7 +127,7 @@ export default function DashboardClient({
   const activeTeamLabel = selectedTeam ? TEAMS[selectedTeam]?.label : null
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-black">
       <Navbar onRefresh={handleRefresh} refreshing={refreshing} />
 
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -142,24 +142,24 @@ export default function DashboardClient({
 
         {/* Validation + last updated */}
         {validation.totalBruto > 0 && (
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-slate-800/60 border border-slate-700 rounded-xl px-6 py-3 text-sm">
-            <span className="text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-zinc-800/60 border border-zinc-700 rounded-xl px-6 py-3 text-sm">
+            <span className="text-zinc-400">
               Bruto: <span className="text-white font-medium">{validation.totalBruto}</span>
             </span>
-            <span className="text-slate-600 hidden sm:block">|</span>
-            <span className="text-slate-400">
+            <span className="text-zinc-600 hidden sm:block">|</span>
+            <span className="text-zinc-400">
               Excluídos (Fora do MOA):{' '}
               <span className={validation.excludedFora > 0 ? 'text-yellow-400 font-medium' : 'text-white font-medium'}>
                 {validation.excludedFora}
               </span>
             </span>
-            <span className="text-slate-600 hidden sm:block">|</span>
-            <span className="text-slate-400">
+            <span className="text-zinc-600 hidden sm:block">|</span>
+            <span className="text-zinc-400">
               Total líquido:{' '}
               <span className="text-orange-400 font-semibold">{validation.totalLiquido}</span>
             </span>
-            <span className="text-slate-600 hidden sm:block">|</span>
-            <span className="text-slate-500 text-xs">
+            <span className="text-zinc-600 hidden sm:block">|</span>
+            <span className="text-zinc-500 text-xs">
               Atualizado às {format(lastUpdated, "HH:mm 'de' dd/MM", { locale: ptBR })}
             </span>
           </div>
@@ -177,7 +177,7 @@ export default function DashboardClient({
         <div className="flex flex-wrap items-center gap-3">
           {/* Team filter */}
           <div className="flex items-center gap-2">
-            <label htmlFor="team-filter" className="text-slate-400 text-sm font-medium whitespace-nowrap">
+            <label htmlFor="team-filter" className="text-zinc-400 text-sm font-medium whitespace-nowrap">
               Time:
             </label>
             <div className="flex gap-1.5">
@@ -203,18 +203,18 @@ export default function DashboardClient({
           </div>
 
           {/* Divider */}
-          <div className="w-px h-6 bg-slate-700 hidden sm:block" />
+          <div className="w-px h-6 bg-zinc-700 hidden sm:block" />
 
           {/* Month filter */}
           <div className="flex items-center gap-2">
-            <label htmlFor="month-filter" className="text-slate-400 text-sm font-medium whitespace-nowrap">
+            <label htmlFor="month-filter" className="text-zinc-400 text-sm font-medium whitespace-nowrap">
               Período:
             </label>
             <select
               id="month-filter"
               value={selectedMonth ?? ''}
               onChange={(e) => setSelectedMonth(e.target.value || null)}
-              className="bg-slate-800 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-[#FF5200]"
+              className="bg-zinc-800 border border-zinc-600 text-zinc-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-[#FF5200]"
             >
               <option value="">Todos os meses</option>
               {availableMonths.map((m) => (
@@ -227,7 +227,7 @@ export default function DashboardClient({
 
           {/* Active filter summary */}
           {(selectedTeam || selectedMonth) && (
-            <span className="text-slate-400 text-sm">
+            <span className="text-zinc-400 text-sm">
               <span className="text-white font-medium">{filteredDeals.length}</span> negócios
               {activeTeamLabel ? ` · ${activeTeamLabel}` : ''}
               {selectedMonth ? ` · ${formatMonthLabel(selectedMonth)}` : ''}
@@ -244,7 +244,7 @@ export default function DashboardClient({
           <div className="flex flex-col gap-6">
             <ScoreDistribution data={scoreDistribution} />
             {meetingConversion.length > 0 && (
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-5">
+              <div className="bg-zinc-800 rounded-xl border border-zinc-700 p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -253,7 +253,7 @@ export default function DashboardClient({
                   </svg>
                   <h2 className="text-white font-semibold text-base">Conversão de reuniões por farmer</h2>
                 </div>
-                <div className="flex gap-4 mb-3 text-xs text-slate-500">
+                <div className="flex gap-4 mb-3 text-xs text-zinc-500">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-1.5 rounded-full bg-orange-500" />
                     % empresas com agendamento
@@ -276,10 +276,10 @@ export default function DashboardClient({
         <DealsTable deals={filteredDeals} />
 
         {/* ── INTELIGÊNCIA ─────────────────────────────── */}
-        <div className="border-t border-slate-700/50 pt-8 space-y-6">
+        <div className="border-t border-zinc-700/50 pt-8 space-y-6">
           <div>
             <h2 className="text-white font-bold text-xl">Inteligência de Pipeline</h2>
-            <p className="text-slate-400 text-sm mt-0.5">
+            <p className="text-zinc-400 text-sm mt-0.5">
               Análise macro, pontos de atenção e insights automáticos
               {activeTeamLabel ? ` — ${activeTeamLabel}` : ''}
               {selectedMonth ? ` · ${formatMonthLabel(selectedMonth)}` : ''}.
@@ -291,13 +291,13 @@ export default function DashboardClient({
 
           {/* Insights automáticos */}
           <div className="space-y-2">
-            <h3 className="text-slate-300 font-semibold text-sm uppercase tracking-wide">Insights automáticos</h3>
+            <h3 className="text-zinc-300 font-semibold text-sm uppercase tracking-wide">Insights automáticos</h3>
             <InsightList insights={insights} />
           </div>
 
           {/* Matriz Farmer × Critério */}
           <div className="space-y-2">
-            <h3 className="text-slate-300 font-semibold text-sm uppercase tracking-wide">Matriz de qualificação por Farmer</h3>
+            <h3 className="text-zinc-300 font-semibold text-sm uppercase tracking-wide">Matriz de qualificação por Farmer</h3>
             <FarmerMatrix matrix={farmerMatrix} />
           </div>
         </div>
