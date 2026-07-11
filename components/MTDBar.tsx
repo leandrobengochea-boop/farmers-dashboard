@@ -1,17 +1,25 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { uniqueDemandKey } from '@/lib/constants'
+import { uniqueDemandKey, isB2CCloser } from '@/lib/constants'
 
 const GOAL_TOTAL = 336
 const GOAL_TEAM  = 112
 
+interface MTDDeal {
+  date: string
+  companyId: string
+  id: string
+  pipeline: string
+  origemDoLead: string
+  ownerName: string
+}
+
 interface MTDBarProps {
-  deals: { date: string; companyId: string; id: string; pipeline: string }[]
+  deals: MTDDeal[]
   selectedTeam: string | null
 }
 
-// Conta empresas/demandas únicas (B2C sempre único; B2B deduplica por empresa)
 function uniqueCompanies(deals: { companyId: string; id: string; pipeline: string }[]): number {
   return new Set(deals.map((d) => uniqueDemandKey(d))).size
 }
@@ -30,11 +38,10 @@ function getDaysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate()
 }
 
-// Conta dias úteis (seg–sex) entre fromDay e toDay do mês (month = 1-based)
 function businessDaysInRange(year: number, month: number, fromDay: number, toDay: number) {
   let count = 0
   for (let d = fromDay; d <= toDay; d++) {
-    const wd = new Date(year, month - 1, d).getDay() // 0=dom, 6=sáb
+    const wd = new Date(year, month - 1, d).getDay()
     if (wd !== 0 && wd !== 6) count++
   }
   return count
@@ -50,6 +57,25 @@ function getWeekdayAbbr(isoKey: string) {
   return date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
 }
 
+function CompRing({ pct, color }: { pct: number; color: string }) {
+  const r = 15.5
+  const circ = 2 * Math.PI * r
+  const offset = circ - (pct / 100) * circ
+  return (
+    <svg width="40" height="40" viewBox="0 0 36 36" className="flex-shrink-0">
+      <circle cx="18" cy="18" r={r} fill="none" stroke="#3f3f46" strokeWidth="3" />
+      <circle
+        cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3"
+        strokeDasharray={circ} strokeDashoffset={offset}
+        strokeLinecap="round" transform="rotate(-90 18 18)"
+      />
+      <text x="18" y="19.5" textAnchor="middle" fill={color} fontSize="8" fontWeight="700">
+        {pct}%
+      </text>
+    </svg>
+  )
+}
+
 export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const MONTHLY_GOAL = selectedTeam ? GOAL_TEAM : GOAL_TOTAL
   const now = new Date()
@@ -60,7 +86,6 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const totalDays = getDaysInMonth(year, month)
   const dayOfMonth = now.getDate()
 
-  // Build sorted list of days in current month that have deals, up to today
   const dealDaysInMonth = useMemo(() => {
     const days = new Set<string>()
     for (const d of deals) {
@@ -68,7 +93,6 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
       const key = d.date.slice(0, 10)
       if (key <= todayKey && key.startsWith(monthKey)) days.add(key)
     }
-    // Always include today
     days.add(todayKey)
     return Array.from(days).sort()
   }, [deals, todayKey, monthKey])
@@ -76,9 +100,6 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const [selectedDayKey, setSelectedDayKey] = useState<string>(todayKey)
   const isToday = selectedDayKey === todayKey
 
-  const currentIdx = dealDaysInMonth.indexOf(selectedDayKey)
-
-  // Navigate by calendar day (not just days with deals)
   function prevDay() {
     const current = new Date(`${selectedDayKey}T12:00:00Z`)
     current.setUTCDate(current.getUTCDate() - 1)
@@ -126,6 +147,13 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const monthName = now.toLocaleDateString('pt-BR', { month: 'long' })
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ` ${year}`
 
+  // Composition: Ação de CRM + B2C
+  const crmCount = monthDeals.filter((d) => d.origemDoLead === 'Ação de CRM').length
+  const b2cCount = monthDeals.filter((d) => d.ownerName && isB2CCloser(d.ownerName)).length
+  const totalMonth = monthDeals.length
+  const crmPct = totalMonth > 0 ? Math.round((crmCount / totalMonth) * 100) : 0
+  const b2cPct = totalMonth > 0 ? Math.round((b2cCount / totalMonth) * 100) : 0
+
   return (
     <div className="bg-zinc-800/60 border border-zinc-700 rounded-xl px-5 py-4">
       <div className="flex items-center gap-4 mb-3">
@@ -135,7 +163,6 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
           className="flex-shrink-0 flex flex-col items-center justify-center rounded-xl px-2 py-2"
           style={{ background: 'rgba(255,82,0,0.12)', border: '1px solid rgba(255,82,0,0.3)', minWidth: 110 }}
         >
-          {/* Linha de navegação */}
           <div className="flex items-center justify-between w-full gap-1 mb-1">
             <button
               onClick={prevDay}
@@ -173,12 +200,10 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
             </button>
           </div>
 
-          {/* Número */}
           <span className="text-3xl font-bold leading-none" style={{ color: '#FF5200' }} title="Empresas únicas no dia">
             {selectedDayCount}
           </span>
 
-          {/* Data */}
           <span className="text-[10px] text-zinc-500 mt-1">{formatDayKey(selectedDayKey)} · empresas</span>
         </div>
 
@@ -212,7 +237,7 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
               style={{ width: `${actualPercent}%`, background: barColor }}
             />
             <div
-              className="absolute top-1/2 -tranzinc-y-1/2 w-0.5 h-4 rounded-sm bg-amber-400"
+              className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-sm bg-amber-400"
               style={{ left: `${Math.min(pacePercent, 99.5)}%` }}
               title={`Meta do dia: ${paceTarget}`}
             />
@@ -223,6 +248,52 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
             <span className="text-amber-600/60">meta hoje</span>
             <span>{MONTHLY_GOAL}</span>
           </div>
+        </div>
+      </div>
+
+      {/* Composição da demanda */}
+      <div className="flex gap-3 mt-1">
+        <div className="flex-1 flex items-center gap-3 bg-zinc-700/40 border border-zinc-700 rounded-lg px-3 py-2.5 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: '#FF5200' }} />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,82,0,0.12)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF5200" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] text-zinc-500 font-medium">Ação de CRM</div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-bold text-white leading-none">{crmCount}</span>
+              <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,82,0,0.15)', color: '#FF5200' }}>
+                {crmPct}%
+              </span>
+            </div>
+            <div className="text-[10px] text-zinc-600 mt-0.5">prospecção ativa</div>
+          </div>
+          <CompRing pct={crmPct} color="#FF5200" />
+        </div>
+
+        <div className="flex-1 flex items-center gap-3 bg-zinc-700/40 border border-zinc-700 rounded-lg px-3 py-2.5 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: '#6366f1' }} />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(99,102,241,0.12)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] text-zinc-500 font-medium">Convertido B2C</div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-bold text-white leading-none">{b2cCount}</span>
+              <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+                {b2cPct}%
+              </span>
+            </div>
+            <div className="text-[10px] text-zinc-600 mt-0.5">closer B2C atribuído</div>
+          </div>
+          <CompRing pct={b2cPct} color="#6366f1" />
         </div>
       </div>
     </div>

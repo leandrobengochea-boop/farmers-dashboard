@@ -82,7 +82,7 @@ export default function SummaryCards({ stats }: SummaryCardsProps) {
     : null
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <Card
         title="Total de Negócios"
         value={stats.totalDeals.toLocaleString('pt-BR')}
@@ -95,12 +95,6 @@ export default function SummaryCards({ stats }: SummaryCardsProps) {
         subtitle="pontuação média geral"
         icon={ICONS.score}
         highlight
-      />
-      <Card
-        title="Eficiência"
-        value={`${stats.efficiency.toFixed(1)}%`}
-        subtitle={`${stats.totalActualPoints.toLocaleString('pt-BR')} / ${stats.totalPossiblePoints.toLocaleString('pt-BR')} pontos`}
-        icon={ICONS.efficiency}
       />
       <Card
         title="Farmers Ativos"

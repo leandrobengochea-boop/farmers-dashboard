@@ -24,6 +24,8 @@ export const FARMERS: Record<string, string> = {
   '94316537': 'Maria Julia',
   '94316538': 'Gabriel Alves',
   '94399135': 'Gabriela',
+  '94891358': 'Priscila',
+  '95283516': 'Julia',
 }
 
 // Maps old/extra farmer IDs to their canonical ID so deals are merged in analytics
@@ -54,6 +56,15 @@ export const ALLOWED_ORIGEM_DO_LEAD = ['Ação de CRM', 'Carteira do Farmer']
 export const ALLOWED_ORIGEM_QUALIFICACAO = ['Farmer']
 
 export const HUBSPOT_PORTAL_ID = '49656171'
+
+// Closers B2C — negócios cujo curador (owner) é um desses nomes
+// foram encaminhados ao time B2C. Match por substring case-insensitive.
+export const B2C_CLOSER_NAMES = ['mayda', 'joão araújo', 'joao araujo', 'amanda de oliveira', 'willker', 'gabrielly']
+
+export function isB2CCloser(ownerName: string): boolean {
+  const lower = ownerName.toLowerCase()
+  return B2C_CLOSER_NAMES.some((n) => lower.includes(n))
+}
 
 // Funis B2C: cada oportunidade é uma demanda única (pessoa/negócio individual),
 // então NÃO deduplica por empresa — mesmo que tenha (ou não tenha) empresa.
@@ -95,12 +106,12 @@ export const TEAMS_FROM: TeamMap = {
   leticia: {
     label: 'Time Leticia',
     // Bruna Machado, Gustavo, Gabriel Alves, Luiza, Amanda, Felippe
-    farmerIds: ['85002012', '81033487', '94316538', '88200239', '84015882', '94028856'],
+    farmerIds: ['85002012', '81033487', '94316538', '88200239', '84015882', '94028856', '94891358'],
   },
   dani: {
     label: 'Time Dani',
-    // Vitória, Rafael, Thaina, Lenz, Gabriela Charlier, Maria Julia
-    farmerIds: ['84497577', '92333469', '92335488', '85846971', '94399135', '94316537'],
+    // Vitória, Rafael, Thaina, Lenz, Gabriela Charlier, Maria Julia, Julia
+    farmerIds: ['84497577', '92333469', '92335488', '85846971', '94399135', '94316537', '95283516'],
   },
   katyeli: {
     label: 'Time Katy',
