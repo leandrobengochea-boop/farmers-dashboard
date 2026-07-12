@@ -147,10 +147,12 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const monthName = now.toLocaleDateString('pt-BR', { month: 'long' })
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ` ${year}`
 
-  // Composition: Ação de CRM + B2C
+  // Composition: Carteira + Ação de CRM + B2C
   const crmCount = monthDeals.filter((d) => d.origemDoLead === 'Ação de CRM').length
+  const carteiraCount = monthDeals.filter((d) => d.origemDoLead === 'Carteira do Farmer').length
   const b2cCount = monthDeals.filter((d) => d.ownerName && isB2CCloser(d.ownerName)).length
   const totalMonth = monthDeals.length
+  const carteiraPct = totalMonth > 0 ? Math.round((carteiraCount / totalMonth) * 100) : 0
   const crmPct = totalMonth > 0 ? Math.round((crmCount / totalMonth) * 100) : 0
   const b2cPct = totalMonth > 0 ? Math.round((b2cCount / totalMonth) * 100) : 0
 
@@ -253,6 +255,26 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
 
       {/* Composição da demanda */}
       <div className="flex gap-3 mt-1">
+        <div className="flex-1 flex items-center gap-3 bg-zinc-700/40 border border-zinc-700 rounded-lg px-3 py-2.5 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: '#22c55e' }} />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(34,197,94,0.12)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] text-zinc-500 font-medium">Carteira do Farmer</div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-bold text-white leading-none">{carteiraCount}</span>
+              <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>
+                {carteiraPct}%
+              </span>
+            </div>
+            <div className="text-[10px] text-zinc-600 mt-0.5">base própria</div>
+          </div>
+          <CompRing pct={carteiraPct} color="#22c55e" />
+        </div>
+
         <div className="flex-1 flex items-center gap-3 bg-zinc-700/40 border border-zinc-700 rounded-lg px-3 py-2.5 relative overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: '#FF5200' }} />
           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,82,0,0.12)' }}>
