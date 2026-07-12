@@ -154,18 +154,42 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const monthName = now.toLocaleDateString('pt-BR', { month: 'long' })
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ` ${year}`
 
-  // Composição exclusiva: B2C primeiro, depois CRM, resto = Carteira
+  // Composição exclusiva: B2C primeiro, depois CRM, estagnados, resto = Carteira (empresas únicas)
   const totalMonth = monthDeals.length
   const b2cCount = monthDeals.filter((d) => d.ownerName && isB2CCloser(d.ownerName)).length
   const crmCount = monthDeals.filter((d) => d.origemDoLead === 'Ação de CRM' && !(d.ownerName && isB2CCloser(d.ownerName))).length
-  const carteiraCount = totalMonth - b2cCount - crmCount
+  const stagnantDeals = monthDeals.filter((d) => isDealWithCreator(d.farmerId, d.ownerId))
+  const stagnantCount = stagnantDeals.length
+
+  // Carteira = empresas únicas dos deals que NÃO são B2C, NÃO são CRM e NÃO são estagnados
+  const carteiraDeals = monthDeals.filter((d) =>
+    !(d.ownerName && isB2CCloser(d.ownerName)) &&
+    d.origemDoLead !== 'Ação de CRM' &&
+    !isDealWithCreator(d.farmerId, d.ownerId)
+  )
+  const carteiraCount = new Set(carteiraDeals.map((d) => uniqueDemandKey(d))).size
+
   const carteiraPct = totalMonth > 0 ? Math.round((carteiraCount / totalMonth) * 100) : 0
   const crmPct = totalMonth > 0 ? Math.round((crmCount / totalMonth) * 100) : 0
   const b2cPct = totalMonth > 0 ? Math.round((b2cCount / totalMonth) * 100) : 0
-
-  const stagnantDeals = monthDeals.filter((d) => isDealWithCreator(d.farmerId, d.ownerId))
-  const stagnantCount = stagnantDeals.length
   const stagnantPct = totalMonth > 0 ? Math.round((stagnantCount / totalMonth) * 100) : 0
+
+  const nowMs = Date.now()
+  const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000
+  const criticalDeals = stagnantDeals.filter((d) => {
+    if (!d.date) return false
+    return nowMs - new Date(d.date).getTime() > THREE_DAYS_MS
+  })
+  const criticalCount = criticalDeals.length
+
+  // Ranking de farmers com mais negócios estagnados
+  const stagnantByFarmer = new Map<string, number>()
+  for (const d of stagnantDeals) {
+    stagnantByFarmer.set(d.farmerName, (stagnantByFarmer.get(d.farmerName) ?? 0) + 1)
+  }
+  const stagnantRanking = Array.from(stagnantByFarmer.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
 
   const [showStagnant, setShowStagnant] = useState(false)
 
@@ -283,7 +307,7 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
                 {carteiraPct}%
               </span>
             </div>
-            <div className="text-[10px] text-zinc-600 mt-0.5">base própria</div>
+            <div className="text-[10px] text-zinc-600 mt-0.5">empresas únicas</div>
           </div>
           <CompRing pct={carteiraPct} color="#22c55e" />
         </div>
@@ -350,7 +374,14 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
                 {stagnantPct}%
               </span>
             </div>
-            <div className="text-[10px] text-zinc-600 mt-0.5">sem repasse · ver lista</div>
+            {criticalCount > 0 ? (
+              <div className="text-[10px] mt-0.5 flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-red-400 font-semibold">{criticalCount} críticos (&gt;3d)</span>
+              </div>
+            ) : (
+              <div className="text-[10px] text-zinc-600 mt-0.5">sem repasse · ver lista</div>
+            )}
           </div>
           <CompRing pct={stagnantPct} color={stagnantCount > 0 ? '#ef4444' : '#71717a'} />
         </button>
@@ -377,38 +408,84 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
               {stagnantDeals.length === 0 ? (
                 <div className="flex items-center justify-center h-24 text-zinc-400 text-sm">Nenhum item</div>
               ) : (
-                <ul className="divide-y divide-zinc-700/50">
-                  {[...stagnantDeals].sort((a, b) => a.name.localeCompare(b.name)).map((d) => (
-                    <li key={d.id} className="flex items-center justify-between px-5 py-3 hover:bg-zinc-700/30 transition">
-                      <div className="min-w-0 flex-1">
-                        <a
-                          href={d.hubspotUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-zinc-200 font-medium hover:text-orange-400 transition text-sm truncate block"
-                          title={d.name}
-                        >
-                          {d.name}
-                        </a>
-                        <div className="flex items-center gap-2 text-xs text-zinc-500">
-                          <span>{d.farmerName}</span>
-                          {d.date && <span>· {format(new Date(d.date), 'dd/MM/yyyy', { locale: ptBR })}</span>}
-                        </div>
+                <>
+                  {/* Ranking de farmers mais estagnados */}
+                  {stagnantRanking.length > 0 && (
+                    <div className="px-5 py-3 border-b border-zinc-700 bg-zinc-800/80">
+                      <p className="text-[11px] text-zinc-500 font-semibold uppercase tracking-wider mb-2">Proprietários mais estagnados</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {stagnantRanking.map((f) => (
+                          <span key={f.name} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                            {f.name} <span className="text-red-300 font-bold">{f.count}</span>
+                          </span>
+                        ))}
                       </div>
-                      <a
-                        href={d.hubspotUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-3 flex-shrink-0 text-zinc-500 hover:text-orange-400 transition"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                        </svg>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                  )}
+
+                  {/* Críticos (>3 dias) primeiro, depois o resto */}
+                  {criticalCount > 0 && (
+                    <div className="px-5 py-2 bg-red-500/5 border-b border-red-500/20">
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                        <span className="text-[11px] text-red-400 font-semibold uppercase tracking-wider">
+                          {criticalCount} críticos — mais de 3 dias sem repasse
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <ul className="divide-y divide-zinc-700/50">
+                    {[...stagnantDeals]
+                      .sort((a, b) => {
+                        const aCrit = a.date ? nowMs - new Date(a.date).getTime() > THREE_DAYS_MS : false
+                        const bCrit = b.date ? nowMs - new Date(b.date).getTime() > THREE_DAYS_MS : false
+                        if (aCrit !== bCrit) return aCrit ? -1 : 1
+                        return a.name.localeCompare(b.name)
+                      })
+                      .map((d) => {
+                        const isCritical = d.date ? nowMs - new Date(d.date).getTime() > THREE_DAYS_MS : false
+                        const daysStagnant = d.date ? Math.floor((nowMs - new Date(d.date).getTime()) / (24 * 60 * 60 * 1000)) : 0
+                        return (
+                          <li key={d.id} className={`flex items-center justify-between px-5 py-3 hover:bg-zinc-700/30 transition ${isCritical ? 'bg-red-500/5' : ''}`}>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={d.hubspotUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-zinc-200 font-medium hover:text-orange-400 transition text-sm truncate"
+                                  title={d.name}
+                                >
+                                  {d.name}
+                                </a>
+                                {isCritical && (
+                                  <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+                                    {daysStagnant}d
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-zinc-500">
+                                <span>{d.farmerName}</span>
+                                {d.date && <span>· {format(new Date(d.date), 'dd/MM/yyyy', { locale: ptBR })}</span>}
+                              </div>
+                            </div>
+                            <a
+                              href={d.hubspotUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-3 flex-shrink-0 text-zinc-500 hover:text-orange-400 transition"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                              </svg>
+                            </a>
+                          </li>
+                        )
+                      })}
+                  </ul>
+                </>
               )}
             </div>
           </div>
