@@ -56,14 +56,16 @@ function Card({
   highlight?: boolean; onClick?: () => void
 }) {
   const Wrapper = onClick ? 'button' : 'div'
+  const borderClass = highlight ? 'border-[#FF5200]/40' : 'border-zinc-700'
+  const accentColor = highlight ? '#FF5200' : '#334155'
   return (
     <Wrapper
       onClick={onClick}
-      className={`relative bg-zinc-800 rounded-xl p-5 border overflow-hidden text-left w-full ${highlight ? 'border-[#FF5200]/40' : 'border-zinc-700'} ${onClick ? 'cursor-pointer hover:bg-zinc-750 hover:border-zinc-600 transition group' : ''}`}
+      className={`relative bg-zinc-800 rounded-xl p-5 border overflow-hidden text-left w-full ${borderClass} ${onClick ? 'cursor-pointer hover:bg-zinc-750 hover:border-zinc-600 transition group' : ''}`}
     >
       <div
         className="absolute top-0 left-0 right-0 h-[3px]"
-        style={{ background: highlight ? '#FF5200' : '#334155' }}
+        style={{ background: accentColor }}
       />
       <div className="flex items-start justify-between mb-3">
         <p className="text-zinc-400 text-xs font-semibold uppercase tracking-wider">{title}</p>
@@ -201,7 +203,11 @@ export default function SummaryCards({ stats, deals }: SummaryCardsProps) {
     ? Math.round((stats.meetingCompleted / stats.meetingScheduled) * 100)
     : null
 
-  const modalEntries = modal === 'deals' ? buildDealList(deals) : modal === 'companies' ? buildCompanyList(deals) : []
+  const modalEntries = modal === 'deals'
+    ? buildDealList(deals)
+    : modal === 'companies'
+      ? buildCompanyList(deals)
+      : []
   const modalTitle = modal === 'deals' ? 'Todos os Negócios' : 'Empresas Únicas'
   const modalAccent = modal === 'deals' ? '#64748b' : '#FF5200'
 

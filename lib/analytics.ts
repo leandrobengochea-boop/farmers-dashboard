@@ -1,5 +1,5 @@
 import { Deal, ExcludedDeal, ForaDoMOAEntry } from './hubspot'
-import { CRITERIA, FARMERS, MAX_SCORE, dealInTeam, uniqueDemandKey } from './constants'
+import { CRITERIA, FARMERS, MAX_SCORE, dealInTeam, uniqueDemandKey, isDealWithCreator } from './constants'
 
 export interface FarmerStats {
   farmerId: string
@@ -42,6 +42,7 @@ export interface SummaryStats {
   totalActualPoints: number
   meetingScheduled: number
   meetingCompleted: number
+  stagnantWithCreator: number
 }
 
 export function computeFarmerRanking(deals: Deal[]): FarmerStats[] {
@@ -165,6 +166,7 @@ export function computeSummaryStats(deals: Deal[]): SummaryStats {
   const meetingCompleted = Array.from(companyMeetings.values()).filter((c) => c.completed).length
 
   const totalCompanies = new Set(deals.map((d) => uniqueDemandKey(d))).size
+  const stagnantWithCreator = deals.filter((d) => isDealWithCreator(d.farmerId, d.ownerId)).length
 
   return {
     totalDeals,
@@ -176,6 +178,7 @@ export function computeSummaryStats(deals: Deal[]): SummaryStats {
     totalActualPoints,
     meetingScheduled,
     meetingCompleted,
+    stagnantWithCreator,
   }
 }
 

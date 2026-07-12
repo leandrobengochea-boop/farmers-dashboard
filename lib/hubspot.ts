@@ -24,6 +24,7 @@ export interface Deal {
   companyId: string      // empresa associada (associação primária) — '' se nenhuma
   origemDoLead: string   // origem_do_lead
   origemQualificacao: string // origem_da_qualificacao
+  ownerId: string        // hubspot_owner_id (raw)
 }
 
 export interface FetchValidation {
@@ -339,6 +340,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         companyId: '',            // preenchido via fetchCompanyIdByDeal
         origemDoLead: props.origem_do_lead ?? '',
         origemQualificacao: props.origem_da_qualificacao ?? '',
+        ownerId: props.hubspot_owner_id ?? '',
       })
     }
 

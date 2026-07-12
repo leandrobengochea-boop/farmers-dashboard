@@ -66,6 +66,12 @@ export function isB2CCloser(ownerName: string): boolean {
   return B2C_CLOSER_NAMES.some((n) => lower.includes(n))
 }
 
+export function isDealWithCreator(farmerId: string, ownerId: string): boolean {
+  if (!ownerId) return false
+  const canonicalOwner = FARMER_ALIASES[ownerId] ?? ownerId
+  return canonicalOwner === farmerId
+}
+
 // Funis B2C: cada oportunidade é uma demanda única (pessoa/negócio individual),
 // então NÃO deduplica por empresa — mesmo que tenha (ou não tenha) empresa.
 export const B2C_PIPELINE_IDS = new Set(['725182862', '727938450', '904543067'])
