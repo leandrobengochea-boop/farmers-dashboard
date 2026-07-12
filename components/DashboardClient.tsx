@@ -236,7 +236,7 @@ export default function DashboardClient({
         </div>
 
         {/* Summary Cards */}
-        <SummaryCards stats={summaryStats} />
+        <SummaryCards stats={summaryStats} deals={filteredDeals} />
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -34,6 +34,7 @@ export interface CriterionImpact {
 
 export interface SummaryStats {
   totalDeals: number
+  totalCompanies: number
   avgScore: number
   efficiency: number
   activeFarmers: number
@@ -163,8 +164,11 @@ export function computeSummaryStats(deals: Deal[]): SummaryStats {
   const meetingScheduled = Array.from(companyMeetings.values()).filter((c) => c.scheduled).length
   const meetingCompleted = Array.from(companyMeetings.values()).filter((c) => c.completed).length
 
+  const totalCompanies = new Set(deals.map((d) => uniqueDemandKey(d))).size
+
   return {
     totalDeals,
+    totalCompanies,
     avgScore,
     efficiency,
     activeFarmers: activeFarmerIds.size,
