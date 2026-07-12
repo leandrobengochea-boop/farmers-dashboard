@@ -147,11 +147,11 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const monthName = now.toLocaleDateString('pt-BR', { month: 'long' })
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ` ${year}`
 
-  // Composition: Carteira + Ação de CRM + B2C
-  const crmCount = monthDeals.filter((d) => d.origemDoLead === 'Ação de CRM').length
-  const carteiraCount = monthDeals.filter((d) => d.origemDoLead === 'Carteira do Farmer').length
-  const b2cCount = monthDeals.filter((d) => d.ownerName && isB2CCloser(d.ownerName)).length
+  // Composição exclusiva: B2C primeiro, depois CRM, resto = Carteira
   const totalMonth = monthDeals.length
+  const b2cCount = monthDeals.filter((d) => d.ownerName && isB2CCloser(d.ownerName)).length
+  const crmCount = monthDeals.filter((d) => d.origemDoLead === 'Ação de CRM' && !(d.ownerName && isB2CCloser(d.ownerName))).length
+  const carteiraCount = totalMonth - b2cCount - crmCount
   const carteiraPct = totalMonth > 0 ? Math.round((carteiraCount / totalMonth) * 100) : 0
   const crmPct = totalMonth > 0 ? Math.round((crmCount / totalMonth) * 100) : 0
   const b2cPct = totalMonth > 0 ? Math.round((b2cCount / totalMonth) * 100) : 0
@@ -253,7 +253,7 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
         </div>
       </div>
 
-      {/* Composição da demanda */}
+      {/* Composição da demanda (exclusivo, soma = total) */}
       <div className="flex gap-3 mt-1">
         <div className="flex-1 flex items-center gap-3 bg-zinc-700/40 border border-zinc-700 rounded-lg px-3 py-2.5 relative overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: '#22c55e' }} />
