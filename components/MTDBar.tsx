@@ -154,25 +154,42 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const monthName = now.toLocaleDateString('pt-BR', { month: 'long' })
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ` ${year}`
 
-  // Composição exclusiva: B2C primeiro, depois CRM, estagnados, resto = Carteira (empresas únicas)
-  const totalMonth = monthDeals.length
-  const b2cCount = monthDeals.filter((d) => d.ownerName && isB2CCloser(d.ownerName)).length
-  const crmCount = monthDeals.filter((d) => d.origemDoLead === 'Ação de CRM' && !(d.ownerName && isB2CCloser(d.ownerName))).length
+  // Composição por empresas únicas, mutuamente exclusiva:
+  // Prioridade: B2C > CRM > Estagnado > Carteira (soma = total empresas únicas)
+  const totalCompanies = new Set(monthDeals.map((d) => uniqueDemandKey(d))).size
+
+  const b2cKeys = new Set<string>()
+  const crmKeys = new Set<string>()
+  const stagnantKeys = new Set<string>()
+  const carteiraKeys = new Set<string>()
+
+  for (const d of monthDeals) {
+    const key = uniqueDemandKey(d)
+    if (b2cKeys.has(key) || crmKeys.has(key) || stagnantKeys.has(key) || carteiraKeys.has(key)) continue
+
+    if (d.ownerName && isB2CCloser(d.ownerName)) {
+      b2cKeys.add(key)
+    } else if (d.origemDoLead === 'Ação de CRM') {
+      crmKeys.add(key)
+    } else if (isDealWithCreator(d.farmerId, d.ownerId)) {
+      stagnantKeys.add(key)
+    } else {
+      carteiraKeys.add(key)
+    }
+  }
+
+  // Lista completa de deals estagnados (para modal — inclui todos, não só os da faixa exclusiva)
   const stagnantDeals = monthDeals.filter((d) => isDealWithCreator(d.farmerId, d.ownerId))
-  const stagnantCount = stagnantDeals.length
 
-  // Carteira = empresas únicas dos deals que NÃO são B2C, NÃO são CRM e NÃO são estagnados
-  const carteiraDeals = monthDeals.filter((d) =>
-    !(d.ownerName && isB2CCloser(d.ownerName)) &&
-    d.origemDoLead !== 'Ação de CRM' &&
-    !isDealWithCreator(d.farmerId, d.ownerId)
-  )
-  const carteiraCount = new Set(carteiraDeals.map((d) => uniqueDemandKey(d))).size
+  const b2cCount = b2cKeys.size
+  const crmCount = crmKeys.size
+  const stagnantCount = stagnantKeys.size
+  const carteiraCount = carteiraKeys.size
 
-  const carteiraPct = totalMonth > 0 ? Math.round((carteiraCount / totalMonth) * 100) : 0
-  const crmPct = totalMonth > 0 ? Math.round((crmCount / totalMonth) * 100) : 0
-  const b2cPct = totalMonth > 0 ? Math.round((b2cCount / totalMonth) * 100) : 0
-  const stagnantPct = totalMonth > 0 ? Math.round((stagnantCount / totalMonth) * 100) : 0
+  const carteiraPct = totalCompanies > 0 ? Math.round((carteiraCount / totalCompanies) * 100) : 0
+  const crmPct = totalCompanies > 0 ? Math.round((crmCount / totalCompanies) * 100) : 0
+  const b2cPct = totalCompanies > 0 ? Math.round((b2cCount / totalCompanies) * 100) : 0
+  const stagnantPct = totalCompanies > 0 ? Math.round((stagnantCount / totalCompanies) * 100) : 0
 
   const nowMs = Date.now()
   const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000
