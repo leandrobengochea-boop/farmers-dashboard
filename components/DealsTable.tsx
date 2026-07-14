@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Deal } from '@/lib/hubspot'
-import { CRITERIA } from '@/lib/constants'
+import { CRITERIA, isB2CCloser } from '@/lib/constants'
 
 interface DealsTableProps {
   deals: Deal[]
@@ -53,6 +53,25 @@ function MeetingBadge({ scheduled, completed }: { scheduled: boolean; completed:
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-900/40 text-amber-300 border border-amber-800 whitespace-nowrap">
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Agendada
+    </span>
+  )
+}
+
+function getDealCategory(deal: Deal): 'B2C' | 'CRM' | 'B2B' {
+  if (deal.ownerName && isB2CCloser(deal.ownerName)) return 'B2C'
+  if (deal.origemDoLead === 'Ação de CRM') return 'CRM'
+  return 'B2B'
+}
+
+function CategoryBadge({ category }: { category: 'B2C' | 'CRM' | 'B2B' }) {
+  const styles = {
+    B2C: 'bg-indigo-900/40 text-indigo-300 border-indigo-700',
+    CRM: 'bg-orange-900/40 text-orange-300 border-orange-700',
+    B2B: 'bg-zinc-700/40 text-zinc-400 border-zinc-600',
+  }
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${styles[category]}`}>
+      {category === 'CRM' ? 'Ação CRM' : category}
     </span>
   )
 }
@@ -176,6 +195,7 @@ export default function DealsTable({ deals }: DealsTableProps) {
                       Curador <SortIcon field="ownerName" />
                     </button>
                   </th>
+                  <th className="text-left py-3 px-4 font-medium">Tipo</th>
                   <th className="text-left py-3 px-4">
                     <button
                       className="flex items-center gap-1 hover:text-zinc-200 transition"
@@ -215,6 +235,9 @@ export default function DealsTable({ deals }: DealsTableProps) {
                     </td>
                     <td className="py-3 px-4 text-zinc-300">{deal.farmerName}</td>
                     <td className="py-3 px-4 text-zinc-400 text-sm whitespace-nowrap">{deal.ownerName || '—'}</td>
+                    <td className="py-3 px-4">
+                      <CategoryBadge category={getDealCategory(deal)} />
+                    </td>
                     <td className="py-3 px-4 text-zinc-400 whitespace-nowrap">
                       {deal.date
                         ? format(new Date(deal.date), "dd/MM/yyyy", { locale: ptBR })
