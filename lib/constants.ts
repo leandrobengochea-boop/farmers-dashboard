@@ -66,8 +66,12 @@ export function isB2CCloser(ownerName: string): boolean {
   return B2C_CLOSER_NAMES.some((n) => lower.includes(n))
 }
 
+// Farmers que viraram vendedores — deals com eles não contam como estagnados
+const SELLER_FARMER_IDS = new Set(['92333469', '94316538']) // Rafael, Gabriel Alves
+
 export function isDealWithCreator(farmerId: string, ownerId: string): boolean {
   if (!ownerId) return false
+  if (SELLER_FARMER_IDS.has(farmerId)) return false
   const canonicalOwner = FARMER_ALIASES[ownerId] ?? ownerId
   return canonicalOwner === farmerId
 }
