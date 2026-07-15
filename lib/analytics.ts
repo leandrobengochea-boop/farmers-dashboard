@@ -196,17 +196,19 @@ export function filterDealsByMonth(deals: Deal[], month: string | null): Deal[] 
   })
 }
 
-export type PeriodKey = '' | 'hoje' | 'ontem' | '7dias' | 'este-mes' | 'mes-passado' | '30dias' | 'este-ano'
+export type PeriodKey = '' | 'hoje' | 'ontem' | 'esta-semana' | '7dias' | 'este-mes' | 'mes-passado' | '30dias' | 'este-ano' | 'entre'
 
 export const PERIOD_OPTIONS: { value: PeriodKey; label: string }[] = [
   { value: '', label: 'Todo o período' },
   { value: 'hoje', label: 'Hoje' },
   { value: 'ontem', label: 'Ontem' },
+  { value: 'esta-semana', label: 'Esta semana' },
   { value: '7dias', label: 'Últimos 7 dias' },
   { value: 'este-mes', label: 'Este mês' },
   { value: 'mes-passado', label: 'Mês passado' },
   { value: '30dias', label: 'Últimos 30 dias' },
   { value: 'este-ano', label: 'Este ano' },
+  { value: 'entre', label: 'Entre datas...' },
 ]
 
 export function getPeriodRange(period: PeriodKey): { start: Date; end: Date } | null {
@@ -221,6 +223,12 @@ export function getPeriodRange(period: PeriodKey): { start: Date; end: Date } | 
     case 'ontem': {
       const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000)
       return { start: yesterdayStart, end: todayStart }
+    }
+    case 'esta-semana': {
+      const dayOfWeek = todayStart.getDay()
+      const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+      const monday = new Date(todayStart.getTime() - mondayOffset * 24 * 60 * 60 * 1000)
+      return { start: monday, end: todayEnd }
     }
     case '7dias':
       return { start: new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000), end: todayEnd }
@@ -240,7 +248,16 @@ export function getPeriodRange(period: PeriodKey): { start: Date; end: Date } | 
   }
 }
 
-export function filterDealsByPeriod(deals: Deal[], period: PeriodKey): Deal[] {
+export function filterDealsByPeriod(deals: Deal[], period: PeriodKey, customRange?: { start: string; end: string }): Deal[] {
+  if (period === 'entre' && customRange) {
+    const startMs = new Date(customRange.start).getTime()
+    const endMs = new Date(customRange.end + 'T23:59:59').getTime()
+    return deals.filter((d) => {
+      if (!d.date) return false
+      const ts = new Date(d.date).getTime()
+      return ts >= startMs && ts <= endMs
+    })
+  }
   const range = getPeriodRange(period)
   if (!range) return deals
   const startMs = range.start.getTime()

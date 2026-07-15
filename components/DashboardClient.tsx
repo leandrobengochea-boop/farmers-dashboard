@@ -61,6 +61,7 @@ export default function DashboardClient({
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('')
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+  const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' })
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -85,8 +86,8 @@ export default function DashboardClient({
 
   const teamDeals = useMemo(() => filterDealsByTeam(deals, selectedTeam), [deals, selectedTeam])
   const filteredDeals = useMemo(
-    () => filterDealsByPeriod(teamDeals, selectedPeriod),
-    [teamDeals, selectedPeriod],
+    () => filterDealsByPeriod(teamDeals, selectedPeriod, customDateRange),
+    [teamDeals, selectedPeriod, customDateRange],
   )
 
   const selectedMonthKey = useMemo(() => periodToMonthKey(selectedPeriod), [selectedPeriod])
@@ -161,7 +162,7 @@ export default function DashboardClient({
         )}
 
         {/* MTD progress bar + composition (follows period filter) */}
-        <MTDBar deals={teamDeals} filteredDeals={filteredDeals} selectedTeam={selectedTeam} hasPeriodFilter={!!selectedPeriod} />
+        <MTDBar deals={teamDeals} filteredDeals={filteredDeals} selectedTeam={selectedTeam} hasPeriodFilter={selectedPeriod === 'entre' ? !!(customDateRange.start && customDateRange.end) : !!selectedPeriod} />
 
         {/* Fora do MOA breakdown */}
         {foraDoMOA.length > 0 && (
@@ -201,7 +202,7 @@ export default function DashboardClient({
           <div className="w-px h-6 bg-zinc-700 hidden sm:block" />
 
           {/* Period filter */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <label htmlFor="period-filter" className="text-zinc-400 text-sm font-medium whitespace-nowrap">
               Período:
             </label>
@@ -217,6 +218,23 @@ export default function DashboardClient({
                 </option>
               ))}
             </select>
+            {selectedPeriod === 'entre' && (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={customDateRange.start}
+                  onChange={(e) => setCustomDateRange((r) => ({ ...r, start: e.target.value }))}
+                  className="bg-zinc-800 border border-zinc-600 text-zinc-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-[#FF5200]"
+                />
+                <span className="text-zinc-500 text-sm">até</span>
+                <input
+                  type="date"
+                  value={customDateRange.end}
+                  onChange={(e) => setCustomDateRange((r) => ({ ...r, end: e.target.value }))}
+                  className="bg-zinc-800 border border-zinc-600 text-zinc-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-[#FF5200]"
+                />
+              </div>
+            )}
           </div>
 
           {/* Active filter summary */}
@@ -224,7 +242,9 @@ export default function DashboardClient({
             <span className="text-zinc-400 text-sm">
               <span className="text-white font-medium">{filteredDeals.length}</span> negócios
               {activeTeamLabel ? ` · ${activeTeamLabel}` : ''}
-              {selectedPeriod ? ` · ${PERIOD_OPTIONS.find((o) => o.value === selectedPeriod)?.label}` : ''}
+              {selectedPeriod === 'entre' && customDateRange.start && customDateRange.end
+                ? ` · ${customDateRange.start.split('-').reverse().join('/')} a ${customDateRange.end.split('-').reverse().join('/')}`
+                : selectedPeriod ? ` · ${PERIOD_OPTIONS.find((o) => o.value === selectedPeriod)?.label}` : ''}
             </span>
           )}
         </div>
