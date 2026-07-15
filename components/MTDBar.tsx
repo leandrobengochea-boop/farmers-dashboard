@@ -24,7 +24,9 @@ interface MTDDeal {
 
 interface MTDBarProps {
   deals: MTDDeal[]
+  filteredDeals: MTDDeal[]
   selectedTeam: string | null
+  hasPeriodFilter: boolean
 }
 
 function uniqueCompanies(deals: { companyId: string; id: string; pipeline: string }[]): number {
@@ -83,7 +85,7 @@ function CompRing({ pct, color }: { pct: number; color: string }) {
   )
 }
 
-export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
+export default function MTDBar({ deals, filteredDeals, selectedTeam, hasPeriodFilter }: MTDBarProps) {
   const MONTHLY_GOAL = selectedTeam ? GOAL_TEAM : GOAL_TOTAL
   const now = new Date()
   const monthKey = getCurrentMonthKey()
@@ -154,16 +156,16 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
   const monthName = now.toLocaleDateString('pt-BR', { month: 'long' })
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ` ${year}`
 
-  // Composição por empresas únicas, mutuamente exclusiva:
-  // Prioridade: B2C > CRM > Estagnado > Carteira (soma = total empresas únicas)
-  const totalCompanies = new Set(monthDeals.map((d) => uniqueDemandKey(d))).size
+  // Composição: usa filteredDeals se houver filtro de período, senão monthDeals
+  const compDeals = hasPeriodFilter ? filteredDeals : monthDeals
+  const totalCompanies = new Set(compDeals.map((d) => uniqueDemandKey(d))).size
 
   const b2cKeys = new Set<string>()
   const crmKeys = new Set<string>()
   const stagnantKeys = new Set<string>()
   const carteiraKeys = new Set<string>()
 
-  for (const d of monthDeals) {
+  for (const d of compDeals) {
     const key = uniqueDemandKey(d)
     if (b2cKeys.has(key) || crmKeys.has(key) || stagnantKeys.has(key) || carteiraKeys.has(key)) continue
 
@@ -178,8 +180,7 @@ export default function MTDBar({ deals, selectedTeam }: MTDBarProps) {
     }
   }
 
-  // Lista completa de deals estagnados (para modal — inclui todos, não só os da faixa exclusiva)
-  const stagnantDeals = monthDeals.filter((d) => isDealWithCreator(d.farmerId, d.ownerId))
+  const stagnantDeals = compDeals.filter((d) => isDealWithCreator(d.farmerId, d.ownerId))
 
   const b2cCount = b2cKeys.size
   const crmCount = crmKeys.size

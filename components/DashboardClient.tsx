@@ -23,9 +23,11 @@ import {
   computeForaDoMOA,
   computeMeetingConversion,
   computeOpportunitiesByDay,
-  filterDealsByMonth,
+  filterDealsByPeriod,
   filterDealsByTeam,
-  getAvailableMonths,
+  periodToMonthKey,
+  PERIOD_OPTIONS,
+  PeriodKey,
 } from '@/lib/analytics'
 import {
   computeFarmerMatrix,
@@ -38,12 +40,6 @@ interface DashboardClientProps {
   validation: FetchValidation
   excludedDeals: ExcludedDeal[]
   fetchError: string | null
-}
-
-function formatMonthLabel(monthKey: string): string {
-  const [year, month] = monthKey.split('-').map(Number)
-  const date = new Date(year, month - 1, 1)
-  return format(date, 'MMMM/yyyy', { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase())
 }
 
 const TEAM_OPTIONS = [
@@ -63,7 +59,7 @@ export default function DashboardClient({
   const [fetchError, setFetchError] = useState<string | null>(initialError)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('')
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
 
   const handleRefresh = useCallback(async () => {
@@ -87,28 +83,27 @@ export default function DashboardClient({
     }
   }, [])
 
-  const availableMonths = useMemo(() => getAvailableMonths(deals), [deals])
-
   const teamDeals = useMemo(() => filterDealsByTeam(deals, selectedTeam), [deals, selectedTeam])
   const filteredDeals = useMemo(
-    () => filterDealsByMonth(teamDeals, selectedMonth),
-    [teamDeals, selectedMonth],
+    () => filterDealsByPeriod(teamDeals, selectedPeriod),
+    [teamDeals, selectedPeriod],
   )
 
+  const selectedMonthKey = useMemo(() => periodToMonthKey(selectedPeriod), [selectedPeriod])
+
   const foraDoMOA: ForaDoMOAEntry[] = useMemo(
-    () => computeForaDoMOA(excludedDeals, selectedTeam, selectedMonth),
-    [excludedDeals, selectedTeam, selectedMonth],
+    () => computeForaDoMOA(excludedDeals, selectedTeam, selectedMonthKey),
+    [excludedDeals, selectedTeam, selectedMonthKey],
   )
 
   const farmerRanking = useMemo(() => computeFarmerRanking(filteredDeals), [filteredDeals])
   const scoreDistribution = useMemo(() => computeScoreDistribution(filteredDeals), [filteredDeals])
 
-  // Mês do gráfico diário: o mês selecionado ou, se "todos os meses", o mês atual
   const chartMonthKey = useMemo(() => {
-    if (selectedMonth) return selectedMonth
+    if (selectedMonthKey) return selectedMonthKey
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  }, [selectedMonth])
+  }, [selectedMonthKey])
   const oppsByDay = useMemo(
     () => computeOpportunitiesByDay(teamDeals, chartMonthKey, 100),
     [teamDeals, chartMonthKey],
@@ -165,12 +160,12 @@ export default function DashboardClient({
           </div>
         )}
 
-        {/* MTD progress bar */}
-        <MTDBar deals={teamDeals} selectedTeam={selectedTeam} />
+        {/* MTD progress bar + composition (follows period filter) */}
+        <MTDBar deals={teamDeals} filteredDeals={filteredDeals} selectedTeam={selectedTeam} hasPeriodFilter={!!selectedPeriod} />
 
         {/* Fora do MOA breakdown */}
         {foraDoMOA.length > 0 && (
-          <ForaDoMOABar foraDoMOA={foraDoMOA} excludedDeals={excludedDeals} selectedTeam={selectedTeam} selectedMonth={selectedMonth} />
+          <ForaDoMOABar foraDoMOA={foraDoMOA} excludedDeals={excludedDeals} selectedTeam={selectedTeam} selectedMonth={selectedMonthKey} />
         )}
 
         {/* Filters Bar */}
@@ -205,32 +200,31 @@ export default function DashboardClient({
           {/* Divider */}
           <div className="w-px h-6 bg-zinc-700 hidden sm:block" />
 
-          {/* Month filter */}
+          {/* Period filter */}
           <div className="flex items-center gap-2">
-            <label htmlFor="month-filter" className="text-zinc-400 text-sm font-medium whitespace-nowrap">
+            <label htmlFor="period-filter" className="text-zinc-400 text-sm font-medium whitespace-nowrap">
               Período:
             </label>
             <select
-              id="month-filter"
-              value={selectedMonth ?? ''}
-              onChange={(e) => setSelectedMonth(e.target.value || null)}
+              id="period-filter"
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value as PeriodKey)}
               className="bg-zinc-800 border border-zinc-600 text-zinc-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-[#FF5200]"
             >
-              <option value="">Todos os meses</option>
-              {availableMonths.map((m) => (
-                <option key={m} value={m}>
-                  {formatMonthLabel(m)}
+              {PERIOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
                 </option>
               ))}
             </select>
           </div>
 
           {/* Active filter summary */}
-          {(selectedTeam || selectedMonth) && (
+          {(selectedTeam || selectedPeriod) && (
             <span className="text-zinc-400 text-sm">
               <span className="text-white font-medium">{filteredDeals.length}</span> negócios
               {activeTeamLabel ? ` · ${activeTeamLabel}` : ''}
-              {selectedMonth ? ` · ${formatMonthLabel(selectedMonth)}` : ''}
+              {selectedPeriod ? ` · ${PERIOD_OPTIONS.find((o) => o.value === selectedPeriod)?.label}` : ''}
             </span>
           )}
         </div>
@@ -282,7 +276,7 @@ export default function DashboardClient({
             <p className="text-zinc-400 text-sm mt-0.5">
               Análise macro, pontos de atenção e insights automáticos
               {activeTeamLabel ? ` — ${activeTeamLabel}` : ''}
-              {selectedMonth ? ` · ${formatMonthLabel(selectedMonth)}` : ''}.
+              {selectedPeriod ? ` · ${PERIOD_OPTIONS.find((o) => o.value === selectedPeriod)?.label}` : ''}.
             </p>
           </div>
 

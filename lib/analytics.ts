@@ -196,6 +196,70 @@ export function filterDealsByMonth(deals: Deal[], month: string | null): Deal[] 
   })
 }
 
+export type PeriodKey = '' | 'hoje' | 'ontem' | '7dias' | 'este-mes' | 'mes-passado' | '30dias' | 'este-ano'
+
+export const PERIOD_OPTIONS: { value: PeriodKey; label: string }[] = [
+  { value: '', label: 'Todo o período' },
+  { value: 'hoje', label: 'Hoje' },
+  { value: 'ontem', label: 'Ontem' },
+  { value: '7dias', label: 'Últimos 7 dias' },
+  { value: 'este-mes', label: 'Este mês' },
+  { value: 'mes-passado', label: 'Mês passado' },
+  { value: '30dias', label: 'Últimos 30 dias' },
+  { value: 'este-ano', label: 'Este ano' },
+]
+
+export function getPeriodRange(period: PeriodKey): { start: Date; end: Date } | null {
+  if (!period) return null
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+
+  switch (period) {
+    case 'hoje':
+      return { start: todayStart, end: todayEnd }
+    case 'ontem': {
+      const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000)
+      return { start: yesterdayStart, end: todayStart }
+    }
+    case '7dias':
+      return { start: new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000), end: todayEnd }
+    case 'este-mes':
+      return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: todayEnd }
+    case 'mes-passado': {
+      const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      return { start: firstOfLastMonth, end: firstOfThisMonth }
+    }
+    case '30dias':
+      return { start: new Date(todayStart.getTime() - 30 * 24 * 60 * 60 * 1000), end: todayEnd }
+    case 'este-ano':
+      return { start: new Date(now.getFullYear(), 0, 1), end: todayEnd }
+    default:
+      return null
+  }
+}
+
+export function filterDealsByPeriod(deals: Deal[], period: PeriodKey): Deal[] {
+  const range = getPeriodRange(period)
+  if (!range) return deals
+  const startMs = range.start.getTime()
+  const endMs = range.end.getTime()
+  return deals.filter((d) => {
+    if (!d.date) return false
+    const ts = new Date(d.date).getTime()
+    return ts >= startMs && ts < endMs
+  })
+}
+
+export function periodToMonthKey(period: PeriodKey): string | null {
+  if (!period) return null
+  const range = getPeriodRange(period)
+  if (!range) return null
+  const d = period === 'mes-passado' ? range.start : new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
 export function getAvailableMonths(deals: Deal[]): string[] {
   const months = new Set<string>()
 
