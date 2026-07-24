@@ -27,6 +27,7 @@ export const FARMERS: Record<string, string> = {
   '94891358': 'Priscila',
   '95283516': 'Julia',
   '95415669': 'Gisele Santos',
+  '95810969': 'Rhayssa',
 }
 
 // Maps old/extra farmer IDs to their canonical ID so deals are merged in analytics
@@ -117,7 +118,7 @@ export const TEAMS_FROM: TeamMap = {
   leticia: {
     label: 'Time Leticia',
     // Bruna Machado, Gustavo, Gabriel Alves, Luiza, Amanda, Felippe
-    farmerIds: ['85002012', '81033487', '94316538', '88200239', '84015882', '94028856', '94891358', '95415669'],
+    farmerIds: ['85002012', '81033487', '94316538', '88200239', '84015882', '94028856', '94891358', '95415669', '95810969'],
   },
   dani: {
     label: 'Time Dani',
