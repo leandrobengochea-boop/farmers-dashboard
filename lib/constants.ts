@@ -61,7 +61,7 @@ export const HUBSPOT_PORTAL_ID = '49656171'
 
 // Closers B2C — negócios cujo curador (owner) é um desses nomes
 // foram encaminhados ao time B2C. Match por substring case-insensitive.
-export const B2C_CLOSER_NAMES = ['mayda', 'joão araújo', 'joao araujo', 'amanda de oliveira', 'willker', 'gabrielly']
+export const B2C_CLOSER_NAMES = ['mayda', 'joão araújo', 'joao araujo', 'amanda de oliveira', 'willker', 'gabrielly', 'luiza rodriguez', 'camila fay', 'tercio']
 
 export function isB2CCloser(ownerName: string): boolean {
   const lower = ownerName.toLowerCase()
