@@ -35,6 +35,12 @@ export const FARMER_ALIASES: Record<string, string> = {
   '93238814': '85002282',  // Sotoriva nova conta → ID canônico
 }
 
+// Overrides pontuais: deal IDs que devem ser forçados para um farmer específico
+// (erro de cadastro no HubSpot que não pode ser corrigido lá)
+export const DEAL_FARMER_OVERRIDES: Record<string, string> = {
+  '62654660376': '85002012', // Mayra | Credipronto → Bruna Machado (farmer original errado)
+}
+
 // Per-farmer date restrictions applied after fetching
 // fromDate: ignore deals before this date (YYYY-MM-DD)
 // untilDate: ignore deals from this date onwards — keeps history, removes future

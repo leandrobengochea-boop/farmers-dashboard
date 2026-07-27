@@ -1,6 +1,6 @@
 import {
   FARMERS, FARMER_ALIASES, FARMER_DATE_RESTRICTIONS, CRITERIA, HUBSPOT_PORTAL_ID,
-  ORIGIN_CUTOVER, ALLOWED_ORIGEM_DO_LEAD, ALLOWED_ORIGEM_QUALIFICACAO,
+  ORIGIN_CUTOVER, ALLOWED_ORIGEM_DO_LEAD, ALLOWED_ORIGEM_QUALIFICACAO, DEAL_FARMER_OVERRIDES,
 } from './constants'
 
 export interface Deal {
@@ -347,6 +347,75 @@ export async function fetchAllDeals(): Promise<FetchResult> {
     const nextAfter = data.paging?.next?.after
     if (!nextAfter) break
     after = nextAfter
+  }
+
+  // Fetch deal overrides that weren't captured by the main query
+  const fetchedIds = new Set(rawDeals.map((d) => d.id))
+  const overrideIds = Object.keys(DEAL_FARMER_OVERRIDES).filter((id) => !fetchedIds.has(id))
+  if (overrideIds.length > 0) {
+    const overrideResp = await fetch('https://api.hubapi.com/crm/v3/objects/deals/batch/read', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        inputs: overrideIds.map((id) => ({ id })),
+        properties: [
+          'dealname', 'sdrfarmer_responsavel', 'pontuacao_leadscore', 'criterios_atendidos',
+          'pipedrive___data_de_qualificacao', 'pipeline', 'closed_lost_reason', 'createdate',
+          'hs_lastmodifieddate', 'dealstage', 'hubspot_owner_id', 'origem_do_lead', 'origem_da_qualificacao',
+        ],
+      }),
+    })
+    if (overrideResp.ok) {
+      const overrideData = await overrideResp.json() as { results?: Array<{ id: string; properties: Record<string, string> }> }
+      for (const deal of overrideData.results ?? []) {
+        const props = deal.properties ?? {}
+        const overrideFarmerId = DEAL_FARMER_OVERRIDES[deal.id]
+        const rawDate = props.pipedrive___data_de_qualificacao ?? ''
+        let dateIso = ''
+        if (rawDate) {
+          if (/^\d{10,}$/.test(rawDate)) {
+            const d = new Date(parseInt(rawDate, 10))
+            dateIso = `${d.toISOString().slice(0, 10)}T12:00:00.000Z`
+          } else if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+            dateIso = `${rawDate}T12:00:00.000Z`
+          } else {
+            dateIso = new Date(rawDate).toISOString()
+          }
+        }
+        rawDeals.push({
+          id: deal.id,
+          name: props.dealname ?? `Deal ${deal.id}`,
+          farmerId: overrideFarmerId,
+          farmerName: FARMERS[overrideFarmerId] ?? overrideFarmerId,
+          score: parseFloat(props.pontuacao_leadscore ?? '0') || 0,
+          criteria: matchCriteria(props.criterios_atendidos),
+          date: dateIso,
+          hubspotUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/record/0-3/${deal.id}`,
+          pipeline: props.pipeline ?? '',
+          closedLostReason: props.closed_lost_reason ?? '',
+          createDate: props.createdate ? new Date(props.createdate).toISOString() : '',
+          lastModifiedDate: props.hs_lastmodifieddate ? new Date(props.hs_lastmodifieddate).toISOString() : '',
+          dealStage: props.dealstage ?? '',
+          meetingScheduled: false,
+          meetingCompleted: false,
+          ownerName: ownerMap[props.hubspot_owner_id ?? ''] ?? '',
+          isScored: !!props.pontuacao_leadscore,
+          companyId: '',
+          origemDoLead: props.origem_do_lead ?? '',
+          origemQualificacao: props.origem_da_qualificacao ?? '',
+          ownerId: props.hubspot_owner_id ?? '',
+        })
+      }
+    }
+  }
+
+  // Also reassign farmer for override deals that WERE in the main query
+  for (const d of rawDeals) {
+    const overrideFarmer = DEAL_FARMER_OVERRIDES[d.id]
+    if (overrideFarmer) {
+      d.farmerId = overrideFarmer
+      d.farmerName = FARMERS[overrideFarmer] ?? overrideFarmer
+    }
   }
 
   // Apply per-farmer date restrictions (fromDate / untilDate)
