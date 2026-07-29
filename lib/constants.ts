@@ -28,6 +28,7 @@ export const FARMERS: Record<string, string> = {
   '95283516': 'Julia',
   '95415669': 'Gisele Santos',
   '95810969': 'Rhayssa',
+  '95993082': 'Hans Kelton',
 }
 
 // Maps old/extra farmer IDs to their canonical ID so deals are merged in analytics
@@ -49,7 +50,7 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; until
   '84497577': { fromDate: '2026-03-01' },  // Vitória: entra em março/26
   '88200222': { untilDate: '2026-06-01' }, // Kennedy: saiu em junho/26
   '87371619': { untilDate: '2026-06-01' }, // Maryna: saiu em junho/26
-  '87159365': { untilDate: '2026-07-01' }, // João Lucas: fora da formação nova (jul/26)
+  '87159365': { fromDate: '2026-07-29' }, // João Lucas: entra no Time Dani a partir de 29/jul/26
   '86256444': { untilDate: '2026-07-01' }, // Ana Carolina: fora da formação nova (jul/26)
   '89632494': { untilDate: '2026-07-01' }, // Willker: fora da formação nova (jul/26)
   '82410958': { untilDate: '2026-07-01' }, // Maria Eduarda (conta antiga arquivada)
@@ -124,12 +125,12 @@ export const TEAMS_FROM: TeamMap = {
   leticia: {
     label: 'Time Leticia',
     // Bruna Machado, Gustavo, Gabriel Alves, Luiza, Amanda, Felippe
-    farmerIds: ['85002012', '81033487', '94316538', '88200239', '84015882', '94028856', '94891358', '95415669', '95810969'],
+    farmerIds: ['85002012', '81033487', '94316538', '88200239', '84015882', '94028856', '94891358', '95415669', '95810969', '95993082'],
   },
   dani: {
     label: 'Time Dani',
-    // Vitória, Rafael, Thaina, Lenz, Gabriela Charlier, Maria Julia, Julia
-    farmerIds: ['84497577', '92333469', '92335488', '85846971', '94399135', '94316537', '95283516'],
+    // Vitória, Rafael, Thaina, Lenz, Gabriela Charlier, Maria Julia, Julia, João Lucas
+    farmerIds: ['84497577', '92333469', '92335488', '85846971', '94399135', '94316537', '95283516', '87159365'],
   },
   katyeli: {
     label: 'Time Katy',
