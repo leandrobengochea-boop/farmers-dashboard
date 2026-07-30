@@ -89,8 +89,9 @@ export function computeFarmerMatrix(deals: Deal[]): FarmerMatrixRow[] {
 
   const rows: FarmerMatrixRow[] = []
   for (const [farmerId, farmerDeals] of map.entries()) {
-    const scores = farmerDeals.map((d) => d.score)
-    const avgScore = scores.reduce((s, v) => s + v, 0) / scores.length
+    const scoredDeals = farmerDeals.filter((d) => d.isScored)
+    const scores = scoredDeals.map((d) => d.score)
+    const avgScore = scores.length > 0 ? scores.reduce((s, v) => s + v, 0) / scores.length : 0
     const completionRate = farmerDeals.filter(isFullyQualified).length / farmerDeals.length
 
     const criteriaAbsenceRate: Record<string, number> = {}
@@ -131,7 +132,7 @@ export function computeMacroKPIs(deals: Deal[], matrix: FarmerMatrixRow[]): Macr
   const staleDeals = computeStaleDeals(deals, 15)
   const criticalStale = computeStaleDeals(deals, 30)
 
-  const allScores = deals.map((d) => d.score)
+  const allScores = deals.filter((d) => d.isScored).map((d) => d.score)
   const teamVariance = stdDev(allScores)
 
   const qualDays = deals.filter((d) => d.date).map((d) => daysSince(d.date))
@@ -150,8 +151,9 @@ export function computeMacroKPIs(deals: Deal[], matrix: FarmerMatrixRow[]): Macr
   }
 
   const fullyQualifiedRate = deals.filter(isFullyQualified).length / (deals.length || 1)
-  const maxPossible = deals.length * MAX_SCORE
-  const actual = deals.reduce((s, d) => s + d.score, 0)
+  const scoredDeals = deals.filter((d) => d.isScored)
+  const maxPossible = scoredDeals.length * MAX_SCORE
+  const actual = scoredDeals.reduce((s, d) => s + d.score, 0)
   const completionRate = maxPossible > 0 ? actual / maxPossible : 0
 
   return {
