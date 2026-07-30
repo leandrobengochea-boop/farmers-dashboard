@@ -1,6 +1,7 @@
 import {
   FARMERS, FARMER_ALIASES, FARMER_DATE_RESTRICTIONS, CRITERIA, HUBSPOT_PORTAL_ID,
   ORIGIN_CUTOVER, ALLOWED_ORIGEM_DO_LEAD, ALLOWED_ORIGEM_QUALIFICACAO, DEAL_FARMER_OVERRIDES,
+  ORIGIN_OVERRIDE_DEAL_IDS,
 } from './constants'
 
 export interface Deal {
@@ -429,7 +430,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
     }
     // Filtro de origem: vale só de ORIGIN_CUTOVER (jul/26) em diante.
     // Histórico mantém todas as origens.
-    if (d.date && new Date(d.date).getTime() >= originCutover) {
+    if (d.date && new Date(d.date).getTime() >= originCutover && !ORIGIN_OVERRIDE_DEAL_IDS.has(d.id)) {
       const okLead = ALLOWED_ORIGEM_DO_LEAD.includes(d.origemDoLead)
       const okQual = ALLOWED_ORIGEM_QUALIFICACAO.includes(d.origemQualificacao)
       if (!okLead && !okQual) return false

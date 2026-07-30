@@ -42,6 +42,12 @@ export const DEAL_FARMER_OVERRIDES: Record<string, string> = {
   '62654660376': '85002012', // Mayra | Credipronto → Bruna Machado (farmer original errado)
 }
 
+// Deals que devem ignorar o filtro de origem (erro de cadastro no HubSpot)
+export const ORIGIN_OVERRIDE_DEAL_IDS = new Set([
+  '62654660376', // Mayra | Credipronto — Bruna Machado (inbound, deveria ser Farmer)
+  '63187333523', // Gabriela | FDC — Maria Julia (inbound, deveria ser Farmer)
+])
+
 // Per-farmer date restrictions applied after fetching
 // fromDate: ignore deals before this date (YYYY-MM-DD)
 // untilDate: ignore deals from this date onwards — keeps history, removes future
