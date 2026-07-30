@@ -250,7 +250,9 @@ export default function DealsTable({ deals }: DealsTableProps) {
                       <MeetingBadge scheduled={deal.meetingScheduled} completed={deal.meetingCompleted} />
                     </td>
                     <td className="py-3 px-4">
-                      {(() => {
+                      {getDealCategory(deal) === 'B2C' ? (
+                        <span className="text-zinc-600 text-xs">—</span>
+                      ) : (() => {
                         const missing = CRITERIA.filter((c) => !deal.criteria.includes(c.key))
                         return missing.length === 0 ? (
                           <span className="text-green-500 text-xs font-medium">Completo</span>
