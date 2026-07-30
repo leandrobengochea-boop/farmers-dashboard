@@ -50,7 +50,6 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; until
   '84497577': { fromDate: '2026-03-01' },  // Vitória: entra em março/26
   '88200222': { untilDate: '2026-06-01' }, // Kennedy: saiu em junho/26
   '87371619': { untilDate: '2026-06-01' }, // Maryna: saiu em junho/26
-  '87159365': { fromDate: '2026-07-29' }, // João Lucas: entra no Time Dani a partir de 29/jul/26
   '86256444': { untilDate: '2026-07-01' }, // Ana Carolina: fora da formação nova (jul/26)
   '89632494': { untilDate: '2026-07-01' }, // Willker: fora da formação nova (jul/26)
   '82410958': { untilDate: '2026-07-01' }, // Maria Eduarda (conta antiga arquivada)
