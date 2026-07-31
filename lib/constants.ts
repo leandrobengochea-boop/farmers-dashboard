@@ -98,9 +98,10 @@ export const B2C_PIPELINE_IDS = new Set(['725182862', '727938450', '904543067'])
 // - B2C: sempre única (usa o id do negócio)
 // - B2B com empresa: deduplica pela empresa
 // - sem empresa: conta como única (usa o id do negócio)
-export function uniqueDemandKey(deal: { id: string; pipeline: string; companyId: string }): string {
-  if (B2C_PIPELINE_IDS.has(deal.pipeline)) return `deal:${deal.id}`
-  return deal.companyId || `deal:${deal.id}`
+export function uniqueDemandKey(deal: { id: string; pipeline: string; companyId: string; farmerId?: string }): string {
+  const prefix = deal.farmerId ? `${deal.farmerId}:` : ''
+  if (B2C_PIPELINE_IDS.has(deal.pipeline)) return `${prefix}deal:${deal.id}`
+  return `${prefix}${deal.companyId || `deal:${deal.id}`}`
 }
 
 type TeamMap = Record<string, { label: string; farmerIds: string[] }>
