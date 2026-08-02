@@ -468,7 +468,10 @@ export function computeMeetingConversion(deals: Deal[]): FarmerMeetingStats[] {
         scheduled,
         scheduledPct: totalCompanies > 0 ? Math.round((scheduled / totalCompanies) * 100) : 0,
         completed,
-        completedPct: scheduled > 0 ? Math.round((completed / scheduled) * 100) : 0,
+        // Base = empresas únicas, igual a scheduledPct. As duas taxas passam a
+        // ser comparáveis entre si e respondem "de tudo que gerei, quanto
+        // virou reunião de fato" — e não "das que agendei, quantas ocorreram".
+        completedPct: totalCompanies > 0 ? Math.round((completed / totalCompanies) * 100) : 0,
       }
     })
     .filter((f) => f.scheduled > 0)

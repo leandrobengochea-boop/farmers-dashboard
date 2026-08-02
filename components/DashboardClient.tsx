@@ -7,13 +7,12 @@ import { Deal, FetchValidation, ExcludedDeal, ForaDoMOAEntry } from '@/lib/hubsp
 import { TEAMS } from '@/lib/constants'
 import Navbar from './Navbar'
 import SummaryCards from './SummaryCards'
-import FarmerRanking from './FarmerRanking'
+import FarmerTable from './FarmerTable'
 import ScoreDistribution from './ScoreDistribution'
 import OpportunitiesByDay from './OpportunitiesByDay'
 import DealsTable from './DealsTable'
 import { MacroKPIBar, InsightList } from './insights/InsightCards'
 import MTDBar from './MTDBar'
-import MeetingConversionTable from './MeetingConversionTable'
 import ForaDoMOABar from './ForaDoMOABar'
 import FarmerMatrix from './insights/FarmerMatrix'
 import {
@@ -247,36 +246,15 @@ export default function DashboardClient({
           <ForaDoMOABar foraDoMOA={foraDoMOA} excludedDeals={excludedDeals} selectedTeam={selectedTeam} selectedMonth={selectedMonthKey} />
         )}
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <FarmerRanking data={farmerRanking} deals={filteredDeals} />
-          <div className="flex flex-col gap-6">
-            <ScoreDistribution data={scoreDistribution} />
-            {meetingConversion.length > 0 && (
-              <div className="bg-zinc-800 rounded-xl border border-zinc-700 p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <polyline points="16 11 18 13 22 9"/>
-                  </svg>
-                  <h2 className="text-white font-semibold text-base">Conversão de reuniões por farmer</h2>
-                </div>
-                <div className="flex gap-4 mb-3 text-xs text-zinc-500">
-                  <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-2.5 h-1.5 rounded-full bg-orange-500" />
-                    % empresas com agendamento
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-2.5 h-1.5 rounded-full bg-green-500" />
-                    % reuniões realizadas
-                  </span>
-                </div>
-                <MeetingConversionTable data={meetingConversion} deals={filteredDeals} />
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Desempenho por farmer — volume, qualidade e conversão numa tabela só */}
+        <FarmerTable
+          ranking={farmerRanking}
+          meetings={meetingConversion}
+          matrix={farmerMatrix}
+          deals={filteredDeals}
+        />
+
+        <ScoreDistribution data={scoreDistribution} />
 
         {/* Oportunidades por dia · por curador */}
         <OpportunitiesByDay data={oppsByDay} monthLabel={chartMonthLabel} />

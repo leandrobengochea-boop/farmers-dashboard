@@ -49,7 +49,9 @@ const ICONS = {
   ),
 }
 
-function Card({
+// Card primário: as duas métricas que respondem "como o mês está indo" —
+// volume que conta para a meta, e qualidade do que foi gerado.
+function PrimaryCard({
   title, value, subtitle, icon, highlight, onClick,
 }: {
   title: string; value: string; subtitle?: string; icon: React.ReactNode
@@ -63,15 +65,12 @@ function Card({
       onClick={onClick}
       className={`relative bg-zinc-800 rounded-xl p-5 border overflow-hidden text-left w-full ${borderClass} ${onClick ? 'cursor-pointer hover:bg-zinc-750 hover:border-zinc-600 transition group' : ''}`}
     >
-      <div
-        className="absolute top-0 left-0 right-0 h-[3px]"
-        style={{ background: accentColor }}
-      />
+      <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: accentColor }} />
       <div className="flex items-start justify-between mb-3">
         <p className="text-zinc-400 text-xs font-semibold uppercase tracking-wider">{title}</p>
-        <span className={`${highlight ? 'text-[#FF5200]' : 'text-zinc-500'}`}>{icon}</span>
+        <span className={highlight ? 'text-[#FF5200]' : 'text-zinc-500'}>{icon}</span>
       </div>
-      <p className="text-white font-bold mb-1" style={{ fontSize: '2rem', lineHeight: 1, letterSpacing: '-0.02em' }}>
+      <p className="text-white font-bold mb-1" style={{ fontSize: '2.75rem', lineHeight: 1, letterSpacing: '-0.02em' }}>
         {value}
       </p>
       {subtitle && (
@@ -80,6 +79,31 @@ function Card({
           {onClick && <span className="text-zinc-600 group-hover:text-orange-400 ml-1 transition">· ver lista</span>}
         </p>
       )}
+    </Wrapper>
+  )
+}
+
+// Métricas de apoio: contexto, não manchete. Ficam numa faixa compacta para
+// não competirem com as duas acima.
+function SupportMetric({
+  label, value, detail, onClick,
+}: {
+  label: string; value: string; detail: string; onClick?: () => void
+}) {
+  const Wrapper = onClick ? 'button' : 'div'
+  return (
+    <Wrapper
+      onClick={onClick}
+      className={`flex-1 min-w-0 px-4 py-3 text-left ${onClick ? 'cursor-pointer hover:bg-zinc-700/30 transition group rounded-lg' : ''}`}
+    >
+      <p className="text-zinc-500 text-[11px] font-medium uppercase tracking-wider truncate">{label}</p>
+      <p className="text-zinc-100 font-semibold mt-0.5" style={{ fontSize: '1.375rem', lineHeight: 1.1 }}>
+        {value}
+      </p>
+      <p className="text-zinc-600 text-[11px] mt-0.5 truncate">
+        {detail}
+        {onClick && <span className="group-hover:text-orange-400 ml-1 transition">· ver lista</span>}
+      </p>
     </Wrapper>
   )
 }
@@ -199,8 +223,9 @@ function ListModal({
 export default function SummaryCards({ stats, deals }: SummaryCardsProps) {
   const [modal, setModal] = useState<ModalType | null>(null)
 
-  const meetingRate = stats.meetingScheduled > 0
-    ? Math.round((stats.meetingCompleted / stats.meetingScheduled) * 100)
+  // Mesma base da coluna "Realizadas" da tabela por farmer: empresas únicas.
+  const meetingRate = stats.totalCompanies > 0
+    ? Math.round((stats.meetingCompleted / stats.totalCompanies) * 100)
     : null
 
   const modalEntries = modal === 'deals'
@@ -213,40 +238,41 @@ export default function SummaryCards({ stats, deals }: SummaryCardsProps) {
 
   return (
     <>
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card
-          title="Total de Negócios"
-          value={stats.totalDeals.toLocaleString('pt-BR')}
-          subtitle="todos os negócios"
-          icon={ICONS.deals}
-          onClick={() => setModal('deals')}
-        />
-        <Card
-          title="Total de Empresas"
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <PrimaryCard
+          title="Empresas Únicas"
           value={stats.totalCompanies.toLocaleString('pt-BR')}
-          subtitle="empresas únicas"
+          subtitle="o que conta para a meta"
           icon={ICONS.companies}
           highlight
           onClick={() => setModal('companies')}
         />
-        <Card
+        <PrimaryCard
           title="Média de Pontuação"
           value={`${stats.avgScore.toFixed(1)} / 12`}
-          subtitle="pontuação média geral"
+          subtitle="qualidade da qualificação"
           icon={ICONS.score}
         />
-        <Card
-          title="Farmers Ativos"
-          value={stats.activeFarmers.toString()}
-          subtitle="com ao menos 1 negócio"
-          icon={ICONS.farmers}
-        />
-        <Card
-          title="Reuniões"
-          value={meetingRate !== null ? `${meetingRate}%` : '—'}
-          subtitle={`${stats.meetingCompleted} realizadas / ${stats.meetingScheduled} agendadas`}
-          icon={ICONS.meeting}
-        />
+
+        {/* Apoio — três métricas de contexto numa faixa só */}
+        <div className="lg:col-span-2 flex items-stretch divide-x divide-zinc-700/60 bg-zinc-800/40 rounded-xl border border-zinc-700 px-1">
+          <SupportMetric
+            label="Negócios"
+            value={stats.totalDeals.toLocaleString('pt-BR')}
+            detail="inclui repetidos"
+            onClick={() => setModal('deals')}
+          />
+          <SupportMetric
+            label="Farmers ativos"
+            value={stats.activeFarmers.toString()}
+            detail="com ao menos 1 negócio"
+          />
+          <SupportMetric
+            label="Reuniões realizadas"
+            value={meetingRate !== null ? `${meetingRate}%` : '—'}
+            detail={`${stats.meetingCompleted} de ${stats.totalCompanies.toLocaleString('pt-BR')} empresas`}
+          />
+        </div>
       </div>
 
       {modal && (
