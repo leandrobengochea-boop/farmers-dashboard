@@ -244,8 +244,8 @@ export default function FarmerTable({ ranking, meetings, matrix, deals }: Farmer
                 <tr className="bg-zinc-900/40 text-zinc-400 border-b border-zinc-700">
                   <Th label="Farmer" sortKey="farmerName" align="left" />
                   <th className="py-2 px-3 font-medium text-left w-28">Volume</th>
-                  <Th label="Negócios" sortKey="dealCount" title="Total de oportunidades, incluindo repetidas da mesma empresa" />
                   <Th label="Empresas" sortKey="companyCount" title="Empresas únicas — é o que conta para a meta" />
+                  <Th label="Negócios" sortKey="dealCount" title="Total de oportunidades, incluindo repetidas da mesma empresa" />
                   <Th label="Nota" sortKey="avgScore" title="Nota média das oportunidades pontuadas" />
                   <Th label="Agendadas" sortKey="scheduledPct" title="% das empresas com ao menos uma reunião agendada" />
                   <Th label="Realizadas" sortKey="completedPct" title="% das empresas únicas com reunião realizada — mesma base de Agendadas" />
@@ -283,8 +283,8 @@ export default function FarmerTable({ ranking, meetings, matrix, deals }: Farmer
                         </div>
                       </td>
 
-                      <td className="py-2.5 px-3 text-right text-zinc-400 tabular-nums">{r.dealCount}</td>
                       <td className="py-2.5 px-3 text-right text-white font-semibold tabular-nums">{r.companyCount}</td>
+                      <td className="py-2.5 px-3 text-right text-zinc-400 tabular-nums">{r.dealCount}</td>
                       <td className="py-2.5 px-3 text-right font-bold tabular-nums" style={{ color }}>
                         {r.avgScore.toFixed(1)}
                       </td>
