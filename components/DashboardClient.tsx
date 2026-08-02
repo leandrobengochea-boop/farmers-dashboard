@@ -35,6 +35,7 @@ import {
   computeMacroKPIs,
   generateInsights,
 } from '@/lib/insights'
+import { SHOW_ALL_SERIES } from '@/lib/viz'
 
 interface DashboardClientProps {
   initialDeals: Deal[]
@@ -113,7 +114,7 @@ export default function DashboardClient({
   const scoreDistribution = useMemo(() => computeScoreDistribution(filteredDeals), [filteredDeals])
 
   const oppsByDay = useMemo(
-    () => computeOpportunitiesByDay(teamDeals, referenceMonthKey, 100),
+    () => computeOpportunitiesByDay(teamDeals, referenceMonthKey, SHOW_ALL_SERIES),
     [teamDeals, referenceMonthKey],
   )
   const chartMonthLabel = useMemo(() => {

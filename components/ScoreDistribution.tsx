@@ -11,16 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { ScoreDistributionItem } from '@/lib/analytics'
-
-function scoreColor(score: number): string {
-  if (score <= 6)  return '#dc2626'  // vermelho forte
-  if (score === 7) return '#FF5200'  // laranja PSA (mais intenso)
-  if (score === 8) return '#f97316'  // laranja
-  if (score === 9) return '#eab308'  // amarelo
-  if (score === 10) return '#86efac' // verde claro
-  if (score === 11) return '#22c55e' // verde médio
-  return '#15803d'                   // verde escuro
-}
+import { scoreScaleColor } from '@/lib/viz'
 
 interface ScoreDistributionProps {
   data: ScoreDistributionItem[]
@@ -72,9 +63,11 @@ export default function ScoreDistribution({ data }: ScoreDistributionProps) {
               allowDecimals={false}
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,82,0,0.08)' }} />
+            {/* Mesma escala de nota usada em "Volume por Farmer": o leitor
+                aprende um mapeamento só de cor→nota no dashboard inteiro. */}
             <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={60}>
               {data.map((entry) => (
-                <Cell key={`cell-${entry.score}`} fill={scoreColor(entry.score)} />
+                <Cell key={`cell-${entry.score}`} fill={scoreScaleColor(entry.score)} />
               ))}
             </Bar>
           </BarChart>

@@ -4,23 +4,13 @@ import { useState } from 'react'
 import { FarmerStats } from '@/lib/analytics'
 import { Deal } from '@/lib/hubspot'
 import { CRITERIA } from '@/lib/constants'
+import { scoreScaleColor, SCORE_SCALE } from '@/lib/viz'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 interface FarmerRankingProps {
   data: FarmerStats[]
   deals: Deal[]
-}
-
-function getBarColor(avgScore: number): string {
-  const s = Math.floor(avgScore)
-  if (s <= 6)  return '#dc2626'  // vermelho
-  if (s === 7) return '#FF5200'  // laranja PSA
-  if (s === 8) return '#f97316'  // laranja
-  if (s === 9) return '#eab308'  // amarelo
-  if (s === 10) return '#86efac' // verde claro
-  if (s === 11) return '#22c55e' // verde médio
-  return '#15803d'               // verde escuro
 }
 
 function getScoreColor(score: number): string {
@@ -199,7 +189,7 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
         ) : (
           <div className="space-y-2.5">
             {sorted.map((f) => {
-              const color = getBarColor(f.avgScore)
+              const color = scoreScaleColor(f.avgScore)
               const dealsPct = (f.dealCount / maxDeals) * 100
               const companiesPct = (f.companyCount / maxDeals) * 100
               const repeated = f.dealCount - f.companyCount
@@ -227,9 +217,19 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
                   </div>
 
                   {/* Números: empresas / negócios */}
-                  <span className="flex-shrink-0 w-24 text-right text-xs tabular-nums">
+                  <span className="flex-shrink-0 w-20 text-right text-xs tabular-nums">
                     <span className="text-white font-semibold">{f.companyCount}</span>
                     <span className="text-zinc-500"> / {f.dealCount}</span>
+                  </span>
+
+                  {/* Nota média — o número é a mitigação obrigatória da cor de
+                      status (verde↔vermelho colide em deuteranopia). */}
+                  <span
+                    className="flex-shrink-0 w-11 text-right text-sm font-bold tabular-nums"
+                    style={{ color }}
+                    title={`Nota média ${f.avgScore.toFixed(1)} de 12`}
+                  >
+                    {f.avgScore.toFixed(1)}
                   </span>
                 </button>
               )
@@ -238,16 +238,8 @@ export default function FarmerRanking({ data, deals }: FarmerRankingProps) {
         )}
 
         <div className="flex flex-wrap items-center gap-4 mt-5 pt-4 border-t border-zinc-700">
-          <span className="text-zinc-500 text-xs">Cor = nota média:</span>
-          {[
-            { color: '#dc2626', label: '≤6' },
-            { color: '#FF5200', label: '7' },
-            { color: '#f97316', label: '8' },
-            { color: '#eab308', label: '9' },
-            { color: '#86efac', label: '10' },
-            { color: '#22c55e', label: '11' },
-            { color: '#15803d', label: '12' },
-          ].map(({ color, label }) => (
+          <span className="text-zinc-500 text-xs">Nota média:</span>
+          {SCORE_SCALE.map(({ color, label }) => (
             <div key={label} className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm" style={{ background: color }} />
               <span className="text-zinc-400 text-xs">{label}</span>
