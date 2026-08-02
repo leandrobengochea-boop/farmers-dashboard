@@ -157,13 +157,13 @@ const TEAMS_AUG: TeamMap = {
     label: 'Time Leticia',
     farmerIds: ['95810969', '93357687', '85002282', '93238814', '94316537', '94028856', '81033487'],
   },
-  katyeli: {
-    label: 'Time Katy',
-    farmerIds: ['95415669', '85846971', '93599591', '87159365', '89632472'],
-  },
   dani: {
     label: 'Time Dani',
     farmerIds: ['96198838', '95993082', '80688884', '92335488', '95811085', '79760745'],
+  },
+  katyeli: {
+    label: 'Time Katy',
+    farmerIds: ['95415669', '85846971', '93599591', '87159365', '89632472'],
   },
   camila: {
     label: 'Time Cami',
