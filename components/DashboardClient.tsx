@@ -26,6 +26,7 @@ import {
   filterDealsByPeriod,
   filterDealsByTeam,
   periodToMonthKey,
+  periodCoversWholeMonth,
   PERIOD_OPTIONS,
   PeriodKey,
 } from '@/lib/analytics'
@@ -90,7 +91,18 @@ export default function DashboardClient({
     [teamDeals, selectedPeriod, customDateRange],
   )
 
-  const selectedMonthKey = useMemo(() => periodToMonthKey(selectedPeriod), [selectedPeriod])
+  const selectedMonthKey = useMemo(
+    () => periodToMonthKey(selectedPeriod, customDateRange),
+    [selectedPeriod, customDateRange],
+  )
+
+  // Mês que o card de meta representa. Segue o filtro quando o período cabe
+  // num mês só; caso contrário, mês corrente.
+  const referenceMonthKey = useMemo(() => {
+    if (selectedMonthKey) return selectedMonthKey
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  }, [selectedMonthKey])
 
   const foraDoMOA: ForaDoMOAEntry[] = useMemo(
     () => computeForaDoMOA(excludedDeals, selectedTeam, selectedMonthKey),
@@ -100,20 +112,15 @@ export default function DashboardClient({
   const farmerRanking = useMemo(() => computeFarmerRanking(filteredDeals), [filteredDeals])
   const scoreDistribution = useMemo(() => computeScoreDistribution(filteredDeals), [filteredDeals])
 
-  const chartMonthKey = useMemo(() => {
-    if (selectedMonthKey) return selectedMonthKey
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  }, [selectedMonthKey])
   const oppsByDay = useMemo(
-    () => computeOpportunitiesByDay(teamDeals, chartMonthKey, 100),
-    [teamDeals, chartMonthKey],
+    () => computeOpportunitiesByDay(teamDeals, referenceMonthKey, 100),
+    [teamDeals, referenceMonthKey],
   )
   const chartMonthLabel = useMemo(() => {
-    const [y, m] = chartMonthKey.split('-').map(Number)
+    const [y, m] = referenceMonthKey.split('-').map(Number)
     const label = new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long' })
     return label.charAt(0).toUpperCase() + label.slice(1) + ` ${y}`
-  }, [chartMonthKey])
+  }, [referenceMonthKey])
   const summaryStats = useMemo(() => computeSummaryStats(filteredDeals), [filteredDeals])
   const meetingConversion = useMemo(() => computeMeetingConversion(filteredDeals), [filteredDeals])
   const farmerMatrix = useMemo(() => computeFarmerMatrix(filteredDeals), [filteredDeals])
@@ -136,38 +143,20 @@ export default function DashboardClient({
           </div>
         )}
 
-        {/* Validation + last updated */}
+        {/* Freshness — metadado, fica discreto */}
         {validation.totalBruto > 0 && (
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-zinc-800/60 border border-zinc-700 rounded-xl px-6 py-3 text-sm">
-            <span className="text-zinc-400">
-              Bruto: <span className="text-white font-medium">{validation.totalBruto}</span>
-            </span>
-            <span className="text-zinc-600 hidden sm:block">|</span>
-            <span className="text-zinc-400">
-              Excluídos (Fora do MOA):{' '}
-              <span className={validation.excludedFora > 0 ? 'text-yellow-400 font-medium' : 'text-white font-medium'}>
-                {validation.excludedFora}
-              </span>
-            </span>
-            <span className="text-zinc-600 hidden sm:block">|</span>
-            <span className="text-zinc-400">
-              Total líquido:{' '}
-              <span className="text-orange-400 font-semibold">{validation.totalLiquido}</span>
-            </span>
-            <span className="text-zinc-600 hidden sm:block">|</span>
-            <span className="text-zinc-500 text-xs">
-              Atualizado às {format(lastUpdated, "HH:mm 'de' dd/MM", { locale: ptBR })}
-            </span>
-          </div>
+          <p className="text-zinc-600 text-xs text-right -mb-2">
+            Atualizado às {format(lastUpdated, "HH:mm 'de' dd/MM", { locale: ptBR })}
+          </p>
         )}
 
-        {/* MTD progress bar + composition (follows period filter) */}
-        <MTDBar deals={teamDeals} filteredDeals={filteredDeals} selectedTeam={selectedTeam} hasPeriodFilter={selectedPeriod === 'entre' ? !!(customDateRange.start && customDateRange.end) : !!selectedPeriod} />
-
-        {/* Fora do MOA breakdown */}
-        {foraDoMOA.length > 0 && (
-          <ForaDoMOABar foraDoMOA={foraDoMOA} excludedDeals={excludedDeals} selectedTeam={selectedTeam} selectedMonth={selectedMonthKey} />
-        )}
+        {/* Meta mensal + composição — sempre um mês civil inteiro */}
+        <MTDBar
+          deals={teamDeals}
+          selectedTeam={selectedTeam}
+          referenceMonthKey={referenceMonthKey}
+          ignoresPeriodFilter={!periodCoversWholeMonth(selectedPeriod, customDateRange)}
+        />
 
         {/* Filters Bar */}
         <div className="flex flex-wrap items-center gap-3">
@@ -252,6 +241,11 @@ export default function DashboardClient({
         {/* Summary Cards */}
         <SummaryCards stats={summaryStats} deals={filteredDeals} />
 
+        {/* Fora do MOA — lista de exceções do recorte atual */}
+        {foraDoMOA.length > 0 && (
+          <ForaDoMOABar foraDoMOA={foraDoMOA} excludedDeals={excludedDeals} selectedTeam={selectedTeam} selectedMonth={selectedMonthKey} />
+        )}
+
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <FarmerRanking data={farmerRanking} deals={filteredDeals} />
@@ -315,6 +309,22 @@ export default function DashboardClient({
             <FarmerMatrix matrix={farmerMatrix} />
           </div>
         </div>
+
+        {/* Reconciliação — dado de auditoria, não de leitura diária */}
+        {validation.totalBruto > 0 && (
+          <footer className="border-t border-zinc-800 pt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-600">
+            <span>Bruto: <span className="text-zinc-500">{validation.totalBruto}</span></span>
+            <span>·</span>
+            <span>
+              Excluídos (Fora do MOA):{' '}
+              <span className={validation.excludedFora > 0 ? 'text-amber-600/80' : 'text-zinc-500'}>
+                {validation.excludedFora}
+              </span>
+            </span>
+            <span>·</span>
+            <span>Total líquido: <span className="text-zinc-500">{validation.totalLiquido}</span></span>
+          </footer>
+        )}
       </main>
     </div>
   )

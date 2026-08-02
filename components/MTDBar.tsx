@@ -3,10 +3,7 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { uniqueDemandKey, isB2CCloser, isDealWithCreator, HUBSPOT_PORTAL_ID } from '@/lib/constants'
-
-const GOAL_TOTAL = 336
-const GOAL_TEAM  = 112
+import { uniqueDemandKey, isB2CCloser, isDealWithCreator, monthlyGoal, HUBSPOT_PORTAL_ID } from '@/lib/constants'
 
 interface MTDDeal {
   date: string
@@ -24,9 +21,13 @@ interface MTDDeal {
 
 interface MTDBarProps {
   deals: MTDDeal[]
-  filteredDeals: MTDDeal[]
   selectedTeam: string | null
-  hasPeriodFilter: boolean
+  /** Mês civil que este card representa (YYYY-MM). Todo o conteúdo do card
+   *  — barra de meta, dia e composição — fala desse mesmo mês. */
+  referenceMonthKey: string
+  /** True quando o filtro de período da página é mais estreito que o mês,
+   *  então o card mostra um escopo diferente do resto da tela. */
+  ignoresPeriodFilter: boolean
 }
 
 function uniqueCompanies(deals: { companyId: string; id: string; pipeline: string }[]): number {
@@ -85,63 +86,63 @@ function CompRing({ pct, color }: { pct: number; color: string }) {
   )
 }
 
-export default function MTDBar({ deals, filteredDeals, selectedTeam, hasPeriodFilter }: MTDBarProps) {
-  const MONTHLY_GOAL = selectedTeam ? GOAL_TEAM : GOAL_TOTAL
+export default function MTDBar({ deals, selectedTeam, referenceMonthKey, ignoresPeriodFilter }: MTDBarProps) {
   const now = new Date()
-  const monthKey = getCurrentMonthKey()
   const todayKey = getTodayKey()
+  const currentMonthKey = getCurrentMonthKey()
+
+  const monthKey = referenceMonthKey
+  // A meta segue o mês que o card está mostrando, não o mês corrente.
+  const MONTHLY_GOAL = monthlyGoal(monthKey, !!selectedTeam)
+  const isCurrentMonth = monthKey === currentMonthKey
+  const isPastMonth = monthKey < currentMonthKey
   const [year, month] = monthKey.split('-').map(Number)
 
   const totalDays = getDaysInMonth(year, month)
-  const dayOfMonth = now.getDate()
 
-  const dealDaysInMonth = useMemo(() => {
-    const days = new Set<string>()
-    for (const d of deals) {
-      if (!d.date) continue
-      const key = d.date.slice(0, 10)
-      if (key <= todayKey && key.startsWith(monthKey)) days.add(key)
-    }
-    days.add(todayKey)
-    return Array.from(days).sort()
-  }, [deals, todayKey, monthKey])
+  // Último dia do mês de referência que já aconteceu. Para o mês corrente é
+  // hoje; para um mês passado é o último dia do mês; para um futuro, nenhum.
+  const lastElapsedDay = isCurrentMonth ? now.getDate() : isPastMonth ? totalDays : 1
+  const lastDayKey = `${monthKey}-${String(lastElapsedDay).padStart(2, '0')}`
 
-  const [selectedDayKey, setSelectedDayKey] = useState<string>(todayKey)
-  const isToday = selectedDayKey === todayKey
+  // O dia escolhido é derivado: se o usuário navegou para um dia que não
+  // pertence ao mês de referência, volta sozinho para o padrão.
+  const [pickedDayKey, setPickedDayKey] = useState<string | null>(null)
+  const selectedDayKey = pickedDayKey?.startsWith(monthKey) ? pickedDayKey : lastDayKey
+  const isToday = isCurrentMonth && selectedDayKey === todayKey
 
-  function prevDay() {
+  function shiftDay(delta: number) {
     const current = new Date(`${selectedDayKey}T12:00:00Z`)
-    current.setUTCDate(current.getUTCDate() - 1)
-    const prev = current.toISOString().slice(0, 10)
-    if (prev >= `${monthKey}-01`) setSelectedDayKey(prev)
-  }
-
-  function nextDay() {
-    if (isToday) return
-    const current = new Date(`${selectedDayKey}T12:00:00Z`)
-    current.setUTCDate(current.getUTCDate() + 1)
+    current.setUTCDate(current.getUTCDate() + delta)
     const next = current.toISOString().slice(0, 10)
-    if (next <= todayKey) setSelectedDayKey(next)
+    if (next >= `${monthKey}-01` && next <= lastDayKey) setPickedDayKey(next)
   }
 
   const canGoPrev = selectedDayKey > `${monthKey}-01`
-  const canGoNext = !isToday
+  const canGoNext = selectedDayKey < lastDayKey
 
-  const monthDeals = deals.filter((d) => {
-    if (!d.date) return false
-    const key = `${new Date(d.date).getFullYear()}-${String(new Date(d.date).getMonth() + 1).padStart(2, '0')}`
-    return key === monthKey
-  })
+  const monthDeals = useMemo(
+    () =>
+      deals.filter((d) => {
+        if (!d.date) return false
+        const date = new Date(d.date)
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        return key === monthKey
+      }),
+    [deals, monthKey],
+  )
 
-  const selectedDayDeals = deals.filter((d) => {
-    if (!d.date) return false
-    return d.date.slice(0, 10) === selectedDayKey
-  })
+  const selectedDayDeals = monthDeals.filter((d) => d.date?.slice(0, 10) === selectedDayKey)
 
   const count = uniqueCompanies(monthDeals)
   const selectedDayCount = uniqueCompanies(selectedDayDeals)
+
   const totalBusinessDays = businessDaysInRange(year, month, 1, totalDays)
-  const businessDaysElapsed = businessDaysInRange(year, month, 1, dayOfMonth)
+  const businessDaysElapsed = isPastMonth
+    ? totalBusinessDays
+    : isCurrentMonth
+      ? businessDaysInRange(year, month, 1, now.getDate())
+      : 0
   const paceTarget = totalBusinessDays > 0
     ? Math.round((businessDaysElapsed / totalBusinessDays) * MONTHLY_GOAL)
     : 0
@@ -152,13 +153,14 @@ export default function MTDBar({ deals, filteredDeals, selectedTeam, hasPeriodFi
   const barColor = diff >= 0 ? '#22c55e' : diff >= -10 ? '#f97316' : '#dc2626'
   const diffColor = diff >= 0 ? '#22c55e' : '#ef4444'
   const diffLabel = diff >= 0 ? `+${diff} ↑` : `${diff} ↓`
+  const paceLabel = isCurrentMonth ? 'Meta do dia' : 'Meta do mês'
 
-  const monthName = now.toLocaleDateString('pt-BR', { month: 'long' })
+  const monthName = new Date(year, month - 1, 1).toLocaleDateString('pt-BR', { month: 'long' })
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ` ${year}`
 
-  // Composição: usa filteredDeals se houver filtro de período, senão monthDeals
-  const compDeals = hasPeriodFilter ? filteredDeals : monthDeals
-  const totalCompanies = new Set(compDeals.map((d) => uniqueDemandKey(d))).size
+  // A composição fala do mesmo mês da barra — o card inteiro é uma janela só.
+  const compDeals = monthDeals
+  const totalCompanies = count
 
   const b2cKeys = new Set<string>()
   const crmKeys = new Set<string>()
@@ -194,10 +196,12 @@ export default function MTDBar({ deals, filteredDeals, selectedTeam, hasPeriodFi
 
   const nowMs = Date.now()
   const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000
-  const criticalDeals = stagnantDeals.filter((d) => {
-    if (!d.date) return false
-    return nowMs - new Date(d.date).getTime() > THREE_DAYS_MS
-  })
+  // "Sem repasse há >3 dias" só é acionável no mês corrente — num mês fechado
+  // todo negócio é antigo, e marcar tudo como crítico não diz nada.
+  const showCritical = isCurrentMonth
+  const isCriticalDeal = (d: MTDDeal) =>
+    showCritical && !!d.date && nowMs - new Date(d.date).getTime() > THREE_DAYS_MS
+  const criticalDeals = stagnantDeals.filter(isCriticalDeal)
   const criticalCount = criticalDeals.length
 
   // Ranking de farmers com mais negócios estagnados
@@ -222,7 +226,7 @@ export default function MTDBar({ deals, filteredDeals, selectedTeam, hasPeriodFi
         >
           <div className="flex items-center justify-between w-full gap-1 mb-1">
             <button
-              onClick={prevDay}
+              onClick={() => shiftDay(-1)}
               disabled={!canGoPrev}
               className="flex items-center justify-center rounded w-5 h-5 transition"
               style={{ color: canGoPrev ? '#94a3b8' : 'rgba(113,113,122,0.25)', background: 'transparent', border: 'none', cursor: canGoPrev ? 'pointer' : 'default', fontSize: 16, lineHeight: 1, padding: 0 }}
@@ -247,7 +251,7 @@ export default function MTDBar({ deals, filteredDeals, selectedTeam, hasPeriodFi
             </div>
 
             <button
-              onClick={nextDay}
+              onClick={() => shiftDay(1)}
               disabled={!canGoNext}
               className="flex items-center justify-center rounded w-5 h-5 transition"
               style={{ color: canGoNext ? '#94a3b8' : 'rgba(113,113,122,0.25)', background: 'transparent', border: 'none', cursor: canGoNext ? 'pointer' : 'default', fontSize: 16, lineHeight: 1, padding: 0 }}
@@ -274,15 +278,23 @@ export default function MTDBar({ deals, filteredDeals, selectedTeam, hasPeriodFi
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
-              <span className="text-zinc-400 text-sm">{monthLabel}</span>
+              <span className="text-zinc-300 text-sm font-medium">{monthLabel}</span>
               <span className="text-zinc-600 hidden sm:inline">·</span>
               <span className="text-zinc-300 text-sm font-medium">{count}</span>
               <span className="text-zinc-500 text-sm">/ {MONTHLY_GOAL}</span>
               <span className="text-zinc-600 text-xs hidden sm:inline">empresas únicas</span>
+              {ignoresPeriodFilter && (
+                <span
+                  className="text-[10px] text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5 hidden md:inline"
+                  title="Este card sempre mostra o mês inteiro. O filtro de período vale para o resto da página."
+                >
+                  mês inteiro · ignora o filtro
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-3 text-xs">
               <span className="text-zinc-500 hidden sm:inline">
-                Meta do dia <span className="text-amber-400 font-medium">{paceTarget}</span>
+                {paceLabel} <span className="text-amber-400 font-medium">{paceTarget}</span>
                 <span className="font-semibold ml-1" style={{ color: diffColor }}>{diffLabel}</span>
               </span>
             </div>
@@ -302,7 +314,7 @@ export default function MTDBar({ deals, filteredDeals, selectedTeam, hasPeriodFi
 
           <div className="flex justify-between mt-1 text-[10px] text-zinc-600">
             <span>0</span>
-            <span className="text-amber-600/60">meta hoje</span>
+            <span className="text-amber-600/60">{isCurrentMonth ? 'meta hoje' : 'meta do mês'}</span>
             <span>{MONTHLY_GOAL}</span>
           </div>
         </div>
@@ -456,13 +468,13 @@ export default function MTDBar({ deals, filteredDeals, selectedTeam, hasPeriodFi
                   <ul className="divide-y divide-zinc-700/50">
                     {[...stagnantDeals]
                       .sort((a, b) => {
-                        const aCrit = a.date ? nowMs - new Date(a.date).getTime() > THREE_DAYS_MS : false
-                        const bCrit = b.date ? nowMs - new Date(b.date).getTime() > THREE_DAYS_MS : false
+                        const aCrit = isCriticalDeal(a)
+                        const bCrit = isCriticalDeal(b)
                         if (aCrit !== bCrit) return aCrit ? -1 : 1
                         return a.name.localeCompare(b.name)
                       })
                       .map((d) => {
-                        const isCritical = d.date ? nowMs - new Date(d.date).getTime() > THREE_DAYS_MS : false
+                        const isCritical = isCriticalDeal(d)
                         const daysStagnant = d.date ? Math.floor((nowMs - new Date(d.date).getTime()) / (24 * 60 * 60 * 1000)) : 0
                         return (
                           <li key={d.id} className={`flex items-center justify-between px-5 py-3 hover:bg-zinc-700/30 transition ${isCritical ? 'bg-red-500/5' : ''}`}>

@@ -1,5 +1,5 @@
 export const FARMERS: Record<string, string> = {
-  '87159365': 'João Lucas',
+  '87159365': 'João Backmann',
   '88200239': 'Luiza',
   '79760745': 'Thiago',
   '86256444': 'Ana Carolina',
@@ -8,7 +8,7 @@ export const FARMERS: Record<string, string> = {
   '85002282': 'Sotoriva',
   '93238814': 'Sotoriva',   // conta nova — alias para 85002282
   '85846972': 'Daniela',
-  '85846971': 'Lenz',
+  '85846971': 'Francielle Teles',
   '81033487': 'Gustavo',
   '88200222': 'Kennedy',
   '87371619': 'Maryna',
@@ -28,7 +28,13 @@ export const FARMERS: Record<string, string> = {
   '95283516': 'Julia',
   '95415669': 'Gisele Santos',
   '95810969': 'Rhayssa',
-  '95993082': 'Hans Kelton',
+  '95993082': 'Hans Lopes',
+  '93357687': 'Nathalia',
+  '95811085': 'Wagner',
+  '96198720': 'Alexcia',
+  '84249251': 'Tércio',
+  '80688884': 'Rafael Brack',
+  '96198838': 'Leonardo Gomes',
 }
 
 // Maps old/extra farmer IDs to their canonical ID so deals are merged in analytics
@@ -59,6 +65,13 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; until
   '86256444': { untilDate: '2026-07-01' }, // Ana Carolina: fora da formação nova (jul/26)
   '89632494': { untilDate: '2026-07-01' }, // Willker: fora da formação nova (jul/26)
   '82410958': { untilDate: '2026-07-01' }, // Maria Eduarda (conta antiga arquivada)
+  '88200239': { untilDate: '2026-08-01' }, // Luiza: fora da formação ago/26
+  '84015882': { untilDate: '2026-08-01' }, // Amanda: fora da formação ago/26
+  '94316538': { untilDate: '2026-08-01' }, // Gabriel Alves: fora da formação ago/26
+  '94399135': { untilDate: '2026-08-01' }, // Gabriela Charlier: fora da formação ago/26
+  '95283516': { untilDate: '2026-08-01' }, // Julia: fora da formação ago/26
+  '85846972': { untilDate: '2026-08-01' }, // Daniela: fora da formação ago/26
+  '92333469': { untilDate: '2026-08-01' }, // Rafael: fora da formação ago/26 (era seller)
 }
 
 // ── Filtro de origem do lead (vale apenas de ORIGIN_CUTOVER em diante) ──
@@ -106,12 +119,8 @@ export function uniqueDemandKey(deal: { id: string; pipeline: string; companyId:
 
 type TeamMap = Record<string, { label: string; farmerIds: string[] }>
 
-// Data de virada das formações. Negócios com data < TEAM_CUTOVER usam a
-// formação antiga (TEAMS_BEFORE); a partir dela, a nova (TEAMS_FROM).
-export const TEAM_CUTOVER = '2026-07-01'
-
-// Formação até 30/06/2026 (preserva a leitura histórica por time)
-export const TEAMS_BEFORE: TeamMap = {
+// Formação até 30/06/2026
+const TEAMS_BEFORE: TeamMap = {
   leticia: {
     label: 'Time Leticia',
     farmerIds: ['89632494', '87159365', '88200239', '86256444', '84015882', '94028856', '94316538'],
@@ -126,34 +135,71 @@ export const TEAMS_BEFORE: TeamMap = {
   },
 }
 
-// Formação a partir de 01/07/2026 (imagem das squads novas)
-export const TEAMS_FROM: TeamMap = {
+// Formação julho/2026
+const TEAMS_JULY: TeamMap = {
   leticia: {
     label: 'Time Leticia',
-    // Bruna Machado, Gustavo, Gabriel Alves, Luiza, Amanda, Felippe
     farmerIds: ['85002012', '81033487', '94316538', '88200239', '84015882', '94028856', '94891358', '95415669', '95810969', '95993082'],
   },
   dani: {
     label: 'Time Dani',
-    // Vitória, Rafael, Thaina, Lenz, Gabriela Charlier, Maria Julia, Julia, João Lucas
     farmerIds: ['84497577', '92333469', '92335488', '85846971', '94399135', '94316537', '95283516', '87159365'],
   },
   katyeli: {
     label: 'Time Katy',
-    // Sotoriva, Maria Eduarda Porto, Thiago, Daniela, Bruna Saraiva, Jhuly
     farmerIds: ['85002282', '93238814', '89632472', '79760745', '85846972', '93599591', '80228367'],
   },
 }
 
-// Fonte de rótulos / botões de time (3 times, chaves estáveis)
-export const TEAMS: TeamMap = TEAMS_FROM
+// Formação a partir de agosto/2026
+const TEAMS_AUG: TeamMap = {
+  leticia: {
+    label: 'Time Leticia',
+    farmerIds: ['95810969', '93357687', '85002282', '93238814', '94316537', '94028856', '81033487'],
+  },
+  katyeli: {
+    label: 'Time Katy',
+    farmerIds: ['95415669', '85846971', '93599591', '87159365', '89632472'],
+  },
+  dani: {
+    label: 'Time Dani',
+    farmerIds: ['96198838', '95993082', '80688884', '92335488', '95811085', '79760745'],
+  },
+  camila: {
+    label: 'Time Camila',
+    farmerIds: ['96198720', '94891358', '80228367', '84497577', '85002012', '84249251'],
+  },
+}
 
-// Verifica se um negócio (farmer + data) pertence ao time, respeitando a
-// virada de formação: < TEAM_CUTOVER usa a formação antiga, >= usa a nova.
+const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
+  { from: new Date('2026-08-01').getTime(), teams: TEAMS_AUG },
+  { from: new Date('2026-07-01').getTime(), teams: TEAMS_JULY },
+]
+
+export const TEAMS: TeamMap = TEAMS_AUG
+
+// Metas mensais de empresas únicas, por mês de vigência (mais recente primeiro).
+// Andam junto com a formação: jun e jul/26 tinham 3 times, ago/26 tem 4.
+const GOAL_PERIODS: { from: string; total: number; perTeam: number }[] = [
+  { from: '2026-08', total: 480, perTeam: 120 }, // 4 times
+  { from: '2026-07', total: 336, perTeam: 112 }, // 3 times
+  { from: '2026-06', total: 300, perTeam: 100 }, // 3 times
+]
+// Meses anteriores a jun/26 herdam a meta de junho.
+const GOAL_BEFORE = { total: 300, perTeam: 100 }
+
+/** Meta do mês (YYYY-MM). `perTeam` quando há um time selecionado. */
+export function monthlyGoal(monthKey: string, perTeam: boolean): number {
+  const period = GOAL_PERIODS.find((p) => monthKey >= p.from) ?? GOAL_BEFORE
+  return perTeam ? period.perTeam : period.total
+}
+
 export function dealInTeam(farmerId: string, dateIso: string, teamId: string): boolean {
-  const cutover = new Date(TEAM_CUTOVER).getTime()
   const ts = dateIso ? new Date(dateIso).getTime() : 0
-  const map = ts >= cutover ? TEAMS_FROM : TEAMS_BEFORE
+  let map: TeamMap = TEAMS_BEFORE
+  for (const period of TEAM_PERIODS) {
+    if (ts >= period.from) { map = period.teams; break }
+  }
   const team = map[teamId]
   return team ? team.farmerIds.includes(farmerId) : false
 }

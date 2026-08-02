@@ -130,7 +130,7 @@ export default function ForaDoMOABar({ foraDoMOA, excludedDeals, selectedTeam, s
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 bg-amber-950/30 border border-amber-800/40 rounded-xl px-5 py-3">
+      <div className="flex flex-wrap items-center gap-2 bg-zinc-800/40 border border-zinc-700 rounded-xl px-5 py-2.5">
         <div className="flex items-center gap-1.5 mr-1">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -155,7 +155,7 @@ export default function ForaDoMOABar({ foraDoMOA, excludedDeals, selectedTeam, s
             </span>
           </button>
         ))}
-        <span className="text-amber-800/60 text-xs ml-1">clique para ver os negócios</span>
+        <span className="text-zinc-600 text-xs ml-1">clique para ver os negócios</span>
       </div>
 
       {openFarmer && (

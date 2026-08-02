@@ -269,12 +269,40 @@ export function filterDealsByPeriod(deals: Deal[], period: PeriodKey, customRang
   })
 }
 
-export function periodToMonthKey(period: PeriodKey): string | null {
+// Mês de referência de um período. Retorna null quando o período não cabe
+// dentro de um único mês civil (aí quem consome cai no mês corrente).
+export function periodToMonthKey(
+  period: PeriodKey,
+  customRange?: { start: string; end: string },
+): string | null {
   if (!period) return null
+  if (period === 'entre') {
+    if (!customRange?.start || !customRange?.end) return null
+    const startMonth = customRange.start.slice(0, 7)
+    const endMonth = customRange.end.slice(0, 7)
+    return startMonth === endMonth ? startMonth : null
+  }
   const range = getPeriodRange(period)
   if (!range) return null
   const d = period === 'mes-passado' ? range.start : new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+// Períodos que cobrem um mês civil inteiro — nesses casos o card de meta
+// mensal e o resto da página falam da mesma janela de tempo.
+export function periodCoversWholeMonth(
+  period: PeriodKey,
+  customRange?: { start: string; end: string },
+): boolean {
+  if (period === '' || period === 'este-mes' || period === 'mes-passado') return true
+  if (period === 'entre' && customRange?.start && customRange?.end) {
+    const [startYear, startMonth, startDay] = customRange.start.split('-').map(Number)
+    const [endYear, endMonth, endDay] = customRange.end.split('-').map(Number)
+    if (startYear !== endYear || startMonth !== endMonth) return false
+    const lastDay = new Date(endYear, endMonth, 0).getDate()
+    return startDay === 1 && endDay === lastDay
+  }
+  return false
 }
 
 export function getAvailableMonths(deals: Deal[]): string[] {
