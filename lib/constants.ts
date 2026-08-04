@@ -29,7 +29,7 @@ export const FARMERS: Record<string, string> = {
   '95415669': 'Gisele Santos',
   '95810969': 'Rhayssa',
   '95993082': 'Hans Lopes',
-  '80454586': 'Nathalia',
+  '96589066': 'Nathalia',
   '95811085': 'Wagner',
   '96198720': 'Alexcia',
   '84249251': 'Tércio',
@@ -155,7 +155,7 @@ const TEAMS_JULY: TeamMap = {
 const TEAMS_AUG: TeamMap = {
   leticia: {
     label: 'Time Leticia',
-    farmerIds: ['95810969', '80454586', '85002282', '93238814', '94316537', '94028856', '81033487'],
+    farmerIds: ['95810969', '96589066', '85002282', '93238814', '94316537', '94028856', '81033487'],
   },
   dani: {
     label: 'Time Dani',
