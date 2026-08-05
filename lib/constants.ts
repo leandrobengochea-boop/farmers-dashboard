@@ -37,6 +37,17 @@ export const FARMERS: Record<string, string> = {
   '96198838': 'Leonardo Gomes',
 }
 
+// Farmers que criam negócios para si mesmos — excluídos da contagem de "parados"
+export const STALE_EXCLUDED_FARMERS = new Set([
+  '95811085', // Wagner
+  '79760745', // Thiago
+  '81033487', // Gustavo
+  '94028856', // Felippe
+  '85002012', // Bruna Machado
+  '87159365', // João Backmann
+  '82410958', // Maria Eduarda
+])
+
 // Maps old/extra farmer IDs to their canonical ID so deals are merged in analytics
 export const FARMER_ALIASES: Record<string, string> = {
   '93238814': '85002282',  // Sotoriva nova conta → ID canônico

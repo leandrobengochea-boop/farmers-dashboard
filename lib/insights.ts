@@ -1,5 +1,5 @@
 import { Deal } from './hubspot'
-import { CRITERIA, MAX_SCORE } from './constants'
+import { CRITERIA, MAX_SCORE, STALE_EXCLUDED_FARMERS } from './constants'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -64,6 +64,7 @@ function isFullyQualified(deal: Deal): boolean {
 
 export function computeStaleDeals(deals: Deal[], thresholdDays = 15): StaleDeal[] {
   return deals
+    .filter((d) => !STALE_EXCLUDED_FARMERS.has(d.farmerId))
     .map((d) => ({
       id: d.id,
       name: d.name,
@@ -100,7 +101,7 @@ export function computeFarmerMatrix(deals: Deal[]): FarmerMatrixRow[] {
       criteriaAbsenceRate[c.key] = absent / farmerDeals.length
     }
 
-    const staleDealCount = farmerDeals.filter(
+    const staleDealCount = STALE_EXCLUDED_FARMERS.has(farmerId) ? 0 : farmerDeals.filter(
       (d) => d.lastModifiedDate && daysSince(d.lastModifiedDate) >= 15
     ).length
 
