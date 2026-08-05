@@ -46,6 +46,7 @@ export const STALE_EXCLUDED_FARMERS = new Set([
   '85002012', // Bruna Machado
   '87159365', // João Backmann
   '82410958', // Maria Eduarda
+  '84249251', // Tércio
 ])
 
 // Maps old/extra farmer IDs to their canonical ID so deals are merged in analytics
