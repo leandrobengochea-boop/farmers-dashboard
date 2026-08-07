@@ -151,8 +151,11 @@ function PctCell({ pct, of, total }: { pct: number; of: number; total: number })
   )
 }
 
+type ModalFilter = 'all' | 'scheduled' | 'completed'
+
 export default function FarmerTable({ ranking, meetings, matrix, deals }: FarmerTableProps) {
   const [selectedFarmer, setSelectedFarmer] = useState<string | null>(null)
+  const [modalFilter, setModalFilter] = useState<ModalFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('dealCount')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
@@ -221,8 +224,20 @@ export default function FarmerTable({ ranking, meetings, matrix, deals }: Farmer
     )
   }
 
-  const selectedDeals = selectedFarmer ? deals.filter((d) => d.farmerId === selectedFarmer) : []
+  const selectedDeals = selectedFarmer
+    ? deals.filter((d) => {
+        if (d.farmerId !== selectedFarmer) return false
+        if (modalFilter === 'scheduled') return d.meetingScheduled
+        if (modalFilter === 'completed') return d.meetingCompleted
+        return true
+      })
+    : []
   const selectedName = rows.find((r) => r.farmerId === selectedFarmer)?.farmerName ?? ''
+  const modalTitle = modalFilter === 'scheduled'
+    ? `${selectedName} — Reuniões agendadas`
+    : modalFilter === 'completed'
+      ? `${selectedName} — Reuniões realizadas`
+      : selectedName
 
   return (
     <>
@@ -259,7 +274,7 @@ export default function FarmerTable({ ranking, meetings, matrix, deals }: Farmer
                   return (
                     <tr
                       key={r.farmerId}
-                      onClick={() => setSelectedFarmer(r.farmerId)}
+                      onClick={() => { setModalFilter('all'); setSelectedFarmer(r.farmerId) }}
                       className="border-b border-zinc-700/40 hover:bg-zinc-700/30 transition cursor-pointer"
                     >
                       <td className="py-2.5 px-3 text-zinc-200 whitespace-nowrap max-w-[10rem] truncate" title={r.farmerName}>
@@ -288,10 +303,16 @@ export default function FarmerTable({ ranking, meetings, matrix, deals }: Farmer
                       <td className="py-2.5 px-3 text-right font-bold tabular-nums" style={{ color }}>
                         {r.avgScore.toFixed(1)}
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td
+                        className="py-2.5 px-3 cursor-pointer hover:bg-zinc-600/30 rounded transition"
+                        onClick={(e) => { e.stopPropagation(); setModalFilter('scheduled'); setSelectedFarmer(r.farmerId) }}
+                      >
                         <PctCell pct={r.scheduledPct} of={r.scheduled} total={r.companyCount} />
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td
+                        className="py-2.5 px-3 cursor-pointer hover:bg-zinc-600/30 rounded transition"
+                        onClick={(e) => { e.stopPropagation(); setModalFilter('completed'); setSelectedFarmer(r.farmerId) }}
+                      >
                         <PctCell pct={r.completedPct} of={r.completed} total={r.companyCount} />
                       </td>
                       <td className="py-2.5 px-3 text-right tabular-nums">
@@ -322,7 +343,7 @@ export default function FarmerTable({ ranking, meetings, matrix, deals }: Farmer
 
       {selectedFarmer && (
         <FarmerModal
-          farmerName={selectedName}
+          farmerName={modalTitle}
           deals={selectedDeals}
           onClose={() => setSelectedFarmer(null)}
         />
