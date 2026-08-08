@@ -15,6 +15,7 @@ export interface Deal {
   hubspotUrl: string
   pipeline: string
   closedLostReason: string
+  motivoSinalizacaoPerda: string
   createDate: string     // createdate
   lastModifiedDate: string // hs_lastmodifieddate
   dealStage: string      // dealstage
@@ -105,10 +106,15 @@ function matchCriteria(criteriosAtendidos: string | null | undefined): string[] 
   return matched
 }
 
-function isForaDoMOA(closedLostReason: string | null | undefined): boolean {
-  if (!closedLostReason) return false
-  const normalized = normalizeCriterionKey(closedLostReason)
+function fieldContainsForaMOA(value: string | null | undefined): boolean {
+  if (!value) return false
+  const normalized = normalizeCriterionKey(value)
   return normalized.includes('fora') && normalized.includes('moa')
+}
+
+function isForaDoMOA(deal: { closedLostReason: string; motivoSinalizacaoPerda: string }): boolean {
+  return fieldContainsForaMOA(deal.closedLostReason) ||
+    fieldContainsForaMOA(deal.motivoSinalizacaoPerda)
 }
 
 async function fetchOwnerMap(pat: string): Promise<Record<string, string>> {
@@ -263,6 +269,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         'pipedrive___data_de_qualificacao',
         'pipeline',
         'closed_lost_reason',
+        'motivo_de_sinalizacao_de_perda',
         'createdate',
         'hs_lastmodifieddate',
         'dealstage',
@@ -331,6 +338,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         hubspotUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/record/0-3/${deal.id}`,
         pipeline: props.pipeline ?? '',
         closedLostReason: props.closed_lost_reason ?? '',
+        motivoSinalizacaoPerda: props.motivo_de_sinalizacao_de_perda ?? '',
         createDate: props.createdate ? new Date(props.createdate).toISOString() : '',
         lastModifiedDate: props.hs_lastmodifieddate ? new Date(props.hs_lastmodifieddate).toISOString() : '',
         dealStage: props.dealstage ?? '',
@@ -361,7 +369,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         inputs: overrideIds.map((id) => ({ id })),
         properties: [
           'dealname', 'sdrfarmer_responsavel', 'pontuacao_leadscore', 'criterios_atendidos',
-          'pipedrive___data_de_qualificacao', 'pipeline', 'closed_lost_reason', 'createdate',
+          'pipedrive___data_de_qualificacao', 'pipeline', 'closed_lost_reason', 'motivo_de_sinalizacao_de_perda', 'createdate',
           'hs_lastmodifieddate', 'dealstage', 'hubspot_owner_id', 'origem_do_lead', 'origem_da_qualificacao',
         ],
       }),
@@ -394,6 +402,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
           hubspotUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/record/0-3/${deal.id}`,
           pipeline: props.pipeline ?? '',
           closedLostReason: props.closed_lost_reason ?? '',
+          motivoSinalizacaoPerda: props.motivo_de_sinalizacao_de_perda ?? '',
           createDate: props.createdate ? new Date(props.createdate).toISOString() : '',
           lastModifiedDate: props.hs_lastmodifieddate ? new Date(props.hs_lastmodifieddate).toISOString() : '',
           dealStage: props.dealstage ?? '',
@@ -456,9 +465,9 @@ export async function fetchAllDeals(): Promise<FetchResult> {
   }
 
   const totalBruto = rawDeals.length
-  const excluded = rawDeals.filter((d) => isForaDoMOA(d.closedLostReason))
+  const excluded = rawDeals.filter((d) => isForaDoMOA(d))
   const excludedFora = excluded.length
-  const deals = rawDeals.filter((d) => !isForaDoMOA(d.closedLostReason))
+  const deals = rawDeals.filter((d) => !isForaDoMOA(d))
 
   const excludedDeals: ExcludedDeal[] = excluded.map((d) => ({
     id: d.id,
