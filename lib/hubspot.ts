@@ -56,6 +56,22 @@ export interface FetchResult {
   excludedDeals: ExcludedDeal[]
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+async function fetchWithRetry(url: string, init: RequestInit, retries = 4): Promise<Response> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const resp = await fetch(url, init)
+    if (resp.status === 429) {
+      const retryAfter = resp.headers.get('retry-after')
+      const waitMs = retryAfter ? Math.max(parseInt(retryAfter, 10) * 1000, 200) : 200 * Math.pow(2, attempt)
+      await sleep(waitMs)
+      continue
+    }
+    return resp
+  }
+  return fetch(url, init)
+}
+
 function normalizeCriterionKey(value: string): string {
   return value
     .toLowerCase()
@@ -118,7 +134,7 @@ function isForaDoMOA(deal: { closedLostReason: string; motivoSinalizacaoPerda: s
 }
 
 async function fetchOwnerMap(pat: string): Promise<Record<string, string>> {
-  const resp = await fetch('https://api.hubapi.com/crm/v3/owners?limit=200', {
+  const resp = await fetchWithRetry('https://api.hubapi.com/crm/v3/owners?limit=200', {
     headers: { Authorization: `Bearer ${pat}` },
     cache: 'no-store',
   })
@@ -148,8 +164,9 @@ async function fetchMeetingStatusByDeal(pat: string, dealIds: string[]): Promise
   for (let i = 0; i < dealIds.length; i += CHUNK) {
     const chunk = dealIds.slice(i, i + CHUNK)
 
+    if (i > 0) await sleep(150)
     // Step 1: get meeting IDs associated with each deal
-    const assocResp = await fetch('https://api.hubapi.com/crm/v4/associations/deals/meetings/batch/read', {
+    const assocResp = await fetchWithRetry('https://api.hubapi.com/crm/v4/associations/deals/meetings/batch/read', {
       method: 'POST',
       headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ inputs: chunk.map((id) => ({ id })) }),
@@ -173,7 +190,7 @@ async function fetchMeetingStatusByDeal(pat: string, dealIds: string[]): Promise
     if (meetingIds.length === 0) continue
 
     // Step 2: batch read meeting outcomes → marca realizadas
-    const meetResp = await fetch('https://api.hubapi.com/crm/v3/objects/meetings/batch/read', {
+    const meetResp = await fetchWithRetry('https://api.hubapi.com/crm/v3/objects/meetings/batch/read', {
       method: 'POST',
       headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -206,7 +223,8 @@ async function fetchCompanyIdByDeal(pat: string, dealIds: string[]): Promise<Map
   for (let i = 0; i < dealIds.length; i += CHUNK) {
     const chunk = dealIds.slice(i, i + CHUNK)
 
-    const resp = await fetch('https://api.hubapi.com/crm/v4/associations/deals/companies/batch/read', {
+    if (i > 0) await sleep(150)
+    const resp = await fetchWithRetry('https://api.hubapi.com/crm/v4/associations/deals/companies/batch/read', {
       method: 'POST',
       headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ inputs: chunk.map((id) => ({ id })) }),
@@ -285,7 +303,8 @@ export async function fetchAllDeals(): Promise<FetchResult> {
   }
 
   while (true) {
-    const resp = await fetch('https://api.hubapi.com/crm/v3/objects/deals/search', {
+    if (after) await sleep(150)
+    const resp = await fetchWithRetry('https://api.hubapi.com/crm/v3/objects/deals/search', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${pat}`,
@@ -362,7 +381,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
   const fetchedIds = new Set(rawDeals.map((d) => d.id))
   const overrideIds = Object.keys(DEAL_FARMER_OVERRIDES).filter((id) => !fetchedIds.has(id))
   if (overrideIds.length > 0) {
-    const overrideResp = await fetch('https://api.hubapi.com/crm/v3/objects/deals/batch/read', {
+    const overrideResp = await fetchWithRetry('https://api.hubapi.com/crm/v3/objects/deals/batch/read', {
       method: 'POST',
       headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
