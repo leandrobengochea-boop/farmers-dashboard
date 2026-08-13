@@ -91,7 +91,7 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; until
 // origem_do_lead na allowlist OU origem_da_qualificacao = Farmer.
 // Histórico (antes do cutover) mantém todos os leads.
 export const ORIGIN_CUTOVER = '2026-07-01'
-export const ALLOWED_ORIGEM_DO_LEAD = ['Ação de CRM', 'Carteira do Farmer']
+export const ALLOWED_ORIGEM_DO_LEAD = ['Ação de CRM', 'Ação de CRM (Carteira)', 'Carteira do Farmer', 'CARTEIRA (Executivos em foco)']
 export const ALLOWED_ORIGEM_QUALIFICACAO = ['Farmer']
 
 export const HUBSPOT_PORTAL_ID = '49656171'
