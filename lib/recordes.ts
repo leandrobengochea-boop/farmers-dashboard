@@ -57,6 +57,13 @@ const HALL_FARMERS: Record<string, { name: string; initials: string }> = {
   '96198720': { name: 'Alecxia', initials: 'AX' },
 }
 
+// Mês a partir do qual o farmer passou a exercer a função (inclusive)
+const FARMER_START: Record<string, string> = {
+  '84497577': '2026-03', // Vitória: farmer a partir de março
+  '81033487': '2026-04', // Gustavo Pacheco: farmer a partir de abril
+  '84249251': '2026-07', // Tércio: farmer a partir de julho
+}
+
 const ALIAS_MAP: Record<string, string> = { '93238814': '85002282' }
 const CANONICAL_IDS = Object.keys(HALL_FARMERS)
 const ALL_SEARCH_IDS = [...CANONICAL_IDS, ...Object.keys(ALIAS_MAP)]
@@ -320,6 +327,8 @@ export async function fetchRecordesData(forceRefresh = false): Promise<RecordesD
       for (const [fid, metrics] of data) {
         const info = HALL_FARMERS[fid]
         if (!info) continue
+        const startMonth = FARMER_START[fid]
+        if (startMonth && month < startMonth) continue
 
         for (const def of METRIC_DEFS) {
           const val = metrics[def.key]
