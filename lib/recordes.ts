@@ -61,7 +61,7 @@ const HALL_FARMERS: Record<string, { name: string; initials: string }> = {
 const FARMER_START: Record<string, string> = {
   '84497577': '2026-03', // Vitória: farmer a partir de março
   '81033487': '2026-04', // Gustavo Pacheco: farmer a partir de abril
-  '84249251': '2026-07', // Tércio: farmer a partir de julho
+  '84249251': '2026-08', // Tércio: farmer a partir de agosto
 }
 
 const ALIAS_MAP: Record<string, string> = { '93238814': '85002282' }
