@@ -35,6 +35,8 @@ export const FARMERS: Record<string, string> = {
   '84249251': 'Tércio',
   '80688884': 'Rafael Brack',
   '96198838': 'Leonardo Gomes',
+  '97204561': 'Juliano',
+  '97204635': 'Samuel',
 }
 
 // Farmers que criam negócios para si mesmos — excluídos da contagem de "parados"
@@ -84,6 +86,7 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; until
   '95283516': { untilDate: '2026-08-01' }, // Julia: fora da formação ago/26
   '85846972': { untilDate: '2026-08-01' }, // Daniela: fora da formação ago/26
   '92333469': { untilDate: '2026-08-01' }, // Rafael: fora da formação ago/26 (era seller)
+  '96198838': { untilDate: '2026-08-18' }, // Leonardo Gomes: saiu da formação
 }
 
 // ── Filtro de origem do lead (vale apenas de ORIGIN_CUTOVER em diante) ──
@@ -171,7 +174,7 @@ const TEAMS_AUG: TeamMap = {
   },
   dani: {
     label: 'Time Dani',
-    farmerIds: ['94891358', '95993082', '80688884', '92335488', '95811085', '79760745'],
+    farmerIds: ['94891358', '95993082', '80688884', '92335488', '95811085', '79760745', '97204561'],
   },
   katyeli: {
     label: 'Time Katy',
@@ -179,7 +182,7 @@ const TEAMS_AUG: TeamMap = {
   },
   camila: {
     label: 'Time Cami',
-    farmerIds: ['96198838', '80228367', '84497577', '85002012', '84249251'],
+    farmerIds: ['80228367', '84497577', '85002012', '84249251', '97204635'],
   },
 }
 
