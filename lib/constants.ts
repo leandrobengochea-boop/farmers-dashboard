@@ -86,6 +86,7 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; until
   '95283516': { untilDate: '2026-08-01' }, // Julia: fora da formação ago/26
   '85846972': { untilDate: '2026-08-01' }, // Daniela: fora da formação ago/26
   '92333469': { untilDate: '2026-08-01' }, // Rafael: fora da formação ago/26 (era seller)
+  '96198838': { untilDate: '2026-08-18' }, // Leonardo Gomes: saiu dia 17, conta até dia 17
 }
 
 // ── Filtro de origem do lead (vale apenas de ORIGIN_CUTOVER em diante) ──
