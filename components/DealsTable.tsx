@@ -59,7 +59,7 @@ function MeetingBadge({ scheduled, completed }: { scheduled: boolean; completed:
 
 function getDealCategory(deal: Deal): 'B2C' | 'CRM' | 'B2B' {
   if (deal.ownerName && isB2CCloser(deal.ownerName)) return 'B2C'
-  if (deal.origemDoLead === 'Ação de CRM') return 'CRM'
+  if (deal.origemDoLead === 'Ação de CRM' || deal.origemDoLead === 'Ação de CRM (Carteira)') return 'CRM'
   return 'B2B'
 }
 

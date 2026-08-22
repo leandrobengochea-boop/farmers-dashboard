@@ -173,7 +173,7 @@ export default function MTDBar({ deals, selectedTeam, referenceMonthKey, ignores
 
     if (d.ownerName && isB2CCloser(d.ownerName)) {
       b2cKeys.add(key)
-    } else if (d.origemDoLead === 'Ação de CRM') {
+    } else if (d.origemDoLead === 'Ação de CRM' || d.origemDoLead === 'Ação de CRM (Carteira)') {
       crmKeys.add(key)
     } else if (isDealWithCreator(d.farmerId, d.ownerId)) {
       stagnantKeys.add(key)
