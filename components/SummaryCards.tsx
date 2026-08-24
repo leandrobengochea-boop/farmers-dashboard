@@ -224,6 +224,9 @@ export default function SummaryCards({ stats, deals }: SummaryCardsProps) {
   const [modal, setModal] = useState<ModalType | null>(null)
 
   // Mesma base da coluna "Realizadas" da tabela por farmer: empresas únicas.
+  const scheduledRate = stats.totalCompanies > 0
+    ? Math.round((stats.meetingScheduled / stats.totalCompanies) * 100)
+    : null
   const meetingRate = stats.totalCompanies > 0
     ? Math.round((stats.meetingCompleted / stats.totalCompanies) * 100)
     : null
@@ -266,6 +269,11 @@ export default function SummaryCards({ stats, deals }: SummaryCardsProps) {
             label="Farmers ativos"
             value={stats.activeFarmers.toString()}
             detail="com ao menos 1 negócio"
+          />
+          <SupportMetric
+            label="Reuniões agendadas"
+            value={scheduledRate !== null ? `${scheduledRate}%` : '—'}
+            detail={`${stats.meetingScheduled} de ${stats.totalCompanies.toLocaleString('pt-BR')} empresas`}
           />
           <SupportMetric
             label="Reuniões realizadas"
