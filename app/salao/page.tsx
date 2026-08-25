@@ -206,7 +206,7 @@ export default function SalaoPage() {
 
   useEffect(() => {
     load()
-    const iv = setInterval(load, REFRESH_MS)
+    const iv = setInterval(() => window.location.reload(), REFRESH_MS)
     return () => clearInterval(iv)
   }, [load])
 
