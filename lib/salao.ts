@@ -19,34 +19,67 @@ export interface SalaoData {
 }
 
 const ALL_FARMERS: Record<string, { name: string; initials: string }> = {
+  '89632472': { name: 'Maria Eduarda Porto', initials: 'MP' },
+  '85002282': { name: 'Sotoriva', initials: 'FS' },
+  '79760745': { name: 'Thiago Souza', initials: 'TS' },
+  '85846971': { name: 'Francielle Lenz', initials: 'FL' },
+  '84497577': { name: 'Vitória', initials: 'VI' },
+  '80228367': { name: 'Jhuly', initials: 'JU' },
   '95810969': { name: 'Rhayssa', initials: 'RH' },
-  '96589066': { name: 'Nathalia', initials: 'NA' },
-  '95415669': { name: 'Gisele', initials: 'GI' },
+  '93599591': { name: 'Bruna Saraiva', initials: 'BS' },
+  '87159365': { name: 'João Backmann', initials: 'JB' },
   '95993082': { name: 'Hans Lopes', initials: 'HL' },
+  '85002012': { name: 'Bruna Machado', initials: 'BM' },
+  '94316537': { name: 'Maria Julia', initials: 'MJ' },
+  '95415669': { name: 'Gisele', initials: 'GI' },
+  '94028856': { name: 'Milei', initials: 'MI' },
+  '96198838': { name: 'Leonardo Gomes', initials: 'LG' },
+  '81033487': { name: 'Gustavo Pacheco', initials: 'GP' },
+  '94891358': { name: 'Priscila', initials: 'PR' },
+  '92335488': { name: 'Thaina', initials: 'TH' },
+  '80688884': { name: 'Rafael Brack', initials: 'RB' },
+  '95811085': { name: 'Wagner', initials: 'WA' },
+  '96589066': { name: 'Nathalia', initials: 'NA' },
+  '96198720': { name: 'Alecxia', initials: 'AX' },
   '97204561': { name: 'Juliano', initials: 'JM' },
   '97204635': { name: 'Samuel', initials: 'SO' },
   '84249251': { name: 'Tércio', initials: 'TE' },
-  '85002282': { name: 'Sotoriva', initials: 'FS' },
-  '85846971': { name: 'Francielle Teles', initials: 'FT' },
-  '93599591': { name: 'Bruna Saraiva', initials: 'BS' },
-  '92335488': { name: 'Thainá', initials: 'TH' },
-  '94316537': { name: 'Maria Julia', initials: 'MJ' },
-  '80688884': { name: 'Rafael Brack', initials: 'RB' },
-  '80228367': { name: 'Julhy', initials: 'JU' },
-  '84497577': { name: 'Vitória', initials: 'VI' },
-  '81033487': { name: 'Gustavo Pacheco', initials: 'GP' },
-  '82410958': { name: 'Maria Eduarda', initials: 'ME' },
-  '79760745': { name: 'Thiago Souza', initials: 'TS' },
-  '87159365': { name: 'João Backmann', initials: 'JB' },
-  '85002012': { name: 'Bruna Machado', initials: 'BM' },
-  '94028856': { name: 'Andrei Felippe', initials: 'AF' },
-  '96198720': { name: 'Alecxia', initials: 'AX' },
+}
+
+const SALAO_DATE_RESTRICTIONS: Record<string, { untilDate: string }> = {
+  '96198838': { untilDate: '2026-08-18' },
 }
 
 const ALIAS_MAP: Record<string, string> = { '93238814': '85002282' }
 const CANONICAL_IDS = Object.keys(ALL_FARMERS)
 const ALL_SEARCH_IDS = [...CANONICAL_IDS, ...Object.keys(ALIAS_MAP)]
 const WON_STAGES = ['1076664462', '1076664460']
+
+const B2C_PIPELINE_IDS = new Set(['725182862', '727938450', '904543067'])
+
+const ORIGIN_CUTOVER_MS = new Date('2026-07-01').getTime()
+const ALLOWED_ORIGEM_DO_LEAD = ['Ação de CRM', 'Ação de CRM (Carteira)', 'Carteira do Farmer', 'CARTEIRA (Executivos em foco)']
+const ALLOWED_ORIGEM_QUALIFICACAO = ['Farmer']
+const ORIGIN_OVERRIDE_DEAL_IDS = new Set(['62654660376', '63187333523'])
+
+function uniqueDemandKey(deal: { id: string; pipeline: string; companyId: string; farmerId?: string }): string {
+  const prefix = deal.farmerId ? `${deal.farmerId}:` : ''
+  if (B2C_PIPELINE_IDS.has(deal.pipeline)) return `${prefix}deal:${deal.id}`
+  return `${prefix}${deal.companyId || `deal:${deal.id}`}`
+}
+
+function normalizeForMOA(value: string): string {
+  return value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '_')
+}
+
+function isForaDoMOA(closedLostReason: string, motivoPerda: string): boolean {
+  for (const v of [closedLostReason, motivoPerda]) {
+    if (!v) continue
+    const n = normalizeForMOA(v)
+    if (n.includes('fora') && n.includes('moa')) return true
+  }
+  return false
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -123,6 +156,99 @@ async function getConnectedDispositions(pat: string): Promise<Set<string>> {
   }
 }
 
+async function batchReadCompanyAssociations(
+  pat: string,
+  dealIds: string[],
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>()
+  for (let i = 0; i < dealIds.length; i += 500) {
+    const batch = dealIds.slice(i, i + 500)
+    if (i > 0) await sleep(150)
+    const resp = await fetchWithRetry(
+      'https://api.hubapi.com/crm/v4/associations/deals/companies/batch/read',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: batch.map((id) => ({ id })) }),
+        cache: 'no-store',
+      },
+    )
+    if (!resp.ok) continue
+    const data = (await resp.json()) as {
+      results?: Array<{
+        from: { id: string }
+        to: Array<{ toObjectId: string }>
+      }>
+    }
+    for (const item of data.results ?? []) {
+      const dealId = item.from?.id
+      const companyId = item.to?.[0]?.toObjectId
+      if (dealId && companyId) result.set(String(dealId), String(companyId))
+    }
+  }
+  return result
+}
+
+async function fetchDealMeetingStatus(
+  pat: string,
+  dealIds: string[],
+): Promise<Map<string, { scheduled: boolean; completed: boolean }>> {
+  const status = new Map<string, { scheduled: boolean; completed: boolean }>()
+  if (dealIds.length === 0) return status
+
+  for (let i = 0; i < dealIds.length; i += 100) {
+    const chunk = dealIds.slice(i, i + 100)
+    if (i > 0) await sleep(150)
+    const assocResp = await fetchWithRetry(
+      'https://api.hubapi.com/crm/v4/associations/deals/meetings/batch/read',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: chunk.map((id) => ({ id })) }),
+        cache: 'no-store',
+      },
+    )
+    if (!assocResp.ok) continue
+
+    const assocData = (await assocResp.json()) as {
+      results?: Array<{ from: { id: string }; to: Array<{ toObjectId: string | number }> }>
+    }
+    const dealByMeeting: Record<string, string> = {}
+    const meetingIds: string[] = []
+    for (const row of assocData.results ?? []) {
+      status.set(row.from.id, { scheduled: true, completed: status.get(row.from.id)?.completed ?? false })
+      for (const t of row.to ?? []) {
+        const mid = String(t.toObjectId)
+        dealByMeeting[mid] = row.from.id
+        meetingIds.push(mid)
+      }
+    }
+    if (meetingIds.length === 0) continue
+
+    const meetResp = await fetchWithRetry(
+      'https://api.hubapi.com/crm/v3/objects/meetings/batch/read',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: meetingIds.map((id) => ({ id })), properties: ['hs_meeting_outcome'] }),
+        cache: 'no-store',
+      },
+    )
+    if (!meetResp.ok) continue
+
+    const meetData = (await meetResp.json()) as {
+      results?: Array<{ id: string; properties: { hs_meeting_outcome?: string } }>
+    }
+    for (const m of meetData.results ?? []) {
+      if (m.properties.hs_meeting_outcome === 'COMPLETED') {
+        const dealId = dealByMeeting[m.id]
+        if (dealId) status.set(dealId, { scheduled: true, completed: true })
+      }
+    }
+  }
+  return status
+}
+
 function monthBounds(): { startMs: string; endMs: string; monthLabel: string; daysLeft: number } {
   const now = new Date()
   const y = now.getFullYear()
@@ -166,9 +292,8 @@ export async function fetchSalaoData(): Promise<SalaoData> {
 
   const dealFilters = [
     { propertyName: 'sdrfarmer_responsavel', operator: 'IN', values: ALL_SEARCH_IDS },
-    { propertyName: 'createdate', operator: 'GTE', value: startMs },
-    { propertyName: 'createdate', operator: 'LT', value: endMs },
-    { propertyName: 'pipeline', operator: 'EQ', value: 'default' },
+    { propertyName: 'pipedrive___data_de_qualificacao', operator: 'GTE', value: startMs },
+    { propertyName: 'pipedrive___data_de_qualificacao', operator: 'LT', value: endMs },
   ]
   const wonFilters = [
     { propertyName: 'sdrfarmer_responsavel', operator: 'IN', values: ALL_SEARCH_IDS },
@@ -182,10 +307,12 @@ export async function fetchSalaoData(): Promise<SalaoData> {
     { propertyName: 'hs_timestamp', operator: 'LT', value: endMs },
   ]
 
-  const [dealsRes, wonRes, meetingsRes, connectedDisps, emailsRes, tasksRes] = await Promise.all([
-    searchAllPages(pat, 'deals', [{ filters: dealFilters }], ['sdrfarmer_responsavel']).catch(() => []),
+  const [dealsRes, wonRes, connectedDisps, emailsRes, tasksRes] = await Promise.all([
+    searchAllPages(pat, 'deals', [{ filters: dealFilters }], [
+      'sdrfarmer_responsavel', 'pipeline', 'origem_do_lead', 'origem_da_qualificacao',
+      'closed_lost_reason', 'motivo_de_sinalizacao_de_perda', 'pipedrive___data_de_qualificacao',
+    ]).catch(() => []),
     searchAllPages(pat, 'deals', [{ filters: wonFilters }], ['sdrfarmer_responsavel', 'amount_in_home_currency']).catch(() => []),
-    searchAllPages(pat, 'meetings', [{ filters: engFilters }], ['hubspot_owner_id', 'hs_meeting_outcome']).catch(() => []),
     getConnectedDispositions(pat),
     searchAllPages(pat, 'emails', [{ filters: engFilters }], ['hubspot_owner_id']).catch(() => []),
     searchAllPages(pat, 'tasks', [{ filters: engFilters }], ['hubspot_owner_id']).catch(() => []),
@@ -193,10 +320,46 @@ export async function fetchSalaoData(): Promise<SalaoData> {
 
   const callsRes = await searchAllPages(pat, 'calls', [{ filters: engFilters }], ['hubspot_owner_id', 'hs_call_disposition']).catch(() => [])
 
-  const dealCounts = new Map<string, number>()
-  for (const r of dealsRes) {
+  // Apply origin filter (post-cutover) and "Fora do MOA" exclusion
+  const filteredDeals = dealsRes.filter((r) => {
+    if (isForaDoMOA(r.properties.closed_lost_reason ?? '', r.properties.motivo_de_sinalizacao_de_perda ?? '')) return false
+    if (!ORIGIN_OVERRIDE_DEAL_IDS.has(r.id)) {
+      const okLead = ALLOWED_ORIGEM_DO_LEAD.includes(r.properties.origem_do_lead ?? '')
+      const okQual = ALLOWED_ORIGEM_QUALIFICACAO.includes(r.properties.origem_da_qualificacao ?? '')
+      if (!okLead && !okQual) return false
+    }
     const fid = resolveId(r.properties.sdrfarmer_responsavel ?? '')
-    if (ALL_FARMERS[fid]) dealCounts.set(fid, (dealCounts.get(fid) ?? 0) + 1)
+    const restriction = SALAO_DATE_RESTRICTIONS[fid]
+    if (restriction?.untilDate) {
+      const raw = r.properties.pipedrive___data_de_qualificacao ?? ''
+      const qualMs = /^\d{10,}$/.test(raw) ? parseInt(raw, 10) : new Date(raw).getTime()
+      if (qualMs >= new Date(restriction.untilDate).getTime()) return false
+    }
+    return true
+  })
+
+  // Fetch company associations and meeting status per deal in parallel
+  const dealIdsAll = filteredDeals.map((r) => r.id)
+  const [companyMap, dealMeetingStatus] = await Promise.all([
+    batchReadCompanyAssociations(pat, dealIdsAll),
+    fetchDealMeetingStatus(pat, dealIdsAll),
+  ])
+
+  const uniqueCompanyCounts = new Map<string, number>()
+  for (const fid of CANONICAL_IDS) {
+    const seen = new Set<string>()
+    for (const r of filteredDeals) {
+      const dealFid = resolveId(r.properties.sdrfarmer_responsavel ?? '')
+      if (dealFid !== fid) continue
+      const key = uniqueDemandKey({
+        id: r.id,
+        pipeline: r.properties.pipeline ?? 'default',
+        companyId: companyMap.get(r.id) ?? '',
+        farmerId: fid,
+      })
+      seen.add(key)
+    }
+    uniqueCompanyCounts.set(fid, seen.size)
   }
 
   const wonValues = new Map<string, number>()
@@ -207,14 +370,26 @@ export async function fetchSalaoData(): Promise<SalaoData> {
     wonValues.set(fid, (wonValues.get(fid) ?? 0) + amount)
   }
 
+  // Count meetings per empresa (matching main dashboard logic)
   const mtgMap = new Map<string, { held: number; scheduled: number }>()
-  for (const r of meetingsRes) {
-    const fid = resolveId(r.properties.hubspot_owner_id ?? '')
-    if (!ALL_FARMERS[fid]) continue
-    const cur = mtgMap.get(fid) ?? { held: 0, scheduled: 0 }
-    cur.scheduled++
-    if (r.properties.hs_meeting_outcome === 'COMPLETED') cur.held++
-    mtgMap.set(fid, cur)
+  for (const fid of CANONICAL_IDS) {
+    const scheduledCompanies = new Set<string>()
+    const completedCompanies = new Set<string>()
+    for (const r of filteredDeals) {
+      const dealFid = resolveId(r.properties.sdrfarmer_responsavel ?? '')
+      if (dealFid !== fid) continue
+      const ms = dealMeetingStatus.get(r.id)
+      if (!ms) continue
+      const key = uniqueDemandKey({
+        id: r.id,
+        pipeline: r.properties.pipeline ?? 'default',
+        companyId: companyMap.get(r.id) ?? '',
+        farmerId: fid,
+      })
+      if (ms.scheduled) scheduledCompanies.add(key)
+      if (ms.completed) completedCompanies.add(key)
+    }
+    mtgMap.set(fid, { scheduled: scheduledCompanies.size, held: completedCompanies.size })
   }
 
   const callMap = new Map<string, { connected: number; total: number }>()
@@ -247,7 +422,7 @@ export async function fetchSalaoData(): Promise<SalaoData> {
       ownerId: id,
       name: info.name,
       initials: info.initials,
-      deals: dealCounts.get(id) ?? 0,
+      deals: uniqueCompanyCounts.get(id) ?? 0,
       valor: Math.round(wonValues.get(id) ?? 0),
       meetingsHeld: mtg?.held ?? 0,
       meetingsScheduled: mtg?.scheduled ?? 0,

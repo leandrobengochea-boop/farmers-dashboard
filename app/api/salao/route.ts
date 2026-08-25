@@ -3,7 +3,7 @@ import { fetchSalaoData } from '@/lib/salao'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
-export const maxDuration = 60
+export const maxDuration = 120
 
 export async function GET() {
   try {
