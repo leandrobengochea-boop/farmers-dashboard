@@ -62,6 +62,12 @@ export const DEAL_FARMER_OVERRIDES: Record<string, string> = {
   '62654660376': '85002012', // Mayra | Credipronto → Bruna Machado (farmer original errado)
 }
 
+// Deals recuperados que converteram em venda — contam uma segunda vez para o farmer.
+// Chave: deal ID original. Valor: farmer ID (pode ser o mesmo) e data da recontagem.
+export const BONUS_DEALS: Array<{ dealId: string; farmerId: string; date: string }> = [
+  { dealId: '62358745469', farmerId: '85002282', date: '2026-08-25' }, // Suzane | Equatorial Goiás — Sotoriva (recuperado)
+]
+
 // Deals que devem ignorar o filtro de origem (erro de cadastro no HubSpot)
 export const ORIGIN_OVERRIDE_DEAL_IDS = new Set([
   '62654660376', // Mayra | Credipronto — Bruna Machado (inbound, deveria ser Farmer)

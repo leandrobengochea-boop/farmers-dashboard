@@ -1,7 +1,7 @@
 import {
   FARMERS, FARMER_ALIASES, FARMER_DATE_RESTRICTIONS, CRITERIA, HUBSPOT_PORTAL_ID,
   ORIGIN_CUTOVER, ALLOWED_ORIGEM_DO_LEAD, ALLOWED_ORIGEM_QUALIFICACAO, DEAL_FARMER_OVERRIDES,
-  ORIGIN_OVERRIDE_DEAL_IDS,
+  ORIGIN_OVERRIDE_DEAL_IDS, BONUS_DEALS,
 } from './constants'
 
 export interface Deal {
@@ -487,6 +487,21 @@ export async function fetchAllDeals(): Promise<FetchResult> {
   const excluded = rawDeals.filter((d) => isForaDoMOA(d))
   const excludedFora = excluded.length
   const deals = rawDeals.filter((d) => !isForaDoMOA(d))
+
+  // Deals bônus: duplica deals recuperados que converteram em venda
+  const dealById = new Map(deals.map((d) => [d.id, d]))
+  for (const bonus of BONUS_DEALS) {
+    const original = dealById.get(bonus.dealId)
+    if (!original) continue
+    const farmerId = FARMER_ALIASES[bonus.farmerId] ?? bonus.farmerId
+    deals.push({
+      ...original,
+      id: `${original.id}_bonus`,
+      farmerId,
+      farmerName: FARMERS[farmerId] ?? farmerId,
+      date: `${bonus.date}T12:00:00.000Z`,
+    })
+  }
 
   const excludedDeals: ExcludedDeal[] = excluded.map((d) => ({
     id: d.id,
