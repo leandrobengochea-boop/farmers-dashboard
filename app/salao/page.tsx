@@ -234,6 +234,7 @@ export default function SalaoPage() {
   const top3 = data.farmers.slice(0, 3)
   const mid = Math.ceil(data.farmers.length / 2)
 
+  const totalValor = data.farmers.reduce((sum, f) => sum + f.valor, 0)
   const ts = new Date(data.updatedAt)
   const hhmm = `${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}`
 
@@ -300,10 +301,15 @@ export default function SalaoPage() {
           <span>CE = Contatos efetivos</span>
           <span>TC = Tentativas</span>
         </div>
-        <span>
-          Atualizado {hhmm}
-          {error && <span className="text-orange-400 ml-2">(falha)</span>}
-        </span>
+        <div className="flex items-center gap-6">
+          <span className="text-sm font-bold text-amber-400">
+            Total vendido: {totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </span>
+          <span>
+            Atualizado {hhmm}
+            {error && <span className="text-orange-400 ml-2">(falha)</span>}
+          </span>
+        </div>
       </footer>
     </div>
   )
