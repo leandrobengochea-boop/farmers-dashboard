@@ -183,8 +183,9 @@ async function fetchMeetingStatusByDeal(pat: string, dealIds: string[]): Promise
       // qualquer reunião associada = agendada
       status.set(row.from.id, { scheduled: true, completed: status.get(row.from.id)?.completed ?? false })
       for (const t of row.to ?? []) {
-        dealByMeeting[t.toObjectId] = row.from.id
-        meetingIds.push(t.toObjectId)
+        const mid = String(t.toObjectId)
+        dealByMeeting[mid] = row.from.id
+        meetingIds.push(mid)
       }
     }
     if (meetingIds.length === 0) continue
