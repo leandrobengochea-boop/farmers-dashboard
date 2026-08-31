@@ -230,6 +230,9 @@ export default function SummaryCards({ stats, deals }: SummaryCardsProps) {
   const meetingRate = stats.totalCompanies > 0
     ? Math.round((stats.meetingCompleted / stats.totalCompanies) * 100)
     : null
+  const noShowRate = stats.meetingScheduled > 0
+    ? Math.round((stats.meetingNoShow / stats.meetingScheduled) * 100)
+    : null
 
   const modalEntries = modal === 'deals'
     ? buildDealList(deals)
@@ -279,6 +282,11 @@ export default function SummaryCards({ stats, deals }: SummaryCardsProps) {
             label="Reuniões realizadas"
             value={meetingRate !== null ? `${meetingRate}%` : '—'}
             detail={`${stats.meetingCompleted} de ${stats.totalCompanies.toLocaleString('pt-BR')} empresas`}
+          />
+          <SupportMetric
+            label="No Show"
+            value={noShowRate !== null ? `${noShowRate}%` : '—'}
+            detail={`${stats.meetingNoShow} de ${stats.meetingScheduled} agendadas`}
           />
         </div>
       </div>

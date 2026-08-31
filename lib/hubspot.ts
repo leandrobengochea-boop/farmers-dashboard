@@ -21,6 +21,7 @@ export interface Deal {
   dealStage: string      // dealstage
   meetingScheduled: boolean  // tem reunião real associada no CRM (qualquer outcome)
   meetingCompleted: boolean  // tem reunião associada com hs_meeting_outcome=COMPLETED
+  meetingNoShow: boolean     // tem reunião associada com hs_meeting_outcome=NO_SHOW
   ownerName: string      // hubspot_owner_id → owner display name
   isScored: boolean      // has pontuacao_leadscore — false = "Fora do SAL"
   companyId: string      // empresa associada (associação primária) — '' se nenhuma
@@ -153,6 +154,7 @@ async function fetchOwnerMap(pat: string): Promise<Record<string, string>> {
 export interface MeetingStatus {
   scheduled: boolean  // tem ≥1 reunião associada (qualquer outcome)
   completed: boolean  // tem ≥1 reunião com outcome COMPLETED
+  noShow: boolean     // tem ≥1 reunião com outcome NO_SHOW
 }
 
 async function fetchMeetingStatusByDeal(pat: string, dealIds: string[]): Promise<Map<string, MeetingStatus>> {
@@ -181,7 +183,8 @@ async function fetchMeetingStatusByDeal(pat: string, dealIds: string[]): Promise
     const meetingIds: string[] = []
     for (const row of assocData.results ?? []) {
       // qualquer reunião associada = agendada
-      status.set(row.from.id, { scheduled: true, completed: status.get(row.from.id)?.completed ?? false })
+      const prev = status.get(row.from.id)
+      status.set(row.from.id, { scheduled: true, completed: prev?.completed ?? false, noShow: prev?.noShow ?? false })
       for (const t of row.to ?? []) {
         const mid = String(t.toObjectId)
         dealByMeeting[mid] = row.from.id
@@ -205,9 +208,13 @@ async function fetchMeetingStatusByDeal(pat: string, dealIds: string[]): Promise
       results?: Array<{ id: string; properties: { hs_meeting_outcome?: string } }>
     }
     for (const m of meetData.results ?? []) {
+      const dealId = dealByMeeting[m.id]
+      if (!dealId) continue
+      const prev = status.get(dealId)
       if (m.properties.hs_meeting_outcome === 'COMPLETED') {
-        const dealId = dealByMeeting[m.id]
-        if (dealId) status.set(dealId, { scheduled: true, completed: true })
+        status.set(dealId, { scheduled: true, completed: true, noShow: prev?.noShow ?? false })
+      } else if (m.properties.hs_meeting_outcome === 'NO_SHOW') {
+        status.set(dealId, { scheduled: true, completed: prev?.completed ?? false, noShow: true })
       }
     }
   }
@@ -364,6 +371,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         dealStage: props.dealstage ?? '',
         meetingScheduled: false,  // preenchido via fetchMeetingStatusByDeal
         meetingCompleted: false,  // preenchido via fetchMeetingStatusByDeal
+        meetingNoShow: false,
         ownerName: ownerMap[props.hubspot_owner_id ?? ''] ?? '',
         isScored: !!props.pontuacao_leadscore,
         companyId: '',            // preenchido via fetchCompanyIdByDeal
@@ -428,6 +436,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
           dealStage: props.dealstage ?? '',
           meetingScheduled: false,
           meetingCompleted: false,
+          meetingNoShow: false,
           ownerName: ownerMap[props.hubspot_owner_id ?? ''] ?? '',
           isScored: !!props.pontuacao_leadscore,
           companyId: '',
@@ -480,6 +489,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
     if (ms) {
       d.meetingScheduled = ms.scheduled
       d.meetingCompleted = ms.completed
+      d.meetingNoShow = ms.noShow
     }
     d.companyId = companyByDeal.get(d.id) ?? ''
   }

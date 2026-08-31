@@ -42,6 +42,7 @@ export interface SummaryStats {
   totalActualPoints: number
   meetingScheduled: number
   meetingCompleted: number
+  meetingNoShow: number
   stagnantWithCreator: number
 }
 
@@ -154,16 +155,18 @@ export function computeSummaryStats(deals: Deal[]): SummaryStats {
 
   // Reuniões contadas por EMPRESA ÚNICA (mesma regra da conversão por farmer):
   // uma empresa com várias demandas conta uma vez.
-  const companyMeetings = new Map<string, { scheduled: boolean; completed: boolean }>()
+  const companyMeetings = new Map<string, { scheduled: boolean; completed: boolean; noShow: boolean }>()
   for (const d of deals) {
     const ck = uniqueDemandKey(d)
-    const c = companyMeetings.get(ck) ?? { scheduled: false, completed: false }
+    const c = companyMeetings.get(ck) ?? { scheduled: false, completed: false, noShow: false }
     if (d.meetingScheduled) c.scheduled = true
     if (d.meetingCompleted) c.completed = true
+    if (d.meetingNoShow) c.noShow = true
     companyMeetings.set(ck, c)
   }
   const meetingScheduled = Array.from(companyMeetings.values()).filter((c) => c.scheduled).length
   const meetingCompleted = Array.from(companyMeetings.values()).filter((c) => c.completed).length
+  const meetingNoShow = Array.from(companyMeetings.values()).filter((c) => c.noShow).length
 
   const totalCompanies = new Set(deals.map((d) => uniqueDemandKey(d))).size
   const stagnantWithCreator = deals.filter((d) => isDealWithCreator(d.farmerId, d.ownerId)).length
@@ -178,6 +181,7 @@ export function computeSummaryStats(deals: Deal[]): SummaryStats {
     totalActualPoints,
     meetingScheduled,
     meetingCompleted,
+    meetingNoShow,
     stagnantWithCreator,
   }
 }
