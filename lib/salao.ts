@@ -33,21 +33,18 @@ const ALL_FARMERS: Record<string, { name: string; initials: string }> = {
   '94316537': { name: 'Maria Julia', initials: 'MJ' },
   '95415669': { name: 'Gisele', initials: 'GI' },
   '94028856': { name: 'Milei', initials: 'MI' },
-  '96198838': { name: 'Leonardo Gomes', initials: 'LG' },
+  '88200239': { name: 'Luiza', initials: 'LU' },
+  '97763591': { name: 'Leonardo Bitencourt', initials: 'LB' },
   '81033487': { name: 'Gustavo Pacheco', initials: 'GP' },
   '94891358': { name: 'Priscila', initials: 'PR' },
   '92335488': { name: 'Thaina', initials: 'TH' },
   '80688884': { name: 'Rafael Brack', initials: 'RB' },
-  '95811085': { name: 'Wagner', initials: 'WA' },
   '96589066': { name: 'Nathalia', initials: 'NA' },
-  '96198720': { name: 'Alecxia', initials: 'AX' },
   '97204561': { name: 'Juliano', initials: 'JM' },
   '97204635': { name: 'Samuel', initials: 'SO' },
-  '84249251': { name: 'Tércio', initials: 'TE' },
 }
 
 const SALAO_DATE_RESTRICTIONS: Record<string, { untilDate: string }> = {
-  '96198838': { untilDate: '2026-08-18' },
 }
 
 const ALIAS_MAP: Record<string, string> = { '93238814': '85002282' }
