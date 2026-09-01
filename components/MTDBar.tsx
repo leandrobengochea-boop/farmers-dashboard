@@ -93,7 +93,7 @@ export default function MTDBar({ deals, selectedTeam, referenceMonthKey, ignores
 
   const monthKey = referenceMonthKey
   // A meta segue o mês que o card está mostrando, não o mês corrente.
-  const MONTHLY_GOAL = monthlyGoal(monthKey, !!selectedTeam)
+  const MONTHLY_GOAL = monthlyGoal(monthKey, selectedTeam)
   const isCurrentMonth = monthKey === currentMonthKey
   const isPastMonth = monthKey < currentMonthKey
   const [year, month] = monthKey.split('-').map(Number)

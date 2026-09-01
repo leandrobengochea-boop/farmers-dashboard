@@ -1,5 +1,5 @@
 export const FARMERS: Record<string, string> = {
-  '87159365': 'João Backmann',
+  '87159365': 'João Lucas',
   '88200239': 'Luiza',
   '79760745': 'Thiago',
   '86256444': 'Ana Carolina',
@@ -20,7 +20,7 @@ export const FARMERS: Record<string, string> = {
   '93599591': 'Bruna Saraiva',
   '89632472': 'Maria Eduarda Porto',
   '80228367': 'Jhuly',
-  '94028856': 'Felippe',
+  '94028856': 'Milei',
   '94316537': 'Maria Julia',
   '94316538': 'Gabriel Alves',
   '94399135': 'Gabriela',
@@ -45,7 +45,7 @@ export const STALE_EXCLUDED_FARMERS = new Set([
   '95811085', // Wagner
   '79760745', // Thiago
   '81033487', // Gustavo
-  '94028856', // Felippe
+  '94028856', // Milei
   '85002012', // Bruna Machado
   '87159365', // João Backmann
   '82410958', // Maria Eduarda
@@ -78,7 +78,9 @@ export const ORIGIN_OVERRIDE_DEAL_IDS = new Set([
 // Per-farmer date restrictions applied after fetching
 // fromDate: ignore deals before this date (YYYY-MM-DD)
 // untilDate: ignore deals from this date onwards — keeps history, removes future
-export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; untilDate?: string }> = {
+// excludeRange: ignore deals within this closed range [from, until)
+type DateRestriction = { fromDate?: string; untilDate?: string; excludeRange?: { from: string; until: string } }
+export const FARMER_DATE_RESTRICTIONS: Record<string, DateRestriction> = {
   '81033487': { fromDate: '2026-04-01' },  // Gustavo: entra em abril/26 (março era transição)
   '84497577': { fromDate: '2026-03-01' },  // Vitória: entra em março/26
   '88200222': { untilDate: '2026-06-01' }, // Kennedy: saiu em junho/26
@@ -86,7 +88,7 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; until
   '86256444': { untilDate: '2026-07-01' }, // Ana Carolina: fora da formação nova (jul/26)
   '89632494': { untilDate: '2026-07-01' }, // Willker: fora da formação nova (jul/26)
   '82410958': { untilDate: '2026-07-01' }, // Maria Eduarda (conta antiga arquivada)
-  '88200239': { untilDate: '2026-08-01' }, // Luiza: fora da formação ago/26
+  '88200239': { excludeRange: { from: '2026-08-01', until: '2026-09-01' } }, // Luiza: fora em ago/26, volta em set/26
   '84015882': { untilDate: '2026-08-01' }, // Amanda: fora da formação ago/26
   '94316538': { untilDate: '2026-08-01' }, // Gabriel Alves: fora da formação ago/26
   '94399135': { untilDate: '2026-08-01' }, // Gabriela Charlier: fora da formação ago/26
@@ -94,6 +96,11 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, { fromDate?: string; until
   '85846972': { untilDate: '2026-08-01' }, // Daniela: fora da formação ago/26
   '92333469': { untilDate: '2026-08-01' }, // Rafael: fora da formação ago/26 (era seller)
   '96198838': { untilDate: '2026-08-18' }, // Leonardo Gomes: saiu dia 17, conta até dia 17
+  '94891358': { untilDate: '2026-09-01' }, // Priscila: fora da formação set/26
+  '95811085': { untilDate: '2026-09-01' }, // Wagner: fora da formação set/26
+  '96198720': { untilDate: '2026-09-01' }, // Alexcia: fora da formação set/26
+  '85002012': { untilDate: '2026-09-01' }, // Bruna Machado: fora da formação set/26
+  '84249251': { untilDate: '2026-09-01' }, // Tércio: fora da formação set/26
 }
 
 // ── Filtro de origem do lead (vale apenas de ORIGIN_CUTOVER em diante) ──
@@ -193,27 +200,51 @@ const TEAMS_AUG: TeamMap = {
   },
 }
 
+// Formação a partir de setembro/2026
+const TEAMS_SEP: TeamMap = {
+  leticia: {
+    label: 'Time Leticia',
+    farmerIds: ['97763591', '97204561', '97204635'],
+  },
+  katyeli: {
+    label: 'Time Katy',
+    farmerIds: ['85002282', '93238814', '95415669', '92335488', '80688884', '93599591', '85846971'],
+  },
+  camila: {
+    label: 'Time Cami',
+    farmerIds: ['80228367', '94316537', '84497577', '95993082', '95810969', '88200239'],
+  },
+  dani: {
+    label: 'Time Dani',
+    farmerIds: ['94028856', '81033487', '89632472', '79760745', '96589066', '87159365'],
+  },
+}
+
 const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
+  { from: new Date('2026-09-01').getTime(), teams: TEAMS_SEP },
   { from: new Date('2026-08-01').getTime(), teams: TEAMS_AUG },
   { from: new Date('2026-07-01').getTime(), teams: TEAMS_JULY },
 ]
 
-export const TEAMS: TeamMap = TEAMS_AUG
+export const TEAMS: TeamMap = TEAMS_SEP
 
 // Metas mensais de empresas únicas, por mês de vigência (mais recente primeiro).
-// Andam junto com a formação: jun e jul/26 tinham 3 times, ago/26 tem 4.
-const GOAL_PERIODS: { from: string; total: number; perTeam: number }[] = [
+// teamGoals: metas individuais por time (quando diferem entre si).
+type GoalPeriod = { from: string; total: number; perTeam: number; teamGoals?: Record<string, number> }
+const GOAL_PERIODS: GoalPeriod[] = [
+  { from: '2026-09', total: 400, perTeam: 110, teamGoals: { leticia: 80, dani: 100 } },
   { from: '2026-08', total: 480, perTeam: 120 }, // 4 times
   { from: '2026-07', total: 336, perTeam: 112 }, // 3 times
   { from: '2026-06', total: 300, perTeam: 100 }, // 3 times
 ]
 // Meses anteriores a jun/26 herdam a meta de junho.
-const GOAL_BEFORE = { total: 300, perTeam: 100 }
+const GOAL_BEFORE: GoalPeriod = { from: '0000-00', total: 300, perTeam: 100 }
 
-/** Meta do mês (YYYY-MM). `perTeam` quando há um time selecionado. */
-export function monthlyGoal(monthKey: string, perTeam: boolean): number {
+/** Meta do mês (YYYY-MM). Quando `teamId` é informado, retorna a meta específica desse time. */
+export function monthlyGoal(monthKey: string, teamId?: string | null): number {
   const period = GOAL_PERIODS.find((p) => monthKey >= p.from) ?? GOAL_BEFORE
-  return perTeam ? period.perTeam : period.total
+  if (!teamId) return period.total
+  return period.teamGoals?.[teamId] ?? period.perTeam
 }
 
 export function dealInTeam(farmerId: string, dateIso: string, teamId: string): boolean {

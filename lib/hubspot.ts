@@ -465,6 +465,11 @@ export async function fetchAllDeals(): Promise<FetchResult> {
       const ts = new Date(d.date).getTime()
       if (restriction.fromDate && ts < new Date(restriction.fromDate).getTime()) return false
       if (restriction.untilDate && ts >= new Date(restriction.untilDate).getTime()) return false
+      if (restriction.excludeRange) {
+        const from = new Date(restriction.excludeRange.from).getTime()
+        const until = new Date(restriction.excludeRange.until).getTime()
+        if (ts >= from && ts < until) return false
+      }
     }
     // Filtro de origem: vale só de ORIGIN_CUTOVER (jul/26) em diante.
     // Histórico mantém todas as origens.
