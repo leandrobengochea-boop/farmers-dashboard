@@ -93,11 +93,16 @@ function DealListModal({ farmerName, deals, onClose }: DealListModalProps) {
                     >
                       {deal.name}
                     </a>
-                    {deal.date && (
-                      <span className="text-zinc-500 text-xs">
-                        {format(new Date(deal.date), "dd/MM/yyyy", { locale: ptBR })}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {deal.date && (
+                        <span className="text-zinc-500 text-xs">
+                          {format(new Date(deal.date), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      )}
+                      {deal.reason === 'noshow' && (
+                        <span className="text-red-400/70 text-[10px] font-medium uppercase tracking-wider">No Show</span>
+                      )}
+                    </div>
                   </div>
                   <a
                     href={deal.hubspotUrl}

@@ -39,13 +39,21 @@ function MissingCriterionPill({ label }: { label: string }) {
   )
 }
 
-function MeetingBadge({ scheduled, completed }: { scheduled: boolean; completed: boolean }) {
+function MeetingBadge({ scheduled, completed, noShow }: { scheduled: boolean; completed: boolean; noShow: boolean }) {
   if (!scheduled) return null
   if (completed) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-900/40 text-green-300 border border-green-800 whitespace-nowrap">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         Realizada
+      </span>
+    )
+  }
+  if (noShow) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-900/30 text-red-400/80 border border-red-800/50 whitespace-nowrap">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        No Show
       </span>
     )
   }
@@ -247,7 +255,7 @@ export default function DealsTable({ deals }: DealsTableProps) {
                       <ScoreBadge score={deal.score} isScored={deal.isScored} />
                     </td>
                     <td className="py-3 px-4">
-                      <MeetingBadge scheduled={deal.meetingScheduled} completed={deal.meetingCompleted} />
+                      <MeetingBadge scheduled={deal.meetingScheduled} completed={deal.meetingCompleted} noShow={deal.meetingNoShow} />
                     </td>
                     <td className="py-3 px-4">
                       {getDealCategory(deal) === 'B2C' ? (

@@ -1,7 +1,7 @@
 import {
   FARMERS, FARMER_ALIASES, FARMER_DATE_RESTRICTIONS, CRITERIA, HUBSPOT_PORTAL_ID,
   ORIGIN_CUTOVER, ALLOWED_ORIGEM_DO_LEAD, ALLOWED_ORIGEM_QUALIFICACAO, DEAL_FARMER_OVERRIDES,
-  ORIGIN_OVERRIDE_DEAL_IDS, BONUS_DEALS,
+  ORIGIN_OVERRIDE_DEAL_IDS, BONUS_DEALS, B2C_PIPELINE_IDS,
 } from './constants'
 
 export interface Deal {
@@ -28,6 +28,7 @@ export interface Deal {
   origemDoLead: string   // origem_do_lead
   origemQualificacao: string // origem_da_qualificacao
   ownerId: string        // hubspot_owner_id (raw)
+  isNoShowExcluded: boolean  // B2C com No Show (sem realizada) → tratado como Fora do MOA
 }
 
 export interface FetchValidation {
@@ -48,6 +49,7 @@ export interface ExcludedDeal {
   farmerName: string
   date: string
   hubspotUrl: string
+  reason?: 'noshow' | 'fora_moa'
 }
 
 export interface FetchResult {
@@ -199,22 +201,31 @@ async function fetchMeetingStatusByDeal(pat: string, dealIds: string[]): Promise
       headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         inputs: meetingIds.map((id) => ({ id })),
-        properties: ['hs_meeting_outcome'],
+        properties: ['hs_meeting_outcome', 'hs_meeting_start_time'],
       }),
     })
     if (!meetResp.ok) continue
 
+    const now = Date.now()
     const meetData = await meetResp.json() as {
-      results?: Array<{ id: string; properties: { hs_meeting_outcome?: string } }>
+      results?: Array<{ id: string; properties: { hs_meeting_outcome?: string; hs_meeting_start_time?: string } }>
     }
     for (const m of meetData.results ?? []) {
       const dealId = dealByMeeting[m.id]
       if (!dealId) continue
       const prev = status.get(dealId)
-      if (m.properties.hs_meeting_outcome === 'COMPLETED') {
+      const outcome = m.properties.hs_meeting_outcome ?? ''
+      if (outcome === 'COMPLETED') {
         status.set(dealId, { scheduled: true, completed: true, noShow: prev?.noShow ?? false })
-      } else if (m.properties.hs_meeting_outcome === 'NO_SHOW') {
+      } else if (outcome === 'NO_SHOW') {
         status.set(dealId, { scheduled: true, completed: prev?.completed ?? false, noShow: true })
+      } else if (!outcome || outcome === 'SCHEDULED') {
+        // Sem outcome ou SCHEDULED mas já passou → considerar realizada
+        const startRaw = m.properties.hs_meeting_start_time ?? ''
+        const startMs = startRaw ? (/^\d+$/.test(startRaw) ? parseInt(startRaw, 10) : new Date(startRaw).getTime()) : 0
+        if (startMs > 0 && startMs < now) {
+          status.set(dealId, { scheduled: true, completed: true, noShow: prev?.noShow ?? false })
+        }
       }
     }
   }
@@ -378,6 +389,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
         origemDoLead: props.origem_do_lead ?? '',
         origemQualificacao: props.origem_da_qualificacao ?? '',
         ownerId: props.hubspot_owner_id ?? '',
+        isNoShowExcluded: false,
       })
     }
 
@@ -443,6 +455,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
           origemDoLead: props.origem_do_lead ?? '',
           origemQualificacao: props.origem_da_qualificacao ?? '',
           ownerId: props.hubspot_owner_id ?? '',
+          isNoShowExcluded: false,
         })
       }
     }
@@ -499,10 +512,17 @@ export async function fetchAllDeals(): Promise<FetchResult> {
     d.companyId = companyByDeal.get(d.id) ?? ''
   }
 
+  // B2C com No Show (sem reunião realizada) → tratar como Fora do MOA
+  for (const d of rawDeals) {
+    if (B2C_PIPELINE_IDS.has(d.pipeline) && d.meetingNoShow && !d.meetingCompleted) {
+      d.isNoShowExcluded = true
+    }
+  }
+
   const totalBruto = rawDeals.length
-  const excluded = rawDeals.filter((d) => isForaDoMOA(d))
+  const excluded = rawDeals.filter((d) => isForaDoMOA(d) || d.isNoShowExcluded)
   const excludedFora = excluded.length
-  const deals = rawDeals.filter((d) => !isForaDoMOA(d))
+  const deals = rawDeals.filter((d) => !isForaDoMOA(d) && !d.isNoShowExcluded)
 
   // Deals bônus: duplica deals recuperados que converteram em venda
   const dealById = new Map(deals.map((d) => [d.id, d]))
@@ -526,6 +546,7 @@ export async function fetchAllDeals(): Promise<FetchResult> {
     farmerName: d.farmerName,
     date: d.date,
     hubspotUrl: d.hubspotUrl,
+    reason: d.isNoShowExcluded ? 'noshow' as const : 'fora_moa' as const,
   }))
 
   // Group excluded deals by farmer (global, unfiltered — used as fallback)
