@@ -1,3 +1,6 @@
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
 export interface SalaoFarmerData {
   ownerId: string
   name: string
@@ -74,6 +77,22 @@ function isForaDoMOA(closedLostReason: string, motivoPerda: string): boolean {
     if (n.includes('fora') && n.includes('moa')) return true
   }
   return false
+}
+
+interface CallsCache {
+  month: string
+  calls: Record<string, { total: number; connected: number }>
+}
+
+function loadCallsCache(monthKey: string): CallsCache | null {
+  try {
+    const raw = readFileSync(join(process.cwd(), 'data', 'calls-cache.json'), 'utf-8')
+    const data = JSON.parse(raw) as CallsCache
+    if (data.month === monthKey) return data
+    return null
+  } catch {
+    return null
+  }
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -302,18 +321,20 @@ export async function fetchSalaoData(): Promise<SalaoData> {
     { propertyName: 'hs_timestamp', operator: 'LT', value: endMs },
   ]
 
+  const callsCache = loadCallsCache(monthLabel)
+
   const [dealsRes, wonRes, connectedDisps, emailsRes, tasksRes] = await Promise.all([
     searchAllPages(pat, 'deals', [{ filters: dealFilters }], [
       'sdrfarmer_responsavel', 'pipeline', 'origem_do_lead', 'origem_da_qualificacao',
       'closed_lost_reason', 'motivo_de_sinalizacao_de_perda', 'pipedrive___data_de_qualificacao',
     ]).catch(() => []),
     searchAllPages(pat, 'deals', [{ filters: wonFilters }], ['sdrfarmer_responsavel', 'amount_in_home_currency']).catch(() => []),
-    getConnectedDispositions(pat),
+    callsCache ? Promise.resolve(new Set<string>()) : getConnectedDispositions(pat),
     searchAllPages(pat, 'emails', [{ filters: engFilters }], ['hubspot_owner_id']).catch(() => []),
     searchAllPages(pat, 'tasks', [{ filters: engFilters }], ['hubspot_owner_id']).catch(() => []),
   ])
 
-  const callsRes = await searchAllPages(pat, 'calls', [{ filters: engFilters }], ['hubspot_owner_id', 'hs_call_disposition']).catch(() => [])
+  const callsRes = callsCache ? [] : await searchAllPages(pat, 'calls', [{ filters: engFilters }], ['hubspot_owner_id', 'hs_call_disposition']).catch(() => [])
 
   // Apply origin filter (post-cutover) and "Fora do MOA" exclusion
   const filteredDeals = dealsRes.filter((r) => {
@@ -388,13 +409,24 @@ export async function fetchSalaoData(): Promise<SalaoData> {
   }
 
   const callMap = new Map<string, { connected: number; total: number }>()
-  for (const r of callsRes) {
-    const fid = resolveId(r.properties.hubspot_owner_id ?? '')
-    if (!ALL_FARMERS[fid]) continue
-    const cur = callMap.get(fid) ?? { connected: 0, total: 0 }
-    cur.total++
-    if (r.properties.hs_call_disposition && connectedDisps.has(r.properties.hs_call_disposition)) cur.connected++
-    callMap.set(fid, cur)
+  if (callsCache) {
+    for (const [oid, data] of Object.entries(callsCache.calls)) {
+      const fid = resolveId(oid)
+      if (!ALL_FARMERS[fid]) continue
+      const cur = callMap.get(fid) ?? { connected: 0, total: 0 }
+      cur.total += data.total
+      cur.connected += data.connected
+      callMap.set(fid, cur)
+    }
+  } else {
+    for (const r of callsRes) {
+      const fid = resolveId(r.properties.hubspot_owner_id ?? '')
+      if (!ALL_FARMERS[fid]) continue
+      const cur = callMap.get(fid) ?? { connected: 0, total: 0 }
+      cur.total++
+      if (r.properties.hs_call_disposition && connectedDisps.has(r.properties.hs_call_disposition)) cur.connected++
+      callMap.set(fid, cur)
+    }
   }
 
   const emailCounts = new Map<string, number>()

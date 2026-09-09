@@ -1,0 +1,29 @@
+{
+  "month": "2026-09",
+  "generatedAt": "2026-09-09T12:00:00.000Z",
+  "source": "bigquery:psa-dw.gold.calls",
+  "calls": {
+    "79760745": { "total": 36, "connected": 2 },
+    "80228367": { "total": 80, "connected": 4 },
+    "80688884": { "total": 0, "connected": 0 },
+    "81033487": { "total": 12, "connected": 3 },
+    "84497577": { "total": 34, "connected": 3 },
+    "85002282": { "total": 0, "connected": 0 },
+    "85846971": { "total": 20, "connected": 1 },
+    "87159365": { "total": 35, "connected": 5 },
+    "88200239": { "total": 0, "connected": 0 },
+    "89632472": { "total": 0, "connected": 0 },
+    "92335488": { "total": 102, "connected": 17 },
+    "93238814": { "total": 47, "connected": 3 },
+    "93599591": { "total": 77, "connected": 9 },
+    "94028856": { "total": 22, "connected": 0 },
+    "94316537": { "total": 10, "connected": 1 },
+    "95415669": { "total": 128, "connected": 24 },
+    "95810969": { "total": 188, "connected": 23 },
+    "95993082": { "total": 132, "connected": 14 },
+    "96589066": { "total": 17, "connected": 0 },
+    "97204561": { "total": 193, "connected": 23 },
+    "97204635": { "total": 126, "connected": 12 },
+    "97763591": { "total": 72, "connected": 10 }
+  }
+}
