@@ -38,6 +38,7 @@ export const FARMERS: Record<string, string> = {
   '97204561': 'Juliano',
   '97204635': 'Samuel',
   '97763591': 'Leonardo Bitencourt',
+  '98715090': 'Vitor',
 }
 
 // Farmers que criam negócios para si mesmos — excluídos da contagem de "parados"
@@ -204,7 +205,7 @@ const TEAMS_AUG: TeamMap = {
 const TEAMS_SEP: TeamMap = {
   leticia: {
     label: 'Time Leticia',
-    farmerIds: ['97763591', '97204561', '97204635'],
+    farmerIds: ['97763591', '97204561', '97204635', '98715090'],
   },
   katyeli: {
     label: 'Time Katy',
