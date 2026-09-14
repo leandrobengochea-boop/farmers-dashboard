@@ -221,13 +221,34 @@ const TEAMS_SEP: TeamMap = {
   },
 }
 
+// Formação a partir de 14/09/2026: Juliano → Katy, Brack → Letícia
+const TEAMS_SEP14: TeamMap = {
+  leticia: {
+    label: 'Time Leticia',
+    farmerIds: ['97763591', '97204635', '98715090', '80688884'],
+  },
+  katyeli: {
+    label: 'Time Katy',
+    farmerIds: ['85002282', '93238814', '95415669', '92335488', '93599591', '85846971', '97204561'],
+  },
+  camila: {
+    label: 'Time Cami',
+    farmerIds: ['80228367', '94316537', '84497577', '95993082', '95810969', '88200239'],
+  },
+  dani: {
+    label: 'Time Dani',
+    farmerIds: ['94028856', '81033487', '89632472', '79760745', '96589066', '87159365'],
+  },
+}
+
 const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
+  { from: new Date('2026-09-14').getTime(), teams: TEAMS_SEP14 },
   { from: new Date('2026-09-01').getTime(), teams: TEAMS_SEP },
   { from: new Date('2026-08-01').getTime(), teams: TEAMS_AUG },
   { from: new Date('2026-07-01').getTime(), teams: TEAMS_JULY },
 ]
 
-export const TEAMS: TeamMap = TEAMS_SEP
+export const TEAMS: TeamMap = TEAMS_SEP14
 
 // Metas mensais de empresas únicas, por mês de vigência (mais recente primeiro).
 // teamGoals: metas individuais por time (quando diferem entre si).
