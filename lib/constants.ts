@@ -20,7 +20,7 @@ export const FARMERS: Record<string, string> = {
   '93599591': 'Bruna Saraiva',
   '89632472': 'Maria Eduarda Porto',
   '80228367': 'Jhuly',
-  '94028856': 'Milei',
+  '94028856': 'Felippe Freitas',
   '94316537': 'Maria Julia',
   '94316538': 'Gabriel Alves',
   '94399135': 'Gabriela',
@@ -45,31 +45,32 @@ export const FARMERS: Record<string, string> = {
 
 // Segmento da carteira individual de cada farmer
 export const FARMER_SEGMENTS: Record<string, string> = {
-  '97763591': 'Advocacia e Contabilidades',    // Leonardo Bitencourt
-  '98715090': 'Prefeituras',                    // Vitor
-  '97204635': 'Varejo e Comércio',              // Samuel
-  '80688884': 'Sistema S',                      // Rafael Brack
-  '98715128': 'Construção Civil',                // Mayke
-  '98715151': 'Consultorias e Educação Corp.',   // Matheus
-  '85002282': 'Cooperativas de Crédito e Unimed', // Sotoriva
-  '93238814': 'Cooperativas de Crédito e Unimed', // Sotoriva (alias)
-  '95415669': 'Serviços',                       // Gisele Santos
-  '92335488': 'Secretarias e Tribunais',         // Thaina
-  '93599591': 'Indústria I',                     // Bruna Saraiva
-  '85846971': 'Indústria II',                    // Fran Lenz
-  '97204561': 'Tecnologia B2B',                  // Juliano
-  '80228367': 'Agronegócio e Coop. do Agro',    // Jhuly
-  '94316537': 'Tecnologia e Software',           // Maria Julia
-  '84497577': 'Bancos e Fintechs',              // Vitória
-  '95993082': 'Energia, Mineração e Utilities',  // Hans Lopes
-  '95810969': 'Educação Básico e Superior II',   // Rhayssa
-  '88200239': 'Associações e Conselhos',         // Luiza
-  '94028856': 'Saúde Suplementar',               // Milei
-  '81033487': 'Serviços Profissionais II',       // Gustavo
-  '89632472': 'Terceiro Setor',                  // Maria Eduarda Porto
-  '79760745': 'Logística e Transporte',          // Thiago
-  '96589066': 'Saúde — Exceto Unimed',           // Nathalia
-  '87159365': 'Financeiro — Seguros/Gestoras',   // João Lucas
+  '97763591': 'Contabilidades e Advocacias',           // Leonardo Bitencourt
+  '98715090': 'Prefeituras',                            // Vitor
+  '97204635': 'Varejo e Comércio I',                    // Samuel
+  '80688884': 'Sistema S',                              // Rafael Brack
+  '98715128': 'Construção Civil e Imobiliário',         // Mayke
+  '98715151': 'Consultorias e Educação Corporativa',    // Matheus
+  '85002282': 'Cooperativas de Crédito e Unimed',      // Sotoriva
+  '93238814': 'Cooperativas de Crédito e Unimed',      // Sotoriva (alias)
+  '95415669': 'Serviços I',                             // Gisele Santos
+  '92335488': 'Secretarias de Estado e Tribunais',      // Thaina
+  '93599591': 'Indústria I',                            // Bruna Saraiva
+  '85846971': 'Indústria II',                           // Fran Lenz
+  '97204561': 'Tecnologia e Software II',               // Juliano
+  '80228367': 'Agronegócio e Cooperativas do Agro',    // Jhuly
+  '94316537': 'Tecnologia e Software I',                // Maria Julia
+  '84497577': 'Bancos e Fintechs',                     // Vitória
+  '95993082': 'Energia, Mineração e Utilities',         // Hans Lopes
+  '95810969': 'Educação Básico e Superior I',           // Rhayssa
+  '88200239': 'Associações, Conselhos e Organizações',  // Luiza
+  '94028856': 'Saúde II (Exceto Unimed)',                 // Felippe Freitas
+  '81033487': 'Serviços II',                            // Gustavo
+  '89632472': 'Varejo e Comércio II',                   // Maria Eduarda Porto
+  '79760745': 'Logística e Transporte',                 // Thiago
+  '96589066': 'Saúde I (Exceto Unimed)',                // Nathalia
+  '87159365': 'Tecnologia e Software III',              // João Lucas
+  '94399135': 'Agências e Assessorias de Palestras',    // Gabriela
 }
 
 // Farmers que criam negócios para si mesmos — excluídos da contagem de "parados"
@@ -77,7 +78,7 @@ export const STALE_EXCLUDED_FARMERS = new Set([
   '95811085', // Wagner
   '79760745', // Thiago
   '81033487', // Gustavo
-  '94028856', // Milei
+  '94028856', // Felippe Freitas
   '85002012', // Bruna Machado
   '87159365', // João Backmann
   '82410958', // Maria Eduarda

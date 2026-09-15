@@ -34,7 +34,7 @@ const ALL_FARMERS: Record<string, { name: string; initials: string }> = {
   '95993082': { name: 'Hans Lopes', initials: 'HL' },
   '94316537': { name: 'Maria Julia', initials: 'MJ' },
   '95415669': { name: 'Gisele', initials: 'GI' },
-  '94028856': { name: 'Milei', initials: 'MI' },
+  '94028856': { name: 'Felippe Freitas', initials: 'FF' },
   '88200239': { name: 'Luiza', initials: 'LU' },
   '97763591': { name: 'Leonardo Bitencourt', initials: 'LB' },
   '81033487': { name: 'Gustavo Pacheco', initials: 'GP' },
