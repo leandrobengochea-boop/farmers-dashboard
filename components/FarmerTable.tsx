@@ -6,7 +6,7 @@ import { ptBR } from 'date-fns/locale'
 import { FarmerStats, FarmerMeetingStats } from '@/lib/analytics'
 import { FarmerMatrixRow } from '@/lib/insights'
 import { Deal } from '@/lib/hubspot'
-import { CRITERIA } from '@/lib/constants'
+import { CRITERIA, FARMER_SEGMENTS } from '@/lib/constants'
 import { scoreScaleColor, SCORE_SCALE } from '@/lib/viz'
 
 interface FarmerTableProps {
@@ -277,8 +277,11 @@ export default function FarmerTable({ ranking, meetings, matrix, deals }: Farmer
                       onClick={() => { setModalFilter('all'); setSelectedFarmer(r.farmerId) }}
                       className="border-b border-zinc-700/40 hover:bg-zinc-700/30 transition cursor-pointer"
                     >
-                      <td className="py-2.5 px-3 text-zinc-200 whitespace-nowrap max-w-[10rem] truncate" title={r.farmerName}>
-                        {r.farmerName}
+                      <td className="py-2.5 px-3 max-w-[12rem]" title={r.farmerName}>
+                        <span className="text-zinc-200 whitespace-nowrap truncate block">{r.farmerName}</span>
+                        {FARMER_SEGMENTS[r.farmerId] && (
+                          <span className="text-zinc-500 text-[10px] leading-tight truncate block">{FARMER_SEGMENTS[r.farmerId]}</span>
+                        )}
                       </td>
 
                       {/* Barra: empresas únicas sólido, repetidos esmaecido */}

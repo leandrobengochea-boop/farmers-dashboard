@@ -8,7 +8,7 @@ export const FARMERS: Record<string, string> = {
   '85002282': 'Sotoriva',
   '93238814': 'Sotoriva',   // conta nova — alias para 85002282
   '85846972': 'Daniela',
-  '85846971': 'Francielle Teles',
+  '85846971': 'Fran Lenz',
   '81033487': 'Gustavo',
   '88200222': 'Kennedy',
   '87371619': 'Maryna',
@@ -39,6 +39,37 @@ export const FARMERS: Record<string, string> = {
   '97204635': 'Samuel',
   '97763591': 'Leonardo Bitencourt',
   '98715090': 'Vitor',
+  '98715128': 'Mayke',
+  '98715151': 'Matheus',
+}
+
+// Segmento da carteira individual de cada farmer
+export const FARMER_SEGMENTS: Record<string, string> = {
+  '97763591': 'Advocacia e Contabilidades',    // Leonardo Bitencourt
+  '98715090': 'Prefeituras',                    // Vitor
+  '97204635': 'Varejo e Comércio',              // Samuel
+  '80688884': 'Sistema S',                      // Rafael Brack
+  '98715128': 'Construção Civil',                // Mayke
+  '98715151': 'Consultorias e Educação Corp.',   // Matheus
+  '85002282': 'Cooperativas de Crédito e Unimed', // Sotoriva
+  '93238814': 'Cooperativas de Crédito e Unimed', // Sotoriva (alias)
+  '95415669': 'Serviços',                       // Gisele Santos
+  '92335488': 'Secretarias e Tribunais',         // Thaina
+  '93599591': 'Indústria I',                     // Bruna Saraiva
+  '85846971': 'Indústria II',                    // Fran Lenz
+  '97204561': 'Tecnologia B2B',                  // Juliano
+  '80228367': 'Agronegócio e Coop. do Agro',    // Jhuly
+  '94316537': 'Tecnologia e Software',           // Maria Julia
+  '84497577': 'Bancos e Fintechs',              // Vitória
+  '95993082': 'Energia, Mineração e Utilities',  // Hans Lopes
+  '95810969': 'Educação Básico e Superior II',   // Rhayssa
+  '88200239': 'Associações e Conselhos',         // Luiza
+  '94028856': 'Saúde Suplementar',               // Milei
+  '81033487': 'Serviços Profissionais II',       // Gustavo
+  '89632472': 'Terceiro Setor',                  // Maria Eduarda Porto
+  '79760745': 'Logística e Transporte',          // Thiago
+  '96589066': 'Saúde — Exceto Unimed',           // Nathalia
+  '87159365': 'Financeiro — Seguros/Gestoras',   // João Lucas
 }
 
 // Farmers que criam negócios para si mesmos — excluídos da contagem de "parados"
@@ -225,7 +256,7 @@ const TEAMS_SEP: TeamMap = {
 const TEAMS_SEP14: TeamMap = {
   leticia: {
     label: 'Time Leticia',
-    farmerIds: ['97763591', '97204635', '98715090', '80688884'],
+    farmerIds: ['97763591', '97204635', '98715090', '80688884', '98715128', '98715151'],
   },
   katyeli: {
     label: 'Time Katy',
