@@ -3,7 +3,8 @@ import { join } from 'path'
 
 // ── Modelo ──
 
-export type StatusBriefing = 'rascunho' | 'enviado' | 'aprovado' | 'ajustar'
+/** rascunho → planejado (abordagens definidas) → fechado (resultados registrados) → revisado (líder deu o ok) */
+export type StatusBriefing = 'rascunho' | 'planejado' | 'fechado' | 'revisado'
 
 export interface ItemDiario {
   farmerId: string
@@ -14,10 +15,10 @@ export interface ItemDiario {
   diasDesdeCompra: number | null
   ultimaCompra: string | null
   ultimoContato: string | null
-  marcado: boolean
   abordagem: string | null
-  observacao: string | null
-  resultado: string | null   // 'feito' | 'nao_feito' | null
+  observacao: string | null            // contexto definido de manhã
+  resultado: string | null             // 'efetivo' | 'tentativa' | 'nao_abordei'
+  observacaoResultado: string | null   // o que saiu do contato, registrado no fechamento
 }
 
 export interface Briefing {
@@ -30,7 +31,7 @@ export interface Briefing {
   comentarioLider: string | null
 }
 
-export type PatchItem = Partial<Pick<ItemDiario, 'marcado' | 'abordagem' | 'observacao' | 'resultado'>>
+export type PatchItem = Partial<Pick<ItemDiario, 'abordagem' | 'observacao' | 'resultado' | 'observacaoResultado'>>
 
 // ── Driver Postgres (Neon / Vercel Postgres) ──
 
@@ -65,15 +66,17 @@ async function garanteSchema(): Promise<void> {
       dias_desde_compra integer,
       ultima_compra     date,
       ultimo_contato    date,
-      marcado           boolean NOT NULL DEFAULT false,
       abordagem         text,
       observacao        text,
       resultado         text,
+      observacao_resultado text,
       criado_em         timestamptz NOT NULL DEFAULT now(),
       atualizado_em     timestamptz NOT NULL DEFAULT now(),
       PRIMARY KEY (farmer_id, data, company_id)
     )`
   await q`CREATE INDEX IF NOT EXISTS diario_item_farmer_data ON diario_item (farmer_id, data)`
+  // tabelas criadas pela primeira versão não tinham a observação de resultado
+  await q`ALTER TABLE diario_item ADD COLUMN IF NOT EXISTS observacao_resultado text`
   await q`
     CREATE TABLE IF NOT EXISTS diario_briefing (
       farmer_id        text NOT NULL,
@@ -125,10 +128,10 @@ function linhaParaItem(r: Record<string, unknown>): ItemDiario {
     diasDesdeCompra: r.dias_desde_compra === null || r.dias_desde_compra === undefined ? null : Number(r.dias_desde_compra),
     ultimaCompra: iso(r.ultima_compra),
     ultimoContato: iso(r.ultimo_contato),
-    marcado: !!r.marcado,
     abordagem: (r.abordagem as string) ?? null,
     observacao: (r.observacao as string) ?? null,
     resultado: (r.resultado as string) ?? null,
+    observacaoResultado: (r.observacao_resultado as string) ?? null,
   }
 }
 
@@ -184,28 +187,28 @@ export async function gravaSugestoes(itens: ItemDiario[]): Promise<void> {
 export async function atualizaItem(farmerId: string, data: string, companyId: string, patch: PatchItem): Promise<void> {
   // Só sobrescreve o que veio no patch — `undefined` nunca apaga valor salvo.
   const campos: PatchItem = {}
-  if (patch.marcado !== undefined) campos.marcado = patch.marcado
   if (patch.abordagem !== undefined) campos.abordagem = patch.abordagem
   if (patch.observacao !== undefined) campos.observacao = patch.observacao
   if (patch.resultado !== undefined) campos.resultado = patch.resultado
+  if (patch.observacaoResultado !== undefined) campos.observacaoResultado = patch.observacaoResultado
   if (Object.keys(campos).length === 0) return
 
   if (usandoPostgres) {
     await garanteSchema()
     const q = sql()
     const rows = await q`
-      SELECT marcado, abordagem, observacao, resultado FROM diario_item
+      SELECT abordagem, observacao, resultado, observacao_resultado FROM diario_item
       WHERE farmer_id = ${farmerId} AND data = ${data} AND company_id = ${companyId}`
     if (rows.length === 0) return
     const atual = rows[0]
-    const marcado = campos.marcado ?? !!atual.marcado
     const abordagem = campos.abordagem ?? ((atual.abordagem as string) ?? null)
     const observacao = campos.observacao ?? ((atual.observacao as string) ?? null)
     const resultado = campos.resultado ?? ((atual.resultado as string) ?? null)
+    const observacaoResultado = campos.observacaoResultado ?? ((atual.observacao_resultado as string) ?? null)
     await q`
       UPDATE diario_item
-      SET marcado = ${marcado}, abordagem = ${abordagem}, observacao = ${observacao},
-          resultado = ${resultado}, atualizado_em = now()
+      SET abordagem = ${abordagem}, observacao = ${observacao}, resultado = ${resultado},
+          observacao_resultado = ${observacaoResultado}, atualizado_em = now()
       WHERE farmer_id = ${farmerId} AND data = ${data} AND company_id = ${companyId}`
     return
   }
@@ -255,18 +258,19 @@ export async function briefingsDoDia(farmerIds: string[], data: string): Promise
   return leLocal().briefings.filter((b) => b.data === data && farmerIds.includes(b.farmerId))
 }
 
-export async function itensMarcadosDoDia(farmerIds: string[], data: string): Promise<ItemDiario[]> {
+/** Todas as empresas do dia dos farmers informados — a lista inteira é o compromisso. */
+export async function itensDoDiaDeVarios(farmerIds: string[], data: string): Promise<ItemDiario[]> {
   if (farmerIds.length === 0) return []
   if (usandoPostgres) {
     await garanteSchema()
     const rows = await sql()`
       SELECT * FROM diario_item
-      WHERE data = ${data} AND marcado = true AND farmer_id = ANY(${farmerIds})
+      WHERE data = ${data} AND farmer_id = ANY(${farmerIds})
       ORDER BY farmer_id, company_name`
     return rows.map(linhaParaItem)
   }
   return leLocal().itens
-    .filter((i) => i.data === data && i.marcado && farmerIds.includes(i.farmerId))
+    .filter((i) => i.data === data && farmerIds.includes(i.farmerId))
     .sort((a, b) => a.farmerId.localeCompare(b.farmerId) || a.companyName.localeCompare(b.companyName))
 }
 

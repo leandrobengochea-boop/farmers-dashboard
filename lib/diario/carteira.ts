@@ -1,5 +1,5 @@
 import { HUBSPOT_PORTAL_ID } from '../constants'
-import { Bucket, COTA_DIARIA, COOLDOWN_DIAS, ABORDAGEM_PADRAO } from './constants'
+import { Bucket, COTA_DIARIA, COOLDOWN_DIAS } from './constants'
 import { ItemDiario, empresasEmCooldown } from './db'
 
 export interface Empresa {
@@ -9,7 +9,7 @@ export interface Empresa {
   ultimoContato: string | null   // YYYY-MM-DD (ultimo_contato_efetivo)
   cidade: string
   hubspotUrl: string
-  bucket: Bucket | 'nutricao'
+  bucket: Bucket
   diasDesdeCompra: number | null
   noFunil: boolean               // já tem negócio aberto com este farmer
 }
@@ -88,9 +88,9 @@ function diasEntre(de: string, ate: string): number {
 
 /**
  * Classifica a empresa pelo tempo desde a última contratação.
- * A faixa de 3 a 8 meses ('nutricao') fica fora das sugestões de propósito.
+ * 0–3 entre eventos · 3–8 nutrição · 8–12 recompra · 12+ reativação.
  */
-export function classifica(ultimaCompra: string | null, hoje: string): { bucket: Bucket | 'nutricao'; dias: number | null } {
+export function classifica(ultimaCompra: string | null, hoje: string): { bucket: Bucket; dias: number | null } {
   if (!ultimaCompra) return { bucket: 'primeiro_contato', dias: null }
   const dias = diasEntre(ultimaCompra, hoje)
   if (ultimaCompra > menosMeses(hoje, 3)) return { bucket: 'extra', dias }
@@ -166,13 +166,13 @@ export async function fetchCarteira(farmerId: string, hoje: string): Promise<Emp
 
 /**
  * Ordem de prioridade dentro de cada balde:
- * - recompra: mais perto de estourar os 12 meses primeiro (compra mais antiga na frente)
+ * - recompra e nutrição: mais perto de estourar a janela primeiro (compra mais antiga na frente)
  * - reativação: a mais "morna" primeiro (compra mais recente na frente)
- * - extra / primeiro contato: sem contato efetivo há mais tempo na frente
+ * - extra: a mais recente na frente
  * Desempate sempre por quem está há mais tempo sem contato efetivo.
  */
 function ordena(bucket: Bucket, a: Empresa, b: Empresa): number {
-  if (bucket === 'recompra') {
+  if (bucket === 'recompra' || bucket === 'nutricao') {
     const d = (a.ultimaCompra ?? '').localeCompare(b.ultimaCompra ?? '')
     if (d !== 0) return d
   }
@@ -189,9 +189,10 @@ export interface Sugestoes {
 }
 
 /**
- * Monta a lista do dia seguindo o Pareto: 5 recompra + 15 reativação + 3 extras.
- * Se um balde seca, completa com o balde vizinho — e, em último caso, com
- * empresas sem histórico de contratação (primeiro contato).
+ * Monta a lista do dia: 5 recompra + 3 nutrição + 12 reativação (as 20 para
+ * abordar) mais 3 extras de clientes recentes. O que faltar num balde é
+ * completado pelos outros, na ordem reativação → nutrição → recompra →
+ * primeiro contato, para o farmer nunca receber menos de 20.
  */
 export async function montaSugestoes(farmerId: string, hoje: string): Promise<Sugestoes> {
   const carteira = await fetchCarteira(farmerId, hoje)
@@ -209,58 +210,62 @@ export async function montaSugestoes(farmerId: string, hoje: string): Promise<Su
   for (const e of carteira) resumo.porBucket[e.bucket] = (resumo.porBucket[e.bucket] ?? 0) + 1
 
   const disponiveis = carteira.filter((e) => !cooldown.has(e.id) && !e.noFunil)
-  const porBucket = (b: Bucket) => disponiveis.filter((e) => e.bucket === b).sort((x, y) => ordena(b, x, y))
-
-  const pools: Record<Bucket, Empresa[]> = {
-    recompra: porBucket('recompra'),
-    reativacao: porBucket('reativacao'),
-    extra: porBucket('extra'),
-    primeiro_contato: porBucket('primeiro_contato'),
+  const pools = {} as Record<Bucket, Empresa[]>
+  for (const b of ['recompra', 'nutricao', 'reativacao', 'extra', 'primeiro_contato'] as Bucket[]) {
+    pools[b] = disponiveis.filter((e) => e.bucket === b).sort((x, y) => ordena(b, x, y))
   }
 
-  const escolhidas: Array<{ empresa: Empresa; bucket: Bucket }> = []
+  const escolhidas: Empresa[] = []
   const usados = new Set<string>()
 
-  function puxa(bucket: Bucket, quantidade: number, deOndeVeio: Bucket = bucket): number {
+  function puxa(bucket: Bucket, quantidade: number): number {
     let pegos = 0
     for (const e of pools[bucket]) {
       if (pegos >= quantidade) break
       if (usados.has(e.id)) continue
       usados.add(e.id)
-      escolhidas.push({ empresa: e, bucket: deOndeVeio })
+      escolhidas.push(e)
       pegos++
     }
     return pegos
   }
 
-  // Recompra: se secar, puxa da reativação mais morna.
-  const recompra = puxa('recompra', COTA_DIARIA.recompra)
-  const faltaRecompra = COTA_DIARIA.recompra - recompra
+  const cotas: Array<[Bucket, number]> = [
+    ['recompra', COTA_DIARIA.recompra],
+    ['nutricao', COTA_DIARIA.nutricao],
+    ['reativacao', COTA_DIARIA.reativacao],
+  ]
+  let alvo = 0
+  for (const [bucket, cota] of cotas) {
+    alvo += cota
+    puxa(bucket, cota)
+  }
 
-  // Reativação: cota cheia + o que sobrou da recompra.
-  const alvoReativacao = COTA_DIARIA.reativacao + faltaRecompra
-  const reativacao = puxa('reativacao', alvoReativacao)
+  // Completa o que faltou para fechar as 20, do balde mais cheio de oportunidade
+  // para o mais frio.
+  for (const bucket of ['reativacao', 'nutricao', 'recompra', 'primeiro_contato'] as Bucket[]) {
+    const falta = alvo - escolhidas.length
+    if (falta <= 0) break
+    puxa(bucket, falta)
+  }
 
-  // Se a reativação também secar, completa com primeiro contato.
-  const faltaReativacao = alvoReativacao - reativacao
-  if (faltaReativacao > 0) puxa('primeiro_contato', faltaReativacao)
-
-  // Extras: clientes recentes, para sugerir o próximo evento.
+  // Extras: clientes recentes, para sugerir o próximo evento. Fora da conta das 20.
   puxa('extra', COTA_DIARIA.extra)
 
-  const itens: ItemDiario[] = escolhidas.map(({ empresa, bucket }) => ({
+  const itens: ItemDiario[] = escolhidas.map((empresa) => ({
     farmerId,
     data: hoje,
     companyId: empresa.id,
     companyName: empresa.nome,
-    bucket: empresa.bucket === 'nutricao' ? bucket : empresa.bucket,
+    bucket: empresa.bucket,
     diasDesdeCompra: empresa.diasDesdeCompra,
     ultimaCompra: empresa.ultimaCompra,
     ultimoContato: empresa.ultimoContato,
-    marcado: false,
-    abordagem: ABORDAGEM_PADRAO[empresa.bucket === 'nutricao' ? bucket : empresa.bucket],
+    // sem abordagem padrão: escolher a abordagem é a decisão da manhã
+    abordagem: null,
     observacao: null,
     resultado: null,
+    observacaoResultado: null,
   }))
 
   return { itens, resumo }

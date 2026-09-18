@@ -11,48 +11,69 @@ export const ABORDAGENS = [
 
 export type Abordagem = (typeof ABORDAGENS)[number]
 
-// ── Baldes de sugestão, por tempo desde a última compra ──
-// A janela de 3 a 8 meses fica de fora de propósito: é período de nutrição,
-// cedo demais para recompra e recente demais para reativação.
-export type Bucket = 'extra' | 'recompra' | 'reativacao' | 'primeiro_contato'
+// ── Resultado registrado no fechamento do dia ──
+export const RESULTADOS = [
+  { key: 'efetivo',     label: 'Contato efetivo',    cor: 'emerald' },
+  { key: 'tentativa',   label: 'Tentei, sem sucesso', cor: 'amber'  },
+  { key: 'nao_abordei', label: 'Não abordei',         cor: 'zinc'   },
+] as const
 
-export const BUCKETS: Record<Bucket, { label: string; hint: string; minMeses: number | null; maxMeses: number | null }> = {
-  extra:            { label: 'Entre eventos',  hint: 'Comprou há pouco — sugerir o próximo evento do calendário', minMeses: 0,    maxMeses: 3 },
-  recompra:         { label: 'Recompra',       hint: 'Janela quente: 8 a 12 meses desde a última contratação',    minMeses: 8,    maxMeses: 12 },
-  reativacao:       { label: 'Reativação',     hint: 'Mais de 12 meses sem contratar',                             minMeses: 12,   maxMeses: null },
-  primeiro_contato: { label: 'Primeiro contato', hint: 'Sem histórico de contratação na carteira',                 minMeses: null, maxMeses: null },
+export type Resultado = (typeof RESULTADOS)[number]['key']
+
+/**
+ * Onde a observação de resultado é obrigatória: quando houve conversa (o que
+ * saiu dela) e quando a empresa ficou pra trás (por quê). "Tentei, sem sucesso"
+ * se explica sozinho.
+ */
+export const RESULTADO_EXIGE_OBSERVACAO: Resultado[] = ['efetivo', 'nao_abordei']
+
+// ── Baldes de sugestão, por tempo desde a última compra ──
+export type Bucket = 'extra' | 'nutricao' | 'recompra' | 'reativacao' | 'primeiro_contato'
+
+export const BUCKETS: Record<Bucket, { label: string; hint: string }> = {
+  extra:            { label: 'Entre eventos',   hint: 'Comprou há menos de 3 meses — sugerir o próximo evento do calendário' },
+  nutricao:         { label: 'Nutrição',        hint: '3 a 8 meses desde a última contratação' },
+  recompra:         { label: 'Recompra',        hint: 'Janela quente: 8 a 12 meses desde a última contratação' },
+  reativacao:       { label: 'Reativação',      hint: 'Mais de 12 meses sem contratar' },
+  primeiro_contato: { label: 'Primeiro contato', hint: 'Sem histórico de contratação na carteira' },
 }
 
 // Ordem de exibição: o que é mais quente primeiro.
 export const ORDEM_BUCKET: Record<Bucket, number> = {
   recompra: 0,
-  reativacao: 1,
-  extra: 2,
-  primeiro_contato: 3,
+  nutricao: 1,
+  reativacao: 2,
+  extra: 3,
+  primeiro_contato: 4,
 }
 
-// Princípio de Pareto: poucas quentes, muitas frias.
-export const COTA_DIARIA: Record<'recompra' | 'reativacao' | 'extra', number> = {
+/**
+ * Princípio de Pareto: poucas quentes, muitas frias. Recompra, nutrição e
+ * reativação dividem as 20 empresas do dia; "entre eventos" entra como extra,
+ * fora da conta.
+ */
+export const COTA_DIARIA: Record<'recompra' | 'nutricao' | 'reativacao' | 'extra', number> = {
   recompra: 5,
-  reativacao: 15,
+  nutricao: 3,
+  reativacao: 12,
   extra: 3,
 }
 
+export const EMPRESAS_DO_DIA = COTA_DIARIA.recompra + COTA_DIARIA.nutricao + COTA_DIARIA.reativacao
+
 // Empresa sugerida não volta a aparecer por este número de dias corridos.
-// Sem isso o farmer receberia a mesma lista toda semana: a carteira elegível
-// média (~90 empresas com histórico) é varrida em cerca de 5 dias úteis.
 export const COOLDOWN_DIAS = 15
 
 // Abordagem sugerida por balde (o farmer pode trocar).
 export const ABORDAGEM_PADRAO: Record<Bucket, Abordagem> = {
   extra: 'AGENDAR PSA FIRST',
+  nutricao: 'REUNIÃO DE RELACIONAMENTO',
   recompra: 'REUNIÃO DE RELACIONAMENTO',
   reativacao: 'OFERTA PARA REATIVAÇÃO',
   primeiro_contato: 'PRIMEIRO CONTATO',
 }
 
 // ── Tickets ativos: eventos contratados em execução ──
-// Pipeline "CS" (748675953). Etapas marcadas como OPEN no HubSpot.
 export const TICKET_PIPELINE_CS = '748675953'
 export const TICKET_STAGES_ATIVOS = [
   '1088360203', // Etapa de conferência
@@ -92,9 +113,9 @@ export interface Usuario {
 /** Farmers de um líder, na formação vigente. Líder sem time vê todos. */
 export function farmersDoLider(timeKey: string | null): string[] {
   if (!timeKey) {
-    return Object.values(TEAMS).flatMap((t) => t.farmerIds)
+    return Object.values(TEAMS).flatMap((t) => t.farmerIds).filter((id) => !FARMER_ALIASES[id])
   }
-  return TEAMS[timeKey]?.farmerIds ?? []
+  return (TEAMS[timeKey]?.farmerIds ?? []).filter((id) => !FARMER_ALIASES[id])
 }
 
 /** Todos os farmers em operação hoje, na ordem dos times. */

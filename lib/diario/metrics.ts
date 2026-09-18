@@ -133,6 +133,7 @@ export async function resumoDoMes(farmerIds: string[], hoje: string): Promise<Re
 export interface PoolCarteira {
   carteira: number
   recompra: number
+  nutricao: number
   reativacao: number
   extra: number
   semHistorico: number
@@ -158,11 +159,15 @@ export async function poolDaCarteira(farmerId: string, hoje: string): Promise<Po
   const ms8 = msMenosMeses(hoje, 8)
   const ms12 = msMenosMeses(hoje, 12)
 
-  const [carteira, recompra, reativacao, extra, semHistorico, negociosAbertos] = await Promise.all([
+  const [carteira, recompra, nutricao, reativacao, extra, semHistorico, negociosAbertos] = await Promise.all([
     conta(pat, 'companies', [dono]).catch(() => 0),
     conta(pat, 'companies', [dono,
       { propertyName: 'data_da_ultima_compra', operator: 'GT', value: ms12 },
       { propertyName: 'data_da_ultima_compra', operator: 'LTE', value: ms8 },
+    ]).catch(() => 0),
+    conta(pat, 'companies', [dono,
+      { propertyName: 'data_da_ultima_compra', operator: 'GT', value: ms8 },
+      { propertyName: 'data_da_ultima_compra', operator: 'LTE', value: ms3 },
     ]).catch(() => 0),
     conta(pat, 'companies', [dono,
       { propertyName: 'data_da_ultima_compra', operator: 'LTE', value: ms12 },
@@ -179,5 +184,5 @@ export async function poolDaCarteira(farmerId: string, hoje: string): Promise<Po
     ]).catch(() => 0),
   ])
 
-  return { carteira, recompra, reativacao, extra, semHistorico, negociosAbertos }
+  return { carteira, recompra, nutricao, reativacao, extra, semHistorico, negociosAbertos }
 }

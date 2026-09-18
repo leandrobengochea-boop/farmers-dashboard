@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BUCKETS } from '@/lib/diario/constants'
+import { BUCKETS, RESULTADOS, Resultado } from '@/lib/diario/constants'
 import type { ItemDiario } from '@/lib/diario/db'
 import type { ResumoMes } from '@/lib/diario/metrics'
 import { LogoPSA, dataLonga, iniciais, meses, moeda } from './Marca'
@@ -12,7 +12,9 @@ interface AgendaFarmer {
   nome: string
   timeLabel: string
   status: string
+  comentarioLider: string | null
   itens: ItemDiario[]
+  placar: { total: number; extras: number; efetivo: number; tentativa: number; naoAbordei: number; pendente: number }
 }
 
 interface Dados {
@@ -22,10 +24,16 @@ interface Dados {
 }
 
 const ROTULO_STATUS: Record<string, { texto: string; cor: string }> = {
-  rascunho: { texto: 'SEM BRIEFING', cor: 'bg-zinc-200 text-zinc-600' },
-  enviado: { texto: 'AGUARDANDO', cor: 'bg-blue-600 text-white' },
-  aprovado: { texto: 'APROVADO', cor: 'bg-emerald-600 text-white' },
-  ajustar: { texto: 'AJUSTAR', cor: 'bg-amber-500 text-white' },
+  rascunho:  { texto: 'NÃO COMEÇOU',   cor: 'bg-zinc-200 text-zinc-600' },
+  planejado: { texto: 'EM CAMPO',      cor: 'bg-blue-600 text-white' },
+  fechado:   { texto: 'DIA FECHADO',   cor: 'bg-emerald-600 text-white' },
+  revisado:  { texto: 'REVISADO',      cor: 'bg-zinc-900 text-white' },
+}
+
+const CORES_RESULTADO: Record<Resultado, string> = {
+  efetivo: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  tentativa: 'bg-amber-100 text-amber-800 border-amber-200',
+  nao_abordei: 'bg-zinc-100 text-zinc-600 border-zinc-200',
 }
 
 export default function AgendaClient({ usuario }: { usuario: { id: string; nome: string } }) {
@@ -33,6 +41,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   const [dados, setDados] = useState<Dados | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
+  const [aberto, setAberto] = useState<string | null>(null)
 
   const carrega = useCallback(async () => {
     setCarregando(true)
@@ -49,13 +58,13 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
 
   useEffect(() => { carrega() }, [carrega])
 
-  async function decide(farmerId: string, acao: 'aprovar' | 'ajustar') {
+  async function revisa(farmerId: string) {
     if (!dados) return
-    const comentario = acao === 'ajustar' ? window.prompt('O que precisa mudar no plano?') ?? '' : ''
+    const comentario = window.prompt('Comentário para o farmer (opcional):') ?? ''
     await fetch('/api/diario/briefing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ acao, farmerId, data: dados.data, comentario }),
+      body: JSON.stringify({ acao: 'revisar', farmerId, data: dados.data, comentario }),
     })
     carrega()
   }
@@ -66,9 +75,11 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
     router.refresh()
   }
 
-  const comBriefing = dados?.agenda.filter((a) => a.itens.length > 0) ?? []
-  const semBriefing = dados?.agenda.filter((a) => a.itens.length === 0) ?? []
-  const totalEmpresas = comBriefing.reduce((s, a) => s + a.itens.length, 0)
+  const comLista = dados?.agenda.filter((a) => a.itens.length > 0) ?? []
+  const semLista = dados?.agenda.filter((a) => a.itens.length === 0) ?? []
+  const totalEmpresas = comLista.reduce((s, a) => s + a.placar.total, 0)
+  const totalEfetivo = comLista.reduce((s, a) => s + a.placar.efetivo, 0)
+  const totalPendente = comLista.reduce((s, a) => s + a.placar.pendente, 0)
 
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-6">
@@ -78,7 +89,9 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
           <div>
             <h1 className="font-black tracking-tight text-2xl uppercase leading-none">Agenda do dia</h1>
             <p className="text-sm text-zinc-500 mt-1">
-              {dados ? `${dataLonga(dados.data)} · ${comBriefing.length} de ${dados.agenda.length} farmers · ${totalEmpresas} empresas` : 'carregando...'}
+              {dados
+                ? `${dataLonga(dados.data)} · ${comLista.length} de ${dados.agenda.length} farmers · ${totalEmpresas} empresas · ${totalEfetivo} contatos efetivos`
+                : 'carregando...'}
             </p>
           </div>
         </div>
@@ -103,10 +116,10 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
         </div>
       )}
 
-      {semBriefing.length > 0 && (
+      {semLista.length > 0 && (
         <div className="mb-6 rounded-xl border border-zinc-200 bg-white px-5 py-3 flex flex-wrap items-center gap-3">
-          <span className="text-xs font-bold uppercase tracking-wide text-zinc-400">Sem briefing hoje ({semBriefing.length})</span>
-          {semBriefing.map((a) => (
+          <span className="text-xs font-bold uppercase tracking-wide text-zinc-400">Sem lista hoje ({semLista.length})</span>
+          {semLista.map((a) => (
             <span key={a.farmerId} className="flex items-center gap-2 text-sm bg-zinc-50 border border-zinc-200 rounded-full pl-1.5 pr-3 py-1">
               <span className="w-6 h-6 rounded-full bg-zinc-300 text-zinc-700 text-[10px] font-bold grid place-items-center">{iniciais(a.nome)}</span>
               {a.nome}
@@ -115,29 +128,50 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
         </div>
       )}
 
+      {totalPendente > 0 && comLista.length > 0 && (
+        <p className="mb-4 text-sm text-zinc-500">{totalPendente} empresa(s) ainda sem resultado registrado no time.</p>
+      )}
+
       {carregando ? (
         <p className="py-16 text-center text-sm text-zinc-500">Carregando a agenda do time...</p>
-      ) : comBriefing.length === 0 ? (
-        <p className="py-16 text-center text-sm text-zinc-500">Nenhum farmer montou o plano do dia ainda.</p>
+      ) : comLista.length === 0 ? (
+        <p className="py-16 text-center text-sm text-zinc-500">Nenhum farmer abriu o diário hoje.</p>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-          {comBriefing.map((a) => {
+          {comLista.map((a) => {
             const status = ROTULO_STATUS[a.status] ?? ROTULO_STATUS.rascunho
+            const expandido = aberto === a.farmerId
+            const visiveis = expandido ? a.itens : a.itens.filter((i) => i.resultado)
             return (
-              <div key={a.farmerId} className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+              <div key={a.farmerId} className="rounded-2xl border border-zinc-200 bg-white overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-100">
                   <div className="flex items-center gap-3">
                     <span className="w-9 h-9 rounded-full bg-zinc-900 text-white text-xs font-bold grid place-items-center">{iniciais(a.nome)}</span>
                     <div>
                       <p className="font-semibold text-sm">{a.nome}</p>
-                      <p className="text-xs text-zinc-500">{a.itens.length} empresas · {a.timeLabel}</p>
+                      <p className="text-xs text-zinc-500">
+                        {a.placar.total} empresas{a.placar.extras > 0 && ` + ${a.placar.extras} extras`} · {a.timeLabel}
+                      </p>
                     </div>
                   </div>
                   <span className={`text-[11px] font-bold px-2.5 py-1 rounded ${status.cor}`}>{status.texto}</span>
                 </div>
 
-                <div className="divide-y divide-zinc-50">
-                  {a.itens.map((i) => (
+                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-100 text-xs">
+                  <Placar rotulo="efetivos" valor={a.placar.efetivo} cor="text-emerald-700 bg-emerald-50 border-emerald-100" />
+                  <Placar rotulo="tentativas" valor={a.placar.tentativa} cor="text-amber-700 bg-amber-50 border-amber-100" />
+                  <Placar rotulo="não abordou" valor={a.placar.naoAbordei} cor="text-zinc-600 bg-zinc-50 border-zinc-200" />
+                  {a.placar.pendente > 0 && <Placar rotulo="sem resposta" valor={a.placar.pendente} cor="text-zinc-400 bg-white border-zinc-200" />}
+                </div>
+
+                {a.comentarioLider && (
+                  <p className="px-4 py-2 bg-blue-50 border-b border-blue-100 text-xs text-blue-900">{a.comentarioLider}</p>
+                )}
+
+                <div className="divide-y divide-zinc-50 flex-1">
+                  {visiveis.length === 0 ? (
+                    <p className="px-4 py-6 text-xs text-zinc-400 text-center">Nada registrado ainda.</p>
+                  ) : visiveis.map((i) => (
                     <div key={i.companyId} className="px-4 py-3">
                       <div className="flex items-start justify-between gap-3">
                         <a href={`https://app.hubspot.com/contacts/49656171/record/0-2/${i.companyId}`} target="_blank" rel="noreferrer"
@@ -150,33 +184,49 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded">
                           {BUCKETS[i.bucket as keyof typeof BUCKETS]?.label ?? i.bucket}
                         </span>
-                        <span className="text-[11px] font-semibold text-orange-700 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded">
-                          {i.abordagem}
-                        </span>
+                        {i.abordagem && (
+                          <span className="text-[11px] font-semibold text-orange-700 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded">
+                            {i.abordagem}
+                          </span>
+                        )}
+                        {i.resultado && (
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${CORES_RESULTADO[i.resultado as Resultado]}`}>
+                            {RESULTADOS.find((r) => r.key === i.resultado)?.label}
+                          </span>
+                        )}
                       </div>
-                      {i.observacao && <p className="text-xs text-zinc-600 mt-2 border-l-2 border-zinc-200 pl-2">{i.observacao}</p>}
+                      {i.observacaoResultado && <p className="text-xs text-zinc-700 mt-2 border-l-2 border-emerald-300 pl-2">{i.observacaoResultado}</p>}
+                      {!i.observacaoResultado && i.observacao && <p className="text-xs text-zinc-500 mt-2 border-l-2 border-zinc-200 pl-2">{i.observacao}</p>}
                     </div>
                   ))}
                 </div>
 
-                {a.status === 'enviado' && (
-                  <div className="flex gap-2 px-4 py-3 border-t border-zinc-100 bg-zinc-50/60">
-                    <button onClick={() => decide(a.farmerId, 'aprovar')}
+                <div className="flex gap-2 px-4 py-3 border-t border-zinc-100 bg-zinc-50/60">
+                  <button onClick={() => setAberto(expandido ? null : a.farmerId)}
+                    className="flex-1 rounded-lg py-2 text-sm font-medium border border-zinc-300 bg-white hover:border-zinc-500">
+                    {expandido ? 'Ver só o que rolou' : `Ver as ${a.placar.total}`}
+                  </button>
+                  {a.status === 'fechado' && (
+                    <button onClick={() => revisa(a.farmerId)}
                       className="flex-1 rounded-lg py-2 text-sm font-semibold text-white" style={{ background: '#FF5200' }}>
-                      Aprovar
+                      Revisar
                     </button>
-                    <button onClick={() => decide(a.farmerId, 'ajustar')}
-                      className="flex-1 rounded-lg py-2 text-sm font-semibold border border-zinc-300 bg-white hover:border-zinc-500">
-                      Pedir ajuste
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )
           })}
         </div>
       )}
     </div>
+  )
+}
+
+function Placar({ rotulo, valor, cor }: { rotulo: string; valor: number; cor: string }) {
+  return (
+    <span className={`px-2 py-1 rounded border font-medium ${cor}`}>
+      {valor} {rotulo}
+    </span>
   )
 }
 
