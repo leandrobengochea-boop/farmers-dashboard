@@ -1,0 +1,292 @@
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
+import { join } from 'path'
+
+// ── Modelo ──
+
+export type StatusBriefing = 'rascunho' | 'enviado' | 'aprovado' | 'ajustar'
+
+export interface ItemDiario {
+  farmerId: string
+  data: string            // YYYY-MM-DD
+  companyId: string
+  companyName: string
+  bucket: string
+  diasDesdeCompra: number | null
+  ultimaCompra: string | null
+  ultimoContato: string | null
+  marcado: boolean
+  abordagem: string | null
+  observacao: string | null
+  resultado: string | null   // 'feito' | 'nao_feito' | null
+}
+
+export interface Briefing {
+  farmerId: string
+  data: string
+  status: StatusBriefing
+  enviadoEm: string | null
+  decididoEm: string | null
+  decididoPor: string | null
+  comentarioLider: string | null
+}
+
+export type PatchItem = Partial<Pick<ItemDiario, 'marcado' | 'abordagem' | 'observacao' | 'resultado'>>
+
+// ── Driver Postgres (Neon / Vercel Postgres) ──
+
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || ''
+
+type SqlFn = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<Record<string, unknown>[]>
+let sqlClient: SqlFn | null = null
+
+function sql(): SqlFn {
+  if (!sqlClient) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { neon } = require('@neondatabase/serverless') as { neon: (cs: string) => SqlFn }
+    sqlClient = neon(connectionString)
+  }
+  return sqlClient
+}
+
+export const usandoPostgres = !!connectionString
+
+let schemaPronto = false
+
+async function garanteSchema(): Promise<void> {
+  if (schemaPronto) return
+  const q = sql()
+  await q`
+    CREATE TABLE IF NOT EXISTS diario_item (
+      farmer_id         text    NOT NULL,
+      data              date    NOT NULL,
+      company_id        text    NOT NULL,
+      company_name      text    NOT NULL,
+      bucket            text    NOT NULL,
+      dias_desde_compra integer,
+      ultima_compra     date,
+      ultimo_contato    date,
+      marcado           boolean NOT NULL DEFAULT false,
+      abordagem         text,
+      observacao        text,
+      resultado         text,
+      criado_em         timestamptz NOT NULL DEFAULT now(),
+      atualizado_em     timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (farmer_id, data, company_id)
+    )`
+  await q`CREATE INDEX IF NOT EXISTS diario_item_farmer_data ON diario_item (farmer_id, data)`
+  await q`
+    CREATE TABLE IF NOT EXISTS diario_briefing (
+      farmer_id        text NOT NULL,
+      data             date NOT NULL,
+      status           text NOT NULL DEFAULT 'rascunho',
+      enviado_em       timestamptz,
+      decidido_em      timestamptz,
+      decidido_por     text,
+      comentario_lider text,
+      PRIMARY KEY (farmer_id, data)
+    )`
+  schemaPronto = true
+}
+
+// ── Driver local (arquivo JSON) — usado quando não há DATABASE_URL ──
+
+interface DadosLocais { itens: ItemDiario[]; briefings: Briefing[] }
+
+const arquivoLocal = join(process.cwd(), '.diario-data', 'diario.json')
+
+function leLocal(): DadosLocais {
+  try {
+    return JSON.parse(readFileSync(arquivoLocal, 'utf-8')) as DadosLocais
+  } catch {
+    return { itens: [], briefings: [] }
+  }
+}
+
+function gravaLocal(dados: DadosLocais): void {
+  const dir = join(process.cwd(), '.diario-data')
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  writeFileSync(arquivoLocal, JSON.stringify(dados, null, 2))
+}
+
+function iso(valor: unknown): string | null {
+  if (!valor) return null
+  if (typeof valor === 'string') return valor.slice(0, 10)
+  if (valor instanceof Date) return valor.toISOString().slice(0, 10)
+  return null
+}
+
+function linhaParaItem(r: Record<string, unknown>): ItemDiario {
+  return {
+    farmerId: String(r.farmer_id),
+    data: iso(r.data) ?? '',
+    companyId: String(r.company_id),
+    companyName: String(r.company_name ?? ''),
+    bucket: String(r.bucket ?? ''),
+    diasDesdeCompra: r.dias_desde_compra === null || r.dias_desde_compra === undefined ? null : Number(r.dias_desde_compra),
+    ultimaCompra: iso(r.ultima_compra),
+    ultimoContato: iso(r.ultimo_contato),
+    marcado: !!r.marcado,
+    abordagem: (r.abordagem as string) ?? null,
+    observacao: (r.observacao as string) ?? null,
+    resultado: (r.resultado as string) ?? null,
+  }
+}
+
+function linhaParaBriefing(r: Record<string, unknown>): Briefing {
+  return {
+    farmerId: String(r.farmer_id),
+    data: iso(r.data) ?? '',
+    status: (r.status as StatusBriefing) ?? 'rascunho',
+    enviadoEm: r.enviado_em ? new Date(r.enviado_em as string).toISOString() : null,
+    decididoEm: r.decidido_em ? new Date(r.decidido_em as string).toISOString() : null,
+    decididoPor: (r.decidido_por as string) ?? null,
+    comentarioLider: (r.comentario_lider as string) ?? null,
+  }
+}
+
+// ── API pública ──
+
+export async function itensDoDia(farmerId: string, data: string): Promise<ItemDiario[]> {
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`
+      SELECT * FROM diario_item WHERE farmer_id = ${farmerId} AND data = ${data}
+      ORDER BY bucket, company_name`
+    return rows.map(linhaParaItem)
+  }
+  return leLocal().itens
+    .filter((i) => i.farmerId === farmerId && i.data === data)
+    .sort((a, b) => a.bucket.localeCompare(b.bucket) || a.companyName.localeCompare(b.companyName))
+}
+
+/** Grava a lista sugerida do dia. Itens já existentes são preservados (não reembaralha). */
+export async function gravaSugestoes(itens: ItemDiario[]): Promise<void> {
+  if (itens.length === 0) return
+  if (usandoPostgres) {
+    await garanteSchema()
+    const q = sql()
+    for (const i of itens) {
+      await q`
+        INSERT INTO diario_item (farmer_id, data, company_id, company_name, bucket, dias_desde_compra, ultima_compra, ultimo_contato, abordagem)
+        VALUES (${i.farmerId}, ${i.data}, ${i.companyId}, ${i.companyName}, ${i.bucket}, ${i.diasDesdeCompra}, ${i.ultimaCompra}, ${i.ultimoContato}, ${i.abordagem})
+        ON CONFLICT (farmer_id, data, company_id) DO NOTHING`
+    }
+    return
+  }
+  const dados = leLocal()
+  for (const i of itens) {
+    const existe = dados.itens.some((x) => x.farmerId === i.farmerId && x.data === i.data && x.companyId === i.companyId)
+    if (!existe) dados.itens.push(i)
+  }
+  gravaLocal(dados)
+}
+
+export async function atualizaItem(farmerId: string, data: string, companyId: string, patch: PatchItem): Promise<void> {
+  // Só sobrescreve o que veio no patch — `undefined` nunca apaga valor salvo.
+  const campos: PatchItem = {}
+  if (patch.marcado !== undefined) campos.marcado = patch.marcado
+  if (patch.abordagem !== undefined) campos.abordagem = patch.abordagem
+  if (patch.observacao !== undefined) campos.observacao = patch.observacao
+  if (patch.resultado !== undefined) campos.resultado = patch.resultado
+  if (Object.keys(campos).length === 0) return
+
+  if (usandoPostgres) {
+    await garanteSchema()
+    const q = sql()
+    const rows = await q`
+      SELECT marcado, abordagem, observacao, resultado FROM diario_item
+      WHERE farmer_id = ${farmerId} AND data = ${data} AND company_id = ${companyId}`
+    if (rows.length === 0) return
+    const atual = rows[0]
+    const marcado = campos.marcado ?? !!atual.marcado
+    const abordagem = campos.abordagem ?? ((atual.abordagem as string) ?? null)
+    const observacao = campos.observacao ?? ((atual.observacao as string) ?? null)
+    const resultado = campos.resultado ?? ((atual.resultado as string) ?? null)
+    await q`
+      UPDATE diario_item
+      SET marcado = ${marcado}, abordagem = ${abordagem}, observacao = ${observacao},
+          resultado = ${resultado}, atualizado_em = now()
+      WHERE farmer_id = ${farmerId} AND data = ${data} AND company_id = ${companyId}`
+    return
+  }
+
+  const dados = leLocal()
+  const item = dados.itens.find((x) => x.farmerId === farmerId && x.data === data && x.companyId === companyId)
+  if (item) Object.assign(item, campos)
+  gravaLocal(dados)
+}
+
+/** Empresas já sugeridas nos últimos `dias` — não voltam à lista (cooldown). */
+export async function empresasEmCooldown(farmerId: string, dias: number, hoje: string): Promise<Set<string>> {
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`
+      SELECT DISTINCT company_id FROM diario_item
+      WHERE farmer_id = ${farmerId} AND data > (${hoje}::date - ${dias}::integer) AND data < ${hoje}::date`
+    return new Set(rows.map((r) => String(r.company_id)))
+  }
+  const limite = new Date(`${hoje}T00:00:00Z`)
+  limite.setUTCDate(limite.getUTCDate() - dias)
+  const limiteIso = limite.toISOString().slice(0, 10)
+  return new Set(
+    leLocal().itens
+      .filter((i) => i.farmerId === farmerId && i.data > limiteIso && i.data < hoje)
+      .map((i) => i.companyId),
+  )
+}
+
+export async function briefing(farmerId: string, data: string): Promise<Briefing> {
+  const vazio: Briefing = { farmerId, data, status: 'rascunho', enviadoEm: null, decididoEm: null, decididoPor: null, comentarioLider: null }
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`SELECT * FROM diario_briefing WHERE farmer_id = ${farmerId} AND data = ${data}`
+    return rows.length ? linhaParaBriefing(rows[0]) : vazio
+  }
+  return leLocal().briefings.find((b) => b.farmerId === farmerId && b.data === data) ?? vazio
+}
+
+export async function briefingsDoDia(farmerIds: string[], data: string): Promise<Briefing[]> {
+  if (farmerIds.length === 0) return []
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`SELECT * FROM diario_briefing WHERE data = ${data} AND farmer_id = ANY(${farmerIds})`
+    return rows.map(linhaParaBriefing)
+  }
+  return leLocal().briefings.filter((b) => b.data === data && farmerIds.includes(b.farmerId))
+}
+
+export async function itensMarcadosDoDia(farmerIds: string[], data: string): Promise<ItemDiario[]> {
+  if (farmerIds.length === 0) return []
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`
+      SELECT * FROM diario_item
+      WHERE data = ${data} AND marcado = true AND farmer_id = ANY(${farmerIds})
+      ORDER BY farmer_id, company_name`
+    return rows.map(linhaParaItem)
+  }
+  return leLocal().itens
+    .filter((i) => i.data === data && i.marcado && farmerIds.includes(i.farmerId))
+    .sort((a, b) => a.farmerId.localeCompare(b.farmerId) || a.companyName.localeCompare(b.companyName))
+}
+
+export async function salvaBriefing(b: Briefing): Promise<void> {
+  if (usandoPostgres) {
+    await garanteSchema()
+    await sql()`
+      INSERT INTO diario_briefing (farmer_id, data, status, enviado_em, decidido_em, decidido_por, comentario_lider)
+      VALUES (${b.farmerId}, ${b.data}, ${b.status}, ${b.enviadoEm}, ${b.decididoEm}, ${b.decididoPor}, ${b.comentarioLider})
+      ON CONFLICT (farmer_id, data) DO UPDATE SET
+        status = EXCLUDED.status,
+        enviado_em = EXCLUDED.enviado_em,
+        decidido_em = EXCLUDED.decidido_em,
+        decidido_por = EXCLUDED.decidido_por,
+        comentario_lider = EXCLUDED.comentario_lider`
+    return
+  }
+  const dados = leLocal()
+  const i = dados.briefings.findIndex((x) => x.farmerId === b.farmerId && x.data === b.data)
+  if (i >= 0) dados.briefings[i] = b
+  else dados.briefings.push(b)
+  gravaLocal(dados)
+}
