@@ -22,13 +22,23 @@ export interface HistoricoItem {
   tentativasSeguidas: number
 }
 
-export type ItemComHistorico = ItemDiario & { historico: HistoricoItem | null }
+export interface OrientacaoItem {
+  texto: string
+  autor: string
+  criadoEm: string
+}
+
+export type ItemComHistorico = ItemDiario & {
+  historico: HistoricoItem | null
+  precisaAuxilio: boolean
+  orientacao: OrientacaoItem | null
+}
 
 interface Dados {
   farmerId: string
   data: string
   itens: ItemComHistorico[]
-  pool: (PoolCarteira & { emDescanso: number; paradas: number }) | null
+  pool: (PoolCarteira & { emDescanso: number; precisandoAuxilio: number }) | null
   resumo: ResumoMes
   briefing: Briefing
 }
@@ -231,8 +241,8 @@ export default function DiarioClient({ usuario, farmers }: Props) {
           <PoolItem rotulo="Sem histórico" valor={dados.pool.semHistorico} />
           <span className="text-zinc-500">{dados.pool.negociosAbertos} negócios abertos no funil</span>
           <span className="text-zinc-500">{dados.pool.emDescanso} em descanso</span>
-          {dados.pool.paradas > 0 && (
-            <span className="text-orange-600">{dados.pool.paradas} sem contato há 3 tentativas</span>
+          {dados.pool.precisandoAuxilio > 0 && (
+            <span className="text-orange-600 font-medium">{dados.pool.precisandoAuxilio} pedindo auxílio do líder</span>
           )}
         </div>
       )}
@@ -452,7 +462,20 @@ function Empresa({ item }: { item: ItemComHistorico }) {
       <div className="text-xs text-zinc-400 mt-0.5">
         {item.ultimaCompra ? `última compra ${dataCurta(item.ultimaCompra)}` : 'nunca contratou'}
       </div>
-      <Retorno historico={item.historico} />
+      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+        <Retorno historico={item.historico} />
+        {item.precisaAuxilio && (
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-600 text-white tracking-wide">
+            AUXÍLIO DO LÍDER
+          </span>
+        )}
+      </div>
+      {item.orientacao && (
+        <div className="mt-2 rounded-lg bg-blue-50 border border-blue-100 px-2.5 py-2 max-w-xs">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-blue-700">{item.orientacao.autor}</p>
+          <p className="text-xs text-blue-900 mt-0.5">{item.orientacao.texto}</p>
+        </div>
+      )}
     </>
   )
 }
@@ -475,7 +498,7 @@ function Retorno({ historico }: { historico: HistoricoItem | null }) {
   } else {
     texto = `apareceu em ${quando}`
   }
-  return <span className={`inline-block mt-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded ${cor}`}>{texto}</span>
+  return <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${cor}`}>{texto}</span>
 }
 
 function Fase({ item }: { item: ItemComHistorico }) {

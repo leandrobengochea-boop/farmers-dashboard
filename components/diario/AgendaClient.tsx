@@ -14,7 +14,14 @@ interface AgendaFarmer {
   status: string
   comentarioLider: string | null
   itens: ItemDiario[]
-  paradas: Array<{ companyId: string; companyName: string; tentativas: number; ultimaData: string }>
+  auxilios: Array<{
+    companyId: string
+    companyName: string
+    tentativas: number
+    ultimaData: string
+    naListaDeHoje: boolean
+    orientacao: { texto: string; autor: string; criadoEm: string } | null
+  }>
   placar: { total: number; extras: number; efetivo: number; tentativa: number; naoAbordei: number; pendente: number }
 }
 
@@ -43,6 +50,9 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
   const [aberto, setAberto] = useState<string | null>(null)
+  const [orientando, setOrientando] = useState<string | null>(null)
+  const [rascunho, setRascunho] = useState('')
+  const [salvando, setSalvando] = useState(false)
 
   const carrega = useCallback(async () => {
     setCarregando(true)
@@ -81,7 +91,21 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   const totalEmpresas = comLista.reduce((s, a) => s + a.placar.total, 0)
   const totalEfetivo = comLista.reduce((s, a) => s + a.placar.efetivo, 0)
   const totalPendente = comLista.reduce((s, a) => s + a.placar.pendente, 0)
-  const comParadas = dados?.agenda.filter((a) => a.paradas.length > 0) ?? []
+  const comAuxilio = dados?.agenda.filter((a) => a.auxilios.length > 0) ?? []
+
+  async function orienta(farmerId: string, companyId: string) {
+    if (!rascunho.trim()) return
+    setSalvando(true)
+    await fetch('/api/diario/orientacao', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ farmerId, companyId, texto: rascunho }),
+    })
+    setSalvando(false)
+    setOrientando(null)
+    setRascunho('')
+    carrega()
+  }
 
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-6">
@@ -130,36 +154,88 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
         </div>
       )}
 
-      {comParadas.length > 0 && (
+      {comAuxilio.length > 0 && (
         <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50/50 px-5 py-4">
-          <div className="flex items-baseline gap-2 mb-3">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-orange-800">Precisa de dado novo</h2>
+          <div className="flex items-baseline gap-2 mb-1">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-orange-800">Pedidos de auxílio</h2>
             <span className="text-xs text-orange-700">
-              {comParadas.reduce((s, a) => s + a.paradas.length, 0)} empresas saíram do rodízio depois de 3 tentativas sem contato
+              {(() => {
+                const n = comAuxilio.reduce((s, a) => s + a.auxilios.length, 0)
+                return `${n} ${n === 1 ? 'empresa' : 'empresas'} com 3 tentativas sem contato`
+              })()}
             </span>
           </div>
-          <div className="grid gap-2">
-            {comParadas.map((a) => (
-              <div key={a.farmerId} className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-xs font-semibold text-zinc-600 w-32 shrink-0">{a.nome}</span>
-                {a.paradas.map((p) => (
-                  <a
-                    key={p.companyId}
-                    href={`https://app.hubspot.com/contacts/49656171/record/0-2/${p.companyId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs bg-white border border-orange-200 rounded-full px-2.5 py-1 hover:border-orange-500"
-                    title={`${p.tentativas} tentativas · última em ${p.ultimaData}`}
-                  >
-                    {p.companyName}
-                  </a>
-                ))}
+          <p className="text-xs text-orange-700/80 mb-4">
+            Elas continuam na lista do farmer. Escreva a orientação e ela aparece no card da empresa para ele.
+          </p>
+
+          <div className="grid gap-3">
+            {comAuxilio.map((a) => (
+              <div key={a.farmerId}>
+                <p className="text-xs font-semibold text-zinc-600 mb-1.5">{a.nome}</p>
+                <div className="grid gap-2">
+                  {a.auxilios.map((p) => {
+                    const chave = `${a.farmerId}:${p.companyId}`
+                    const editando = orientando === chave
+                    return (
+                      <div key={p.companyId} className="rounded-xl bg-white border border-orange-200 px-3 py-2.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={`https://app.hubspot.com/contacts/49656171/record/0-2/${p.companyId}`}
+                              target="_blank" rel="noreferrer"
+                              className="text-sm font-medium hover:text-orange-600 hover:underline"
+                            >
+                              {p.companyName}
+                            </a>
+                            <span className="text-[11px] text-zinc-500">
+                              {p.tentativas} tentativas · última em {p.ultimaData.slice(8, 10)}/{p.ultimaData.slice(5, 7)}
+                            </span>
+                            {p.naListaDeHoje && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-900 text-white">NA LISTA DE HOJE</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => { setOrientando(editando ? null : chave); setRascunho(p.orientacao?.texto ?? '') }}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-300 bg-white hover:border-zinc-500"
+                          >
+                            {editando ? 'Cancelar' : p.orientacao ? 'Editar orientação' : 'Orientar'}
+                          </button>
+                        </div>
+
+                        {p.orientacao && !editando && (
+                          <p className="text-xs text-blue-900 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-2 mt-2">
+                            <b>{p.orientacao.autor}:</b> {p.orientacao.texto}
+                          </p>
+                        )}
+
+                        {editando && (
+                          <div className="mt-2">
+                            <textarea
+                              value={rascunho}
+                              onChange={(e) => setRascunho(e.target.value)}
+                              rows={2}
+                              autoFocus
+                              placeholder="Ex.: falei com o Ricardo lá, procura a Ana no RH e usa meu nome"
+                              className="w-full rounded-lg border border-zinc-300 px-2.5 py-2 text-sm resize-y"
+                            />
+                            <button
+                              onClick={() => orienta(a.farmerId, p.companyId)}
+                              disabled={salvando || !rascunho.trim()}
+                              className="mt-2 text-sm font-semibold text-white px-4 py-2 rounded-lg disabled:bg-zinc-300"
+                              style={rascunho.trim() && !salvando ? { background: '#FF5200' } : undefined}
+                            >
+                              {salvando ? 'Salvando...' : 'Enviar para o farmer'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             ))}
           </div>
-          <p className="text-xs text-orange-700/80 mt-3">
-            Atualize telefone ou contato no HubSpot — elas voltam ao rodízio no próximo contato efetivo.
-          </p>
         </div>
       )}
 

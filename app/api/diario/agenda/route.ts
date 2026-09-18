@@ -4,8 +4,8 @@ import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider } from '@/lib/diario/constants'
 import { hojeSP } from '@/lib/diario/carteira'
 import { resumoDoMes } from '@/lib/diario/metrics'
-import { itensDoDiaDeVarios, briefingsDoDia, historicoDeVarios, ItemDiario } from '@/lib/diario/db'
-import { estaParada } from '@/lib/diario/carteira'
+import { itensDoDiaDeVarios, briefingsDoDia, historicoDeVarios, orientacoesDe, ItemDiario } from '@/lib/diario/db'
+import { precisaAuxilio } from '@/lib/diario/carteira'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -17,7 +17,14 @@ export interface AgendaFarmer {
   status: string
   comentarioLider: string | null
   itens: ItemDiario[]
-  paradas: Array<{ companyId: string; companyName: string; tentativas: number; ultimaData: string }>
+  auxilios: Array<{
+    companyId: string
+    companyName: string
+    tentativas: number
+    ultimaData: string
+    naListaDeHoje: boolean
+    orientacao: { texto: string; autor: string; criadoEm: string } | null
+  }>
   placar: { total: number; extras: number; efetivo: number; tentativa: number; naoAbordei: number; pendente: number }
 }
 
@@ -30,11 +37,12 @@ export async function GET(req: Request) {
   const farmerIds = farmersDoLider(usuario.timeKey)
 
   try {
-    const [itens, briefings, resumo, historico] = await Promise.all([
+    const [itens, briefings, resumo, historico, orientacoes] = await Promise.all([
       itensDoDiaDeVarios(farmerIds, data),
       briefingsDoDia(farmerIds, data),
       resumoDoMes(farmerIds, data),
       historicoDeVarios(farmerIds, data),
+      orientacoesDe(farmerIds),
     ])
 
     const timeLabelPorFarmer: Record<string, string> = {}
@@ -47,12 +55,23 @@ export async function GET(req: Request) {
       // Os extras (clientes recentes) são bônus e não entram no placar do dia.
       const doDia = doFarmer.filter((i) => i.bucket !== 'extra')
       const brief = briefings.find((b) => b.farmerId === farmerId)
-      // Empresas que saíram do rodízio por três tentativas sem contato:
-      // quase sempre é dado desatualizado no CRM, não falta de esforço.
-      const paradas = [...(historico.get(farmerId)?.values() ?? [])]
-        .filter(estaParada)
+      // Empresas com três tentativas sem contato: seguem na lista do farmer,
+      // esperando uma orientação do líder.
+      const orientacoesDoFarmer = orientacoes.get(farmerId)
+      const auxilios = [...(historico.get(farmerId)?.values() ?? [])]
+        .filter(precisaAuxilio)
         .sort((a, b) => b.ultimaData.localeCompare(a.ultimaData))
-        .map((h) => ({ companyId: h.companyId, companyName: h.companyName, tentativas: h.tentativasSeguidas, ultimaData: h.ultimaData }))
+        .map((h) => {
+          const o = orientacoesDoFarmer?.get(h.companyId) ?? null
+          return {
+            companyId: h.companyId,
+            companyName: h.companyName,
+            tentativas: h.tentativasSeguidas,
+            ultimaData: h.ultimaData,
+            naListaDeHoje: doFarmer.some((i) => i.companyId === h.companyId),
+            orientacao: o ? { texto: o.texto, autor: o.autor, criadoEm: o.criadoEm } : null,
+          }
+        })
       return {
         farmerId,
         nome: FARMERS[farmerId] ?? farmerId,
@@ -60,7 +79,7 @@ export async function GET(req: Request) {
         status: brief?.status ?? 'rascunho',
         comentarioLider: brief?.comentarioLider ?? null,
         itens: doFarmer,
-        paradas,
+        auxilios,
         placar: {
           total: doDia.length,
           extras: doFarmer.length - doDia.length,

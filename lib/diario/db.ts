@@ -31,6 +31,15 @@ export interface Briefing {
   comentarioLider: string | null
 }
 
+/** Orientação que o líder escreve para uma empresa específica do farmer. */
+export interface Orientacao {
+  farmerId: string
+  companyId: string
+  texto: string
+  autor: string
+  criadoEm: string
+}
+
 export type PatchItem = Partial<Pick<ItemDiario, 'abordagem' | 'observacao' | 'resultado' | 'observacaoResultado'>>
 
 // ── Driver Postgres (Neon / Vercel Postgres) ──
@@ -88,20 +97,30 @@ async function garanteSchema(): Promise<void> {
       comentario_lider text,
       PRIMARY KEY (farmer_id, data)
     )`
+  await q`
+    CREATE TABLE IF NOT EXISTS diario_orientacao (
+      farmer_id  text NOT NULL,
+      company_id text NOT NULL,
+      texto      text NOT NULL,
+      autor      text NOT NULL,
+      criado_em  timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (farmer_id, company_id)
+    )`
   schemaPronto = true
 }
 
 // ── Driver local (arquivo JSON) — usado quando não há DATABASE_URL ──
 
-interface DadosLocais { itens: ItemDiario[]; briefings: Briefing[] }
+interface DadosLocais { itens: ItemDiario[]; briefings: Briefing[]; orientacoes?: Orientacao[] }
 
 const arquivoLocal = join(process.cwd(), '.diario-data', 'diario.json')
 
 function leLocal(): DadosLocais {
   try {
-    return JSON.parse(readFileSync(arquivoLocal, 'utf-8')) as DadosLocais
+    const d = JSON.parse(readFileSync(arquivoLocal, 'utf-8')) as DadosLocais
+    return { itens: d.itens ?? [], briefings: d.briefings ?? [], orientacoes: d.orientacoes ?? [] }
   } catch {
-    return { itens: [], briefings: [] }
+    return { itens: [], briefings: [], orientacoes: [] }
   }
 }
 
@@ -341,5 +360,55 @@ export async function salvaBriefing(b: Briefing): Promise<void> {
   const i = dados.briefings.findIndex((x) => x.farmerId === b.farmerId && x.data === b.data)
   if (i >= 0) dados.briefings[i] = b
   else dados.briefings.push(b)
+  gravaLocal(dados)
+}
+
+/** Orientações vigentes destes farmers, indexadas por farmer e empresa. */
+export async function orientacoesDe(farmerIds: string[]): Promise<Map<string, Map<string, Orientacao>>> {
+  const fora = new Map<string, Map<string, Orientacao>>()
+  if (farmerIds.length === 0) return fora
+
+  const guarda = (o: Orientacao) => {
+    let m = fora.get(o.farmerId)
+    if (!m) { m = new Map(); fora.set(o.farmerId, m) }
+    m.set(o.companyId, o)
+  }
+
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`SELECT * FROM diario_orientacao WHERE farmer_id = ANY(${farmerIds})`
+    for (const r of rows) {
+      guarda({
+        farmerId: String(r.farmer_id),
+        companyId: String(r.company_id),
+        texto: String(r.texto ?? ''),
+        autor: String(r.autor ?? ''),
+        criadoEm: r.criado_em ? new Date(r.criado_em as string).toISOString() : '',
+      })
+    }
+    return fora
+  }
+  for (const o of leLocal().orientacoes ?? []) {
+    if (farmerIds.includes(o.farmerId)) guarda(o)
+  }
+  return fora
+}
+
+export async function salvaOrientacao(o: Orientacao): Promise<void> {
+  if (usandoPostgres) {
+    await garanteSchema()
+    await sql()`
+      INSERT INTO diario_orientacao (farmer_id, company_id, texto, autor)
+      VALUES (${o.farmerId}, ${o.companyId}, ${o.texto}, ${o.autor})
+      ON CONFLICT (farmer_id, company_id) DO UPDATE SET
+        texto = EXCLUDED.texto, autor = EXCLUDED.autor, criado_em = now()`
+    return
+  }
+  const dados = leLocal()
+  const lista = dados.orientacoes ?? []
+  const i = lista.findIndex((x) => x.farmerId === o.farmerId && x.companyId === o.companyId)
+  if (i >= 0) lista[i] = o
+  else lista.push(o)
+  dados.orientacoes = lista
   gravaLocal(dados)
 }

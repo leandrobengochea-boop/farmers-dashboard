@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider } from '@/lib/diario/constants'
-import { emDescanso, estaParada, hojeSP, montaSugestoes } from '@/lib/diario/carteira'
+import { emDescanso, precisaAuxilio, hojeSP, montaSugestoes } from '@/lib/diario/carteira'
 import { poolDaCarteira, resumoDoMes } from '@/lib/diario/metrics'
-import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer } from '@/lib/diario/db'
+import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe } from '@/lib/diario/db'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -35,29 +35,34 @@ export async function GET(req: Request) {
       itens = await itensDoDia(farmerId, data)
     }
 
-    const [resumo, brief, pool, historico] = await Promise.all([
+    const [resumo, brief, pool, historico, orientacoes] = await Promise.all([
       resumoDoMes([farmerId], data),
       briefing(farmerId, data),
       poolDaCarteira(farmerId, data),
       historicoDoFarmer(farmerId, data),
+      orientacoesDe([farmerId]),
     ])
+    const doFarmer = orientacoes.get(farmerId)
 
     // Contexto de cada empresa: quantas vezes já apareceu e o que aconteceu na última.
     const comHistorico = itens.map((i) => {
       const h = historico.get(i.companyId)
+      const orientacao = doFarmer?.get(i.companyId) ?? null
       return {
         ...i,
         historico: h
           ? { aparicoes: h.aparicoes, ultimaData: h.ultimaData, ultimoResultado: h.ultimoResultado, tentativasSeguidas: h.tentativasSeguidas }
           : null,
+        precisaAuxilio: precisaAuxilio(h),
+        orientacao: orientacao ? { texto: orientacao.texto, autor: orientacao.autor, criadoEm: orientacao.criadoEm } : null,
       }
     })
 
     const descansando = [...historico.values()].filter((h) => emDescanso(h, data)).length
-    const paradas = [...historico.values()].filter(estaParada).length
+    const auxilio = comHistorico.filter((i) => i.precisaAuxilio).length
 
     return NextResponse.json(
-      { usuario, farmerId, data, itens: comHistorico, pool: { ...pool, emDescanso: descansando, paradas }, resumo, briefing: brief },
+      { usuario, farmerId, data, itens: comHistorico, pool: { ...pool, emDescanso: descansando, precisandoAuxilio: auxilio }, resumo, briefing: brief },
       { headers: { 'Cache-Control': 'no-store' } },
     )
   } catch (erro) {

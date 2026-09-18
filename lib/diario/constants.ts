@@ -75,11 +75,14 @@ export const COOLDOWN_POR_RESULTADO: Record<string, number> = {
 export const COOLDOWN_SEM_RESULTADO = 1
 
 /**
- * Tentativas frustradas seguidas até a empresa sair do rodízio e virar
- * pendência do líder. Três "não atendeu" seguidos normalmente é dado ruim
- * (telefone velho, contato saiu), não falta de esforço.
+ * Tentativas frustradas seguidas até a empresa pedir auxílio do líder. Três
+ * "não atendeu" seguidos normalmente é dado ruim (telefone velho, contato saiu)
+ * ou porta que não abre sozinha — não falta de esforço.
+ *
+ * A empresa NÃO sai do rodízio: continua na lista do farmer, marcada, e o líder
+ * responde com uma orientação que aparece no próprio card.
  */
-export const TENTATIVAS_ATE_SINALIZAR = 3
+export const TENTATIVAS_ATE_AUXILIO = 3
 
 // Abordagem sugerida por balde (o farmer pode trocar).
 export const ABORDAGEM_PADRAO: Record<Bucket, Abordagem> = {
