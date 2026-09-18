@@ -1,6 +1,6 @@
 import { HUBSPOT_PORTAL_ID } from '../constants'
 import {
-  Bucket, COTA_DIARIA, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, TENTATIVAS_ATE_AUXILIO,
+  Bucket, COTA_DIARIA, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, LIMITE_MESES, TENTATIVAS_ATE_AUXILIO,
 } from './constants'
 import { HistoricoEmpresa, ItemDiario, historicoDoFarmer } from './db'
 
@@ -116,9 +116,9 @@ export function precisaAuxilio(h: HistoricoEmpresa | undefined): boolean {
 export function classifica(ultimaCompra: string | null, hoje: string): { bucket: Bucket; dias: number | null } {
   if (!ultimaCompra) return { bucket: 'primeiro_contato', dias: null }
   const dias = diasEntre(ultimaCompra, hoje)
-  if (ultimaCompra > menosMeses(hoje, 3)) return { bucket: 'extra', dias }
-  if (ultimaCompra <= menosMeses(hoje, 12)) return { bucket: 'reativacao', dias }
-  if (ultimaCompra <= menosMeses(hoje, 8)) return { bucket: 'recompra', dias }
+  if (ultimaCompra > menosMeses(hoje, LIMITE_MESES.entreEventos)) return { bucket: 'extra', dias }
+  if (ultimaCompra <= menosMeses(hoje, LIMITE_MESES.recompra)) return { bucket: 'reativacao', dias }
+  if (ultimaCompra <= menosMeses(hoje, LIMITE_MESES.nutricao)) return { bucket: 'recompra', dias }
   return { bucket: 'nutricao', dias }
 }
 

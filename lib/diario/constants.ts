@@ -30,12 +30,38 @@ export const RESULTADO_EXIGE_OBSERVACAO: Resultado[] = ['efetivo', 'nao_abordei'
 // ── Baldes de sugestão, por tempo desde a última compra ──
 export type Bucket = 'extra' | 'nutricao' | 'recompra' | 'reativacao' | 'primeiro_contato'
 
-export const BUCKETS: Record<Bucket, { label: string; hint: string }> = {
-  extra:            { label: 'Entre eventos',   hint: 'Comprou há menos de 3 meses — sugerir o próximo evento do calendário' },
-  nutricao:         { label: 'Nutrição',        hint: '3 a 8 meses desde a última contratação' },
-  recompra:         { label: 'Recompra',        hint: 'Janela quente: 8 a 12 meses desde a última contratação' },
-  reativacao:       { label: 'Reativação',      hint: 'Mais de 12 meses sem contratar' },
-  primeiro_contato: { label: 'Primeiro contato', hint: 'Sem histórico de contratação na carteira' },
+/**
+ * Fronteiras em meses desde a última contratação. Mudar aqui muda a
+ * classificação e o texto da página de ajuda ao mesmo tempo.
+ */
+export const LIMITE_MESES = { entreEventos: 3, nutricao: 8, recompra: 12 }
+
+export const BUCKETS: Record<Bucket, { label: string; faixa: string; hint: string }> = {
+  extra: {
+    label: 'Entre eventos',
+    faixa: `até ${LIMITE_MESES.entreEventos} meses`,
+    hint: 'Comprou há pouco. A conversa aqui é o próximo evento do calendário, não uma nova venda do zero.',
+  },
+  nutricao: {
+    label: 'Nutrição',
+    faixa: `${LIMITE_MESES.entreEventos} a ${LIMITE_MESES.nutricao} meses`,
+    hint: 'Cedo para recompra, tarde para pós-evento. Serve para manter a relação viva até a janela abrir.',
+  },
+  recompra: {
+    label: 'Recompra',
+    faixa: `${LIMITE_MESES.nutricao} a ${LIMITE_MESES.recompra} meses`,
+    hint: 'Janela quente: a empresa está no ciclo de contratar de novo.',
+  },
+  reativacao: {
+    label: 'Reativação',
+    faixa: `mais de ${LIMITE_MESES.recompra} meses`,
+    hint: 'Passou do ciclo. Precisa de um motivo novo para voltar à mesa.',
+  },
+  primeiro_contato: {
+    label: 'Primeiro contato',
+    faixa: 'nunca contratou',
+    hint: 'Está na carteira mas nunca comprou. Entra quando os outros baldes não têm empresa suficiente.',
+  },
 }
 
 // Ordem de exibição: o que é mais quente primeiro.

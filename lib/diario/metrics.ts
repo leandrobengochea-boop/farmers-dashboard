@@ -1,7 +1,7 @@
 import {
   ORIGIN_CUTOVER, ALLOWED_ORIGEM_DO_LEAD, ALLOWED_ORIGEM_QUALIFICACAO,
 } from '../constants'
-import { TICKET_PIPELINE_CS, TICKET_STAGES_ATIVOS, WON_STAGES } from './constants'
+import { LIMITE_MESES, TICKET_PIPELINE_CS, TICKET_STAGES_ATIVOS, WON_STAGES } from './constants'
 import { fetchWithRetry, searchAllPages } from './carteira'
 
 export interface ResumoMes {
@@ -155,9 +155,9 @@ export async function poolDaCarteira(farmerId: string, hoje: string): Promise<Po
   if (!pat) throw new Error('HUBSPOT_PAT não configurado')
 
   const dono = { propertyName: 'hubspot_owner_id', operator: 'EQ', value: farmerId }
-  const ms3 = msMenosMeses(hoje, 3)
-  const ms8 = msMenosMeses(hoje, 8)
-  const ms12 = msMenosMeses(hoje, 12)
+  const ms3 = msMenosMeses(hoje, LIMITE_MESES.entreEventos)
+  const ms8 = msMenosMeses(hoje, LIMITE_MESES.nutricao)
+  const ms12 = msMenosMeses(hoje, LIMITE_MESES.recompra)
 
   const [carteira, recompra, nutricao, reativacao, extra, semHistorico, negociosAbertos] = await Promise.all([
     conta(pat, 'companies', [dono]).catch(() => 0),

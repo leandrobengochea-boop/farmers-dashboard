@@ -192,6 +192,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <a href="/diario/ajuda" className="text-sm text-zinc-500 hover:text-zinc-900">Como funciona</a>
           <div className="flex items-center gap-2 bg-white border border-zinc-200 rounded-full pl-1.5 pr-4 py-1.5">
             <span className="w-8 h-8 rounded-full bg-zinc-900 text-white text-xs font-bold grid place-items-center">
               {iniciais(usuario.nome)}
