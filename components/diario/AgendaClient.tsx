@@ -14,6 +14,7 @@ interface AgendaFarmer {
   status: string
   comentarioLider: string | null
   itens: ItemDiario[]
+  paradas: Array<{ companyId: string; companyName: string; tentativas: number; ultimaData: string }>
   placar: { total: number; extras: number; efetivo: number; tentativa: number; naoAbordei: number; pendente: number }
 }
 
@@ -80,6 +81,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   const totalEmpresas = comLista.reduce((s, a) => s + a.placar.total, 0)
   const totalEfetivo = comLista.reduce((s, a) => s + a.placar.efetivo, 0)
   const totalPendente = comLista.reduce((s, a) => s + a.placar.pendente, 0)
+  const comParadas = dados?.agenda.filter((a) => a.paradas.length > 0) ?? []
 
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-6">
@@ -125,6 +127,39 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
               {a.nome}
             </span>
           ))}
+        </div>
+      )}
+
+      {comParadas.length > 0 && (
+        <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50/50 px-5 py-4">
+          <div className="flex items-baseline gap-2 mb-3">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-orange-800">Precisa de dado novo</h2>
+            <span className="text-xs text-orange-700">
+              {comParadas.reduce((s, a) => s + a.paradas.length, 0)} empresas saíram do rodízio depois de 3 tentativas sem contato
+            </span>
+          </div>
+          <div className="grid gap-2">
+            {comParadas.map((a) => (
+              <div key={a.farmerId} className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-xs font-semibold text-zinc-600 w-32 shrink-0">{a.nome}</span>
+                {a.paradas.map((p) => (
+                  <a
+                    key={p.companyId}
+                    href={`https://app.hubspot.com/contacts/49656171/record/0-2/${p.companyId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs bg-white border border-orange-200 rounded-full px-2.5 py-1 hover:border-orange-500"
+                    title={`${p.tentativas} tentativas · última em ${p.ultimaData}`}
+                  >
+                    {p.companyName}
+                  </a>
+                ))}
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-orange-700/80 mt-3">
+            Atualize telefone ou contato no HubSpot — elas voltam ao rodízio no próximo contato efetivo.
+          </p>
         </div>
       )}
 

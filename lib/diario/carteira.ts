@@ -1,6 +1,8 @@
 import { HUBSPOT_PORTAL_ID } from '../constants'
-import { Bucket, COTA_DIARIA, COOLDOWN_DIAS } from './constants'
-import { ItemDiario, empresasEmCooldown } from './db'
+import {
+  Bucket, COTA_DIARIA, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, TENTATIVAS_ATE_SINALIZAR,
+} from './constants'
+import { HistoricoEmpresa, ItemDiario, historicoDoFarmer } from './db'
 
 export interface Empresa {
   id: string
@@ -19,6 +21,7 @@ export interface ResumoPool {
   comHistorico: number
   porBucket: Record<string, number>
   emCooldown: number
+  paradas: number
   noFunil: number
   contatoEfetivoNoMes: number
 }
@@ -84,6 +87,23 @@ function diasEntre(de: string, ate: string): number {
   const a = new Date(`${de}T12:00:00Z`).getTime()
   const b = new Date(`${ate}T12:00:00Z`).getTime()
   return Math.round((b - a) / 86_400_000)
+}
+
+/**
+ * Descanso depende do que aconteceu da última vez: 1 dia se não foi abordada,
+ * 3 se tentou e não falou, 30 se o contato foi efetivo.
+ */
+export function emDescanso(h: HistoricoEmpresa | undefined, hoje: string): boolean {
+  if (!h?.ultimaData) return false
+  const exigido = h.ultimoResultado
+    ? (COOLDOWN_POR_RESULTADO[h.ultimoResultado] ?? COOLDOWN_SEM_RESULTADO)
+    : COOLDOWN_SEM_RESULTADO
+  return diasEntre(h.ultimaData, hoje) < exigido
+}
+
+/** Três "não atendeu" seguidos: sai do rodízio e vira pendência do líder. */
+export function estaParada(h: HistoricoEmpresa | undefined): boolean {
+  return (h?.tentativasSeguidas ?? 0) >= TENTATIVAS_ATE_SINALIZAR
 }
 
 /**
@@ -196,20 +216,22 @@ export interface Sugestoes {
  */
 export async function montaSugestoes(farmerId: string, hoje: string): Promise<Sugestoes> {
   const carteira = await fetchCarteira(farmerId, hoje)
-  const cooldown = await empresasEmCooldown(farmerId, COOLDOWN_DIAS, hoje)
+  const historico = await historicoDoFarmer(farmerId, hoje)
   const inicioMes = `${hoje.slice(0, 7)}-01`
+
 
   const resumo: ResumoPool = {
     carteira: carteira.length,
     comHistorico: carteira.filter((e) => e.ultimaCompra).length,
     porBucket: {},
-    emCooldown: carteira.filter((e) => cooldown.has(e.id)).length,
+    emCooldown: carteira.filter((e) => emDescanso(historico.get(e.id), hoje)).length,
+    paradas: carteira.filter((e) => estaParada(historico.get(e.id))).length,
     noFunil: carteira.filter((e) => e.noFunil).length,
     contatoEfetivoNoMes: carteira.filter((e) => e.ultimoContato && e.ultimoContato >= inicioMes).length,
   }
   for (const e of carteira) resumo.porBucket[e.bucket] = (resumo.porBucket[e.bucket] ?? 0) + 1
 
-  const disponiveis = carteira.filter((e) => !cooldown.has(e.id) && !e.noFunil)
+  const disponiveis = carteira.filter((e) => !emDescanso(historico.get(e.id), hoje) && !estaParada(historico.get(e.id)) && !e.noFunil)
   const pools = {} as Record<Bucket, Empresa[]>
   for (const b of ['recompra', 'nutricao', 'reativacao', 'extra', 'primeiro_contato'] as Bucket[]) {
     pools[b] = disponiveis.filter((e) => e.bucket === b).sort((x, y) => ordena(b, x, y))

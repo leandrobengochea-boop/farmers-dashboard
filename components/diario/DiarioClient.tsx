@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ABORDAGEM_PADRAO, ABORDAGENS, Bucket, BUCKETS, COOLDOWN_DIAS, COTA_DIARIA,
+  ABORDAGEM_PADRAO, ABORDAGENS, Bucket, BUCKETS, COTA_DIARIA,
   ORDEM_BUCKET, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, Resultado,
 } from '@/lib/diario/constants'
 import type { Briefing, ItemDiario } from '@/lib/diario/db'
@@ -15,11 +15,20 @@ interface Props {
   farmers: Array<{ id: string; nome: string }>
 }
 
+export interface HistoricoItem {
+  aparicoes: number
+  ultimaData: string
+  ultimoResultado: string | null
+  tentativasSeguidas: number
+}
+
+export type ItemComHistorico = ItemDiario & { historico: HistoricoItem | null }
+
 interface Dados {
   farmerId: string
   data: string
-  itens: ItemDiario[]
-  pool: (PoolCarteira & { emDescanso: number }) | null
+  itens: ItemComHistorico[]
+  pool: (PoolCarteira & { emDescanso: number; paradas: number }) | null
   resumo: ResumoMes
   briefing: Briefing
 }
@@ -103,18 +112,18 @@ export default function DiarioClient({ usuario, farmers }: Props) {
     })
   }, [itens, filtro, busca])
 
-  function patchLocal(companyId: string, patch: Partial<ItemDiario>) {
+  function patchLocal(companyId: string, patch: Partial<ItemComHistorico>) {
     setDados((d) => d && ({ ...d, itens: d.itens.map((i) => (i.companyId === companyId ? { ...i, ...patch } : i)) }))
   }
 
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
-  const patchesPendentes = useRef<Record<string, Partial<ItemDiario>>>({})
+  const patchesPendentes = useRef<Record<string, Partial<ItemComHistorico>>>({})
 
   /**
    * Salva com debounce por empresa, acumulando os campos: escolher o resultado e
    * logo em seguida escrever a observação não pode cancelar o salvamento anterior.
    */
-  function salva(companyId: string, patch: Partial<ItemDiario>, atraso = 0) {
+  function salva(companyId: string, patch: Partial<ItemComHistorico>, atraso = 0) {
     if (!dados) return
     patchLocal(companyId, patch)
     patchesPendentes.current[companyId] = { ...patchesPendentes.current[companyId], ...patch }
@@ -221,7 +230,10 @@ export default function DiarioClient({ usuario, farmers }: Props) {
           <PoolItem rotulo="Entre eventos" valor={dados.pool.extra} />
           <PoolItem rotulo="Sem histórico" valor={dados.pool.semHistorico} />
           <span className="text-zinc-500">{dados.pool.negociosAbertos} negócios abertos no funil</span>
-          <span className="text-zinc-500">{dados.pool.emDescanso} em descanso ({COOLDOWN_DIAS}d)</span>
+          <span className="text-zinc-500">{dados.pool.emDescanso} em descanso</span>
+          {dados.pool.paradas > 0 && (
+            <span className="text-orange-600">{dados.pool.paradas} sem contato há 3 tentativas</span>
+          )}
         </div>
       )}
 
@@ -430,7 +442,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
   )
 }
 
-function Empresa({ item }: { item: ItemDiario }) {
+function Empresa({ item }: { item: ItemComHistorico }) {
   return (
     <>
       <a href={`https://app.hubspot.com/contacts/49656171/record/0-2/${item.companyId}`} target="_blank" rel="noreferrer"
@@ -440,11 +452,33 @@ function Empresa({ item }: { item: ItemDiario }) {
       <div className="text-xs text-zinc-400 mt-0.5">
         {item.ultimaCompra ? `última compra ${dataCurta(item.ultimaCompra)}` : 'nunca contratou'}
       </div>
+      <Retorno historico={item.historico} />
     </>
   )
 }
 
-function Fase({ item }: { item: ItemDiario }) {
+/** Por que esta empresa está de volta na lista. */
+function Retorno({ historico }: { historico: HistoricoItem | null }) {
+  if (!historico) return null
+  const quando = dataCurta(historico.ultimaData)
+  let texto: string
+  let cor = 'text-zinc-500 bg-zinc-100'
+  if (historico.ultimoResultado === 'nao_abordei') {
+    texto = `não abordada em ${quando}`
+    cor = 'text-orange-700 bg-orange-50'
+  } else if (historico.ultimoResultado === 'tentativa') {
+    texto = `${historico.tentativasSeguidas + 1}ª tentativa · sem contato desde ${quando}`
+    cor = 'text-amber-700 bg-amber-50'
+  } else if (historico.ultimoResultado === 'efetivo') {
+    texto = `falaram em ${quando}`
+    cor = 'text-emerald-700 bg-emerald-50'
+  } else {
+    texto = `apareceu em ${quando}`
+  }
+  return <span className={`inline-block mt-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded ${cor}`}>{texto}</span>
+}
+
+function Fase({ item }: { item: ItemComHistorico }) {
   return (
     <>
       <span className={`text-[11px] font-semibold px-2 py-1 rounded border ${CORES_BUCKET[item.bucket] ?? CORES_BUCKET.primeiro_contato}`}>

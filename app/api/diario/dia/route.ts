@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider } from '@/lib/diario/constants'
-import { hojeSP, montaSugestoes } from '@/lib/diario/carteira'
+import { emDescanso, estaParada, hojeSP, montaSugestoes } from '@/lib/diario/carteira'
 import { poolDaCarteira, resumoDoMes } from '@/lib/diario/metrics'
-import { COOLDOWN_DIAS } from '@/lib/diario/constants'
-import { itensDoDia, gravaSugestoes, briefing, empresasEmCooldown } from '@/lib/diario/db'
+import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer } from '@/lib/diario/db'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -36,16 +35,31 @@ export async function GET(req: Request) {
       itens = await itensDoDia(farmerId, data)
     }
 
-    const [resumo, brief, pool, cooldown] = await Promise.all([
+    const [resumo, brief, pool, historico] = await Promise.all([
       resumoDoMes([farmerId], data),
       briefing(farmerId, data),
       poolDaCarteira(farmerId, data),
-      empresasEmCooldown(farmerId, COOLDOWN_DIAS, data),
+      historicoDoFarmer(farmerId, data),
     ])
 
+    // Contexto de cada empresa: quantas vezes já apareceu e o que aconteceu na última.
+    const comHistorico = itens.map((i) => {
+      const h = historico.get(i.companyId)
+      return {
+        ...i,
+        historico: h
+          ? { aparicoes: h.aparicoes, ultimaData: h.ultimaData, ultimoResultado: h.ultimoResultado, tentativasSeguidas: h.tentativasSeguidas }
+          : null,
+      }
+    })
+
+    const descansando = [...historico.values()].filter((h) => emDescanso(h, data)).length
+    const paradas = [...historico.values()].filter(estaParada).length
+
     return NextResponse.json(
-      { usuario, farmerId, data, itens, pool: { ...pool, emDescanso: cooldown.size }, resumo, briefing: brief },
-      { headers: { 'Cache-Control': 'no-store' } })
+      { usuario, farmerId, data, itens: comHistorico, pool: { ...pool, emDescanso: descansando, paradas }, resumo, briefing: brief },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   } catch (erro) {
     const msg = erro instanceof Error ? erro.message : 'erro desconhecido'
     console.error('diario/dia falhou:', erro)

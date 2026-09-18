@@ -4,7 +4,8 @@ import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider } from '@/lib/diario/constants'
 import { hojeSP } from '@/lib/diario/carteira'
 import { resumoDoMes } from '@/lib/diario/metrics'
-import { itensDoDiaDeVarios, briefingsDoDia, ItemDiario } from '@/lib/diario/db'
+import { itensDoDiaDeVarios, briefingsDoDia, historicoDeVarios, ItemDiario } from '@/lib/diario/db'
+import { estaParada } from '@/lib/diario/carteira'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -16,6 +17,7 @@ export interface AgendaFarmer {
   status: string
   comentarioLider: string | null
   itens: ItemDiario[]
+  paradas: Array<{ companyId: string; companyName: string; tentativas: number; ultimaData: string }>
   placar: { total: number; extras: number; efetivo: number; tentativa: number; naoAbordei: number; pendente: number }
 }
 
@@ -28,10 +30,11 @@ export async function GET(req: Request) {
   const farmerIds = farmersDoLider(usuario.timeKey)
 
   try {
-    const [itens, briefings, resumo] = await Promise.all([
+    const [itens, briefings, resumo, historico] = await Promise.all([
       itensDoDiaDeVarios(farmerIds, data),
       briefingsDoDia(farmerIds, data),
       resumoDoMes(farmerIds, data),
+      historicoDeVarios(farmerIds, data),
     ])
 
     const timeLabelPorFarmer: Record<string, string> = {}
@@ -44,6 +47,12 @@ export async function GET(req: Request) {
       // Os extras (clientes recentes) são bônus e não entram no placar do dia.
       const doDia = doFarmer.filter((i) => i.bucket !== 'extra')
       const brief = briefings.find((b) => b.farmerId === farmerId)
+      // Empresas que saíram do rodízio por três tentativas sem contato:
+      // quase sempre é dado desatualizado no CRM, não falta de esforço.
+      const paradas = [...(historico.get(farmerId)?.values() ?? [])]
+        .filter(estaParada)
+        .sort((a, b) => b.ultimaData.localeCompare(a.ultimaData))
+        .map((h) => ({ companyId: h.companyId, companyName: h.companyName, tentativas: h.tentativasSeguidas, ultimaData: h.ultimaData }))
       return {
         farmerId,
         nome: FARMERS[farmerId] ?? farmerId,
@@ -51,6 +60,7 @@ export async function GET(req: Request) {
         status: brief?.status ?? 'rascunho',
         comentarioLider: brief?.comentarioLider ?? null,
         itens: doFarmer,
+        paradas,
         placar: {
           total: doDia.length,
           extras: doFarmer.length - doDia.length,

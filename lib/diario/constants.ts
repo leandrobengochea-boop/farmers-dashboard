@@ -61,8 +61,25 @@ export const COTA_DIARIA: Record<'recompra' | 'nutricao' | 'reativacao' | 'extra
 
 export const EMPRESAS_DO_DIA = COTA_DIARIA.recompra + COTA_DIARIA.nutricao + COTA_DIARIA.reativacao
 
-// Empresa sugerida não volta a aparecer por este número de dias corridos.
-export const COOLDOWN_DIAS = 15
+/**
+ * Quantos dias a empresa descansa antes de voltar à lista, conforme o que
+ * aconteceu na última vez que ela apareceu.
+ */
+export const COOLDOWN_POR_RESULTADO: Record<string, number> = {
+  nao_abordei: 1,   // não foi tocada: volta amanhã, não pode evaporar
+  tentativa: 3,     // ninguém fala com decisor na primeira ligação
+  efetivo: 30,      // a conversa aconteceu; o follow-up vive no negócio, não aqui
+}
+
+/** Dia que ficou sem fechamento: trata como não abordada e volta amanhã. */
+export const COOLDOWN_SEM_RESULTADO = 1
+
+/**
+ * Tentativas frustradas seguidas até a empresa sair do rodízio e virar
+ * pendência do líder. Três "não atendeu" seguidos normalmente é dado ruim
+ * (telefone velho, contato saiu), não falta de esforço.
+ */
+export const TENTATIVAS_ATE_SINALIZAR = 3
 
 // Abordagem sugerida por balde (o farmer pode trocar).
 export const ABORDAGEM_PADRAO: Record<Bucket, Abordagem> = {

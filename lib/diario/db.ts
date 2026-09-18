@@ -219,23 +219,72 @@ export async function atualizaItem(farmerId: string, data: string, companyId: st
   gravaLocal(dados)
 }
 
-/** Empresas já sugeridas nos últimos `dias` — não voltam à lista (cooldown). */
-export async function empresasEmCooldown(farmerId: string, dias: number, hoje: string): Promise<Set<string>> {
+export interface HistoricoEmpresa {
+  companyId: string
+  companyName: string
+  ultimaData: string            // última vez que apareceu na lista (YYYY-MM-DD)
+  ultimoResultado: string | null
+  tentativasSeguidas: number    // "tentei, sem sucesso" consecutivos, do mais recente para trás
+  aparicoes: number
+}
+
+type LinhaHistorico = { farmerId: string; companyId: string; companyName: string; data: string; resultado: string | null }
+
+function montaHistorico(linhas: LinhaHistorico[]): Map<string, Map<string, HistoricoEmpresa>> {
+  // linhas chegam ordenadas por farmer, empresa e data decrescente
+  const porFarmer = new Map<string, Map<string, HistoricoEmpresa>>()
+  for (const l of linhas) {
+    let mapa = porFarmer.get(l.farmerId)
+    if (!mapa) { mapa = new Map(); porFarmer.set(l.farmerId, mapa) }
+    const atual = mapa.get(l.companyId)
+    if (!atual) {
+      mapa.set(l.companyId, {
+        companyId: l.companyId,
+        companyName: l.companyName,
+        ultimaData: l.data,
+        ultimoResultado: l.resultado,
+        tentativasSeguidas: l.resultado === 'tentativa' ? 1 : 0,
+        aparicoes: 1,
+      })
+      continue
+    }
+    atual.aparicoes++
+    // só conta a sequência enquanto ela não for interrompida por outro resultado
+    if (l.resultado === 'tentativa' && atual.tentativasSeguidas === atual.aparicoes - 1) {
+      atual.tentativasSeguidas++
+    }
+  }
+  return porFarmer
+}
+
+/** Histórico de cada empresa já sugerida a estes farmers, antes de `hoje`. */
+export async function historicoDeVarios(farmerIds: string[], hoje: string): Promise<Map<string, Map<string, HistoricoEmpresa>>> {
+  if (farmerIds.length === 0) return new Map()
   if (usandoPostgres) {
     await garanteSchema()
     const rows = await sql()`
-      SELECT DISTINCT company_id FROM diario_item
-      WHERE farmer_id = ${farmerId} AND data > (${hoje}::date - ${dias}::integer) AND data < ${hoje}::date`
-    return new Set(rows.map((r) => String(r.company_id)))
+      SELECT farmer_id, company_id, company_name, data, resultado FROM diario_item
+      WHERE farmer_id = ANY(${farmerIds}) AND data < ${hoje}::date
+      ORDER BY farmer_id, company_id, data DESC`
+    return montaHistorico(rows.map((r) => ({
+      farmerId: String(r.farmer_id),
+      companyId: String(r.company_id),
+      companyName: String(r.company_name ?? ''),
+      data: iso(r.data) ?? '',
+      resultado: (r.resultado as string) ?? null,
+    })))
   }
-  const limite = new Date(`${hoje}T00:00:00Z`)
-  limite.setUTCDate(limite.getUTCDate() - dias)
-  const limiteIso = limite.toISOString().slice(0, 10)
-  return new Set(
-    leLocal().itens
-      .filter((i) => i.farmerId === farmerId && i.data > limiteIso && i.data < hoje)
-      .map((i) => i.companyId),
-  )
+  const linhas = leLocal().itens
+    .filter((i) => farmerIds.includes(i.farmerId) && i.data < hoje)
+    .sort((a, b) => a.farmerId.localeCompare(b.farmerId) || a.companyId.localeCompare(b.companyId) || b.data.localeCompare(a.data))
+    .map((i) => ({ farmerId: i.farmerId, companyId: i.companyId, companyName: i.companyName, data: i.data, resultado: i.resultado }))
+  return montaHistorico(linhas)
+}
+
+/** Histórico de cada empresa já sugerida a este farmer, antes de `hoje`. */
+export async function historicoDoFarmer(farmerId: string, hoje: string): Promise<Map<string, HistoricoEmpresa>> {
+  const porFarmer = await historicoDeVarios([farmerId], hoje)
+  return porFarmer.get(farmerId) ?? new Map()
 }
 
 export async function briefing(farmerId: string, data: string): Promise<Briefing> {
