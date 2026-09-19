@@ -185,3 +185,58 @@ export function usuarioPorId(id: string): Usuario | null {
   if (farmer) return { id: farmer.id, nome: farmer.nome, papel: 'farmer', timeKey: farmer.timeKey }
   return null
 }
+
+// ── Tramitações: pendências dos tickets de CS ──
+
+export type TipoTramitacao = 'minuta' | 'assinatura' | 'checklist'
+
+export const TRAMITACOES: Record<TipoTramitacao, {
+  label: string
+  acao: string
+  prazo: string
+  baixa: 'dupla_checagem' | 'crm'
+}> = {
+  minuta: {
+    label: 'Enviar minuta contratual',
+    acao: 'Enviar o contrato para o cliente',
+    prazo: '1 dia útil após o onboarding',
+    baixa: 'dupla_checagem',
+  },
+  assinatura: {
+    label: 'Assinatura do contrato',
+    acao: 'Cobrar a assinatura',
+    prazo: '20 dias após o onboarding',
+    baixa: 'crm', // status_do_contrato = Assinado
+  },
+  checklist: {
+    label: 'Checklist do evento',
+    acao: 'Fazer e enviar o checklist',
+    prazo: '2 dias antes do evento',
+    baixa: 'dupla_checagem',
+  },
+}
+
+/** Prazos, em dias, a partir da data que dispara cada pendência. */
+export const PRAZO_MINUTA_DIAS_UTEIS = 1
+export const PRAZO_ASSINATURA_DIAS = 20
+export const ANTECEDENCIA_CHECKLIST_DIAS = 2
+
+/** Resultado registrado no fim do dia em cada tramitação trabalhada. */
+export const RESULTADOS_TRAMITACAO = [
+  { key: 'resolvi',  label: 'Resolvi',  cor: 'emerald' },
+  { key: 'avancei',  label: 'Avancei',  cor: 'blue'    },
+  { key: 'travado',  label: 'Travado',  cor: 'amber'   },
+] as const
+
+export type ResultadoTramitacao = (typeof RESULTADOS_TRAMITACAO)[number]['key']
+
+/** "Travado" exige explicação: é o que vira pedido de ajuda ao líder. */
+export const RESULTADO_TRAMITACAO_EXIGE_OBSERVACAO: ResultadoTramitacao[] = ['travado']
+
+export const ETAPAS_TICKET: Record<string, string> = {
+  '1088360203': 'Etapa de conferência',
+  '1088360204': 'Iniciar trâmites',
+  '1088360205': 'Em andamento',
+  '1088361911': 'Pagamento pós-palestra',
+  '1333136740': 'Aguardando NF palestrante',
+}

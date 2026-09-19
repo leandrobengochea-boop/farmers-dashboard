@@ -3,6 +3,8 @@ import { usuarioAtual } from '@/lib/diario/session'
 import {
   ABORDAGENS, BUCKETS, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, COTA_DIARIA,
   EMPRESAS_DO_DIA, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, TENTATIVAS_ATE_AUXILIO,
+  ANTECEDENCIA_CHECKLIST_DIAS, PRAZO_ASSINATURA_DIAS, PRAZO_MINUTA_DIAS_UTEIS,
+  RESULTADOS_TRAMITACAO, TRAMITACOES, TipoTramitacao,
 } from '@/lib/diario/constants'
 import Cabecalho from '@/components/diario/Cabecalho'
 
@@ -156,6 +158,61 @@ export default function AjudaPage() {
         </p>
         <p className="mt-3">
           O selo some sozinho quando um contato efetivo zera a sequência. Ninguém precisa dar baixa.
+        </p>
+      </Secao>
+
+      <Secao titulo="Tramitações: os tickets do dia">
+        <p>
+          A aba <b>Tramitações</b> é o mesmo ritual do diário, aplicado aos tickets de CS em vez das empresas:
+          de manhã aparece o que tem prazo, o farmer marca o que vai tratar, e no fim do dia registra a evolução.
+          A lista sai dos tickets abertos onde o farmer é o proprietário, no pipeline CS.
+        </p>
+        <table className="w-full text-sm mt-4 border border-zinc-200 rounded-lg overflow-hidden">
+          <thead className="bg-zinc-50 text-[11px] uppercase tracking-wide text-zinc-500">
+            <tr>
+              <th className="text-left font-semibold px-4 py-2.5">Pendência</th>
+              <th className="text-left font-semibold px-4 py-2.5 w-52">Prazo</th>
+              <th className="text-left font-semibold px-4 py-2.5">Como sai da lista</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(Object.keys(TRAMITACOES) as TipoTramitacao[]).map((t) => (
+              <tr key={t} className="border-t border-zinc-100 align-top">
+                <td className="px-4 py-3 font-medium">{TRAMITACOES[t].label}</td>
+                <td className="px-4 py-3 text-zinc-600">{TRAMITACOES[t].prazo}</td>
+                <td className="px-4 py-3 text-zinc-600">
+                  {TRAMITACOES[t].baixa === 'crm'
+                    ? 'Sozinha, quando o contrato fica como Assinado no HubSpot'
+                    : 'O farmer marca como feito e o líder confirma'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <p className="mt-4">
+          <b>A baixa é em duas mãos.</b> Quando o farmer marca como feito, a pendência <i>não</i> some: ela fica
+          no board dele com o selo <b>AGUARDANDO LÍDER</b> e aparece no painel do líder para conferência. Só
+          depois do check do líder ela sai da lista. A exceção é a assinatura, que o CRM responde sozinho —
+          contrato assinado também baixa o envio da minuta, porque não dá para assinar o que não foi enviado.
+        </p>
+
+        <p className="mt-3">
+          No fim do dia, cada tramitação escolhida recebe {RESULTADOS_TRAMITACAO.map((r) => r.label).join(', ')}.
+          <b> Travado</b> exige observação — é o que mostra ao líder o que depende de terceiro (cliente, jurídico,
+          palestrante) e não de esforço do farmer.
+        </p>
+
+        <Nota>
+          O prazo da minuta conta <b>{PRAZO_MINUTA_DIAS_UTEIS} dia útil</b> (onboarding na sexta vence na segunda);
+          a assinatura conta <b>{PRAZO_ASSINATURA_DIAS} dias corridos</b>; o checklist aparece{' '}
+          <b>{ANTECEDENCIA_CHECKLIST_DIAS} dias antes</b> do evento. Feriado não é considerado.
+        </Nota>
+
+        <p className="mt-4">
+          Onboarding com data futura é agendamento, não realização: o prazo só começa a contar quando a data chega.
+          E tickets de eventos que já aconteceram aparecem numa seção separada no fim da lista, porque o ticket
+          continua aberto no pipeline mas a ação já perdeu a hora.
         </p>
       </Secao>
 

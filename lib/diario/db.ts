@@ -106,6 +106,29 @@ async function garanteSchema(): Promise<void> {
       criado_em  timestamptz NOT NULL DEFAULT now(),
       PRIMARY KEY (farmer_id, company_id)
     )`
+  await q`
+    CREATE TABLE IF NOT EXISTS diario_tramitacao_status (
+      farmer_id     text NOT NULL,
+      ticket_id     text NOT NULL,
+      tipo          text NOT NULL,
+      assunto       text,
+      feito_em      timestamptz,
+      confirmado_em timestamptz,
+      confirmado_por text,
+      PRIMARY KEY (farmer_id, ticket_id, tipo)
+    )`
+  await q`
+    CREATE TABLE IF NOT EXISTS diario_tramitacao_dia (
+      farmer_id     text NOT NULL,
+      data          date NOT NULL,
+      ticket_id     text NOT NULL,
+      tipo          text NOT NULL,
+      selecionado   boolean NOT NULL DEFAULT false,
+      resultado     text,
+      observacao    text,
+      atualizado_em timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (farmer_id, data, ticket_id, tipo)
+    )`
   schemaPronto = true
 }
 
@@ -118,7 +141,8 @@ const arquivoLocal = join(process.cwd(), '.diario-data', 'diario.json')
 function leLocal(): DadosLocais {
   try {
     const d = JSON.parse(readFileSync(arquivoLocal, 'utf-8')) as DadosLocais
-    return { itens: d.itens ?? [], briefings: d.briefings ?? [], orientacoes: d.orientacoes ?? [] }
+    // preserva chaves de outros módulos (tramitações) — senão cada escrita apaga a anterior
+    return { ...d, itens: d.itens ?? [], briefings: d.briefings ?? [], orientacoes: d.orientacoes ?? [] }
   } catch {
     return { itens: [], briefings: [], orientacoes: [] }
   }
@@ -411,4 +435,180 @@ export async function salvaOrientacao(o: Orientacao): Promise<void> {
   else lista.push(o)
   dados.orientacoes = lista
   gravaLocal(dados)
+}
+
+// ── Tramitações ──
+
+/** Baixa em duas etapas: o farmer marca, o líder confirma. */
+export interface StatusTramitacao {
+  farmerId: string
+  ticketId: string
+  tipo: string
+  assunto: string | null
+  feitoEm: string | null
+  confirmadoEm: string | null
+  confirmadoPor: string | null
+}
+
+export interface DiaTramitacao {
+  farmerId: string
+  data: string
+  ticketId: string
+  tipo: string
+  selecionado: boolean
+  resultado: string | null
+  observacao: string | null
+}
+
+interface DadosTramitacao { status: StatusTramitacao[]; dias: DiaTramitacao[] }
+
+function leTram(): DadosTramitacao {
+  const d = leLocal() as DadosLocais & Partial<DadosTramitacao>
+  return { status: d.status ?? [], dias: d.dias ?? [] }
+}
+
+function gravaTram(t: DadosTramitacao): void {
+  const d = leLocal() as DadosLocais & Partial<DadosTramitacao>
+  gravaLocal({ ...d, status: t.status, dias: t.dias } as DadosLocais)
+}
+
+export const chaveTramitacao = (ticketId: string, tipo: string) => `${ticketId}:${tipo}`
+
+/** Estado durável (feito/confirmado) das tramitações destes farmers. */
+export async function statusTramitacoes(farmerIds: string[]): Promise<Map<string, Map<string, StatusTramitacao>>> {
+  const fora = new Map<string, Map<string, StatusTramitacao>>()
+  if (farmerIds.length === 0) return fora
+  const guarda = (s: StatusTramitacao) => {
+    let m = fora.get(s.farmerId)
+    if (!m) { m = new Map(); fora.set(s.farmerId, m) }
+    m.set(chaveTramitacao(s.ticketId, s.tipo), s)
+  }
+
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`SELECT * FROM diario_tramitacao_status WHERE farmer_id = ANY(${farmerIds})`
+    for (const r of rows) {
+      guarda({
+        farmerId: String(r.farmer_id),
+        ticketId: String(r.ticket_id),
+        tipo: String(r.tipo),
+        assunto: (r.assunto as string) ?? null,
+        feitoEm: r.feito_em ? new Date(r.feito_em as string).toISOString() : null,
+        confirmadoEm: r.confirmado_em ? new Date(r.confirmado_em as string).toISOString() : null,
+        confirmadoPor: (r.confirmado_por as string) ?? null,
+      })
+    }
+    return fora
+  }
+  for (const s of leTram().status) if (farmerIds.includes(s.farmerId)) guarda(s)
+  return fora
+}
+
+/** O farmer marca (ou desmarca) que fez. Não some do board até o líder confirmar. */
+export async function marcaFeito(
+  farmerId: string, ticketId: string, tipo: string, feito: boolean, assunto = '',
+): Promise<void> {
+  const agora = feito ? new Date().toISOString() : null
+  if (usandoPostgres) {
+    await garanteSchema()
+    await sql()`
+      INSERT INTO diario_tramitacao_status (farmer_id, ticket_id, tipo, assunto, feito_em)
+      VALUES (${farmerId}, ${ticketId}, ${tipo}, ${assunto}, ${agora})
+      ON CONFLICT (farmer_id, ticket_id, tipo) DO UPDATE SET
+        feito_em = ${agora}, assunto = COALESCE(NULLIF(${assunto}, ''), diario_tramitacao_status.assunto)`
+    return
+  }
+  const t = leTram()
+  const i = t.status.findIndex((x) => x.farmerId === farmerId && x.ticketId === ticketId && x.tipo === tipo)
+  if (i >= 0) { t.status[i].feitoEm = agora; if (assunto) t.status[i].assunto = assunto }
+  else t.status.push({ farmerId, ticketId, tipo, assunto, feitoEm: agora, confirmadoEm: null, confirmadoPor: null })
+  gravaTram(t)
+}
+
+/** O líder confirma: a partir daí a pendência sai do board do farmer. */
+export async function confirmaTramitacao(farmerId: string, ticketId: string, tipo: string, autor: string, confirmar: boolean): Promise<void> {
+  const agora = confirmar ? new Date().toISOString() : null
+  const por = confirmar ? autor : null
+  if (usandoPostgres) {
+    await garanteSchema()
+    await sql()`
+      INSERT INTO diario_tramitacao_status (farmer_id, ticket_id, tipo, confirmado_em, confirmado_por)
+      VALUES (${farmerId}, ${ticketId}, ${tipo}, ${agora}, ${por})
+      ON CONFLICT (farmer_id, ticket_id, tipo) DO UPDATE SET confirmado_em = ${agora}, confirmado_por = ${por}`
+    return
+  }
+  const t = leTram()
+  const i = t.status.findIndex((x) => x.farmerId === farmerId && x.ticketId === ticketId && x.tipo === tipo)
+  if (i >= 0) { t.status[i].confirmadoEm = agora; t.status[i].confirmadoPor = por }
+  else t.status.push({ farmerId, ticketId, tipo, assunto: null, feitoEm: null, confirmadoEm: agora, confirmadoPor: por })
+  gravaTram(t)
+}
+
+/** O que o farmer selecionou e registrou num dia. */
+export async function tramitacoesDoDia(farmerIds: string[], data: string): Promise<Map<string, Map<string, DiaTramitacao>>> {
+  const fora = new Map<string, Map<string, DiaTramitacao>>()
+  if (farmerIds.length === 0) return fora
+  const guarda = (d: DiaTramitacao) => {
+    let m = fora.get(d.farmerId)
+    if (!m) { m = new Map(); fora.set(d.farmerId, m) }
+    m.set(chaveTramitacao(d.ticketId, d.tipo), d)
+  }
+
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`
+      SELECT * FROM diario_tramitacao_dia WHERE farmer_id = ANY(${farmerIds}) AND data = ${data}`
+    for (const r of rows) {
+      guarda({
+        farmerId: String(r.farmer_id),
+        data: iso(r.data) ?? '',
+        ticketId: String(r.ticket_id),
+        tipo: String(r.tipo),
+        selecionado: !!r.selecionado,
+        resultado: (r.resultado as string) ?? null,
+        observacao: (r.observacao as string) ?? null,
+      })
+    }
+    return fora
+  }
+  for (const d of leTram().dias) {
+    if (d.data === data && farmerIds.includes(d.farmerId)) guarda(d)
+  }
+  return fora
+}
+
+export type PatchTramitacao = Partial<Pick<DiaTramitacao, 'selecionado' | 'resultado' | 'observacao'>>
+
+export async function atualizaTramitacaoDia(
+  farmerId: string, data: string, ticketId: string, tipo: string, patch: PatchTramitacao,
+): Promise<void> {
+  const campos: PatchTramitacao = {}
+  if (patch.selecionado !== undefined) campos.selecionado = patch.selecionado
+  if (patch.resultado !== undefined) campos.resultado = patch.resultado
+  if (patch.observacao !== undefined) campos.observacao = patch.observacao
+  if (Object.keys(campos).length === 0) return
+
+  if (usandoPostgres) {
+    await garanteSchema()
+    const q = sql()
+    const rows = await q`
+      SELECT selecionado, resultado, observacao FROM diario_tramitacao_dia
+      WHERE farmer_id = ${farmerId} AND data = ${data} AND ticket_id = ${ticketId} AND tipo = ${tipo}`
+    const atual = rows[0]
+    const selecionado = campos.selecionado ?? (atual ? !!atual.selecionado : false)
+    const resultado = campos.resultado ?? ((atual?.resultado as string) ?? null)
+    const observacao = campos.observacao ?? ((atual?.observacao as string) ?? null)
+    await q`
+      INSERT INTO diario_tramitacao_dia (farmer_id, data, ticket_id, tipo, selecionado, resultado, observacao)
+      VALUES (${farmerId}, ${data}, ${ticketId}, ${tipo}, ${selecionado}, ${resultado}, ${observacao})
+      ON CONFLICT (farmer_id, data, ticket_id, tipo) DO UPDATE SET
+        selecionado = EXCLUDED.selecionado, resultado = EXCLUDED.resultado,
+        observacao = EXCLUDED.observacao, atualizado_em = now()`
+    return
+  }
+  const t = leTram()
+  const i = t.dias.findIndex((x) => x.farmerId === farmerId && x.data === data && x.ticketId === ticketId && x.tipo === tipo)
+  if (i >= 0) Object.assign(t.dias[i], campos)
+  else t.dias.push({ farmerId, data, ticketId, tipo, selecionado: false, resultado: null, observacao: null, ...campos })
+  gravaTram(t)
 }
