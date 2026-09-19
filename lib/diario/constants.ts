@@ -166,7 +166,8 @@ export interface Usuario {
  * Fica aqui para não mexer nos outros dashboards, que dependem daquela lista.
  */
 export const FORA_DO_DIARIO = new Set<string>([
-  '97204635', // Samuel
+  // quem sai da empresa é removido da formação em lib/constants.ts;
+  // esta lista é para quem continua no time mas não usa o diário
 ])
 
 /** Farmers de um líder, na formação vigente. Líder sem time vê todos. */

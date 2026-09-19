@@ -47,7 +47,6 @@ export const FARMERS: Record<string, string> = {
 export const FARMER_SEGMENTS: Record<string, string> = {
   '97763591': 'Contabilidades e Advocacias',           // Leonardo Bitencourt
   '98715090': 'Prefeituras',                            // Vitor
-  '97204635': 'Varejo e Comércio I',                    // Samuel
   '80688884': 'Sistema S',                              // Rafael Brack
   '98715128': 'Construção Civil e Imobiliário',         // Mayke
   '98715151': 'Consultorias e Educação Corporativa',    // Matheus
@@ -129,6 +128,7 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, DateRestriction> = {
   '85846972': { untilDate: '2026-08-01' }, // Daniela: fora da formação ago/26
   '92333469': { untilDate: '2026-08-01' }, // Rafael: fora da formação ago/26 (era seller)
   '96198838': { untilDate: '2026-08-18' }, // Leonardo Gomes: saiu dia 17, conta até dia 17
+  '97204635': { untilDate: '2026-09-20' }, // Samuel: saiu da empresa em 19/09/26
   '94891358': { untilDate: '2026-09-01' }, // Priscila: fora da formação set/26
   '95811085': { untilDate: '2026-09-01' }, // Wagner: fora da formação set/26
   '96198720': { untilDate: '2026-09-01' }, // Alexcia: fora da formação set/26
@@ -257,7 +257,7 @@ const TEAMS_SEP: TeamMap = {
 const TEAMS_SEP14: TeamMap = {
   leticia: {
     label: 'Time Leticia',
-    farmerIds: ['97763591', '97204635', '98715090', '80688884', '98715128', '98715151'],
+    farmerIds: ['97763591', '98715090', '80688884', '98715128', '98715151'],
   },
   katyeli: {
     label: 'Time Katy',
