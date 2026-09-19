@@ -52,7 +52,7 @@ const CORES_RESULTADO: Record<Resultado, string> = {
   nao_abordei: 'bg-zinc-100 text-zinc-600 border-zinc-200',
 }
 
-export default function AgendaClient({ usuario }: { usuario: { id: string; nome: string } }) {
+export default function AgendaClient({ usuario }: { usuario: { id: string; nome: string; papel?: string; timeKey?: string | null } }) {
   const [dados, setDados] = useState<Dados | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
@@ -95,6 +95,15 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   const totalEfetivo = comLista.reduce((s, a) => s + a.placar.efetivo, 0)
   const totalPendente = comLista.reduce((s, a) => s + a.placar.pendente, 0)
   const comAuxilio = dados?.agenda.filter((a) => a.auxilios.length > 0) ?? []
+
+  // Gerência enxerga os quatro times: agrupar evita uma parede de 24 cards soltos.
+  const gerencia = usuario.timeKey === null || usuario.timeKey === undefined
+  const porTime = gerencia
+    ? Array.from(new Set(comLista.map((a) => a.timeLabel))).sort().map((time) => ({
+        time,
+        farmers: comLista.filter((a) => a.timeLabel === time),
+      }))
+    : [{ time: '', farmers: comLista }]
 
   async function orienta(farmerId: string, companyId: string) {
     if (!rascunho.trim()) return
@@ -240,8 +249,19 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
       ) : comLista.length === 0 ? (
         <p className="py-16 text-center text-sm text-zinc-500">Nenhum farmer abriu o diário hoje.</p>
       ) : (
+        porTime.map((grupo) => (
+        <section key={grupo.time} className="mb-8 last:mb-0">
+          {grupo.time && (
+            <div className="flex items-baseline gap-3 mb-3">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-zinc-500">{grupo.time}</h2>
+              <span className="text-xs text-zinc-400">
+                {grupo.farmers.length} {grupo.farmers.length === 1 ? 'farmer' : 'farmers'} em campo ·{' '}
+                {grupo.farmers.reduce((s, a) => s + a.placar.efetivo, 0)} contatos efetivos
+              </span>
+            </div>
+          )}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-          {comLista.map((a) => {
+          {grupo.farmers.map((a) => {
             const status = ROTULO_STATUS[a.status] ?? ROTULO_STATUS.rascunho
             const expandido = aberto === a.farmerId
             const visiveis = expandido ? a.itens : a.itens.filter((i) => i.resultado)
@@ -254,7 +274,8 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                       <p className="font-semibold text-sm">{a.nome}</p>
                       <p className="text-xs text-zinc-500">
                         {a.placar.total} empresas{a.placar.extras > 0 && ` + ${a.placar.extras} extras`}
-                        {a.tramitacoes.length > 0 && ` · ${a.tramitacoes.length} tramitações`}
+                        {a.tramitacoes.length > 0 &&
+                          ` · ${a.tramitacoes.length} ${a.tramitacoes.length === 1 ? 'tramitação' : 'tramitações'}`}
                         {' · '}{a.timeLabel}
                       </p>
                     </div>
@@ -313,7 +334,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                 {a.tramitacoes.length > 0 && (
                   <div className="px-4 py-3 border-t border-zinc-100 bg-zinc-50/40">
                     <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-400 mb-2">
-                      Tramitações de hoje · {a.tramitacoes.length}
+                      {a.tramitacoes.length === 1 ? 'Tramitação de hoje' : `Tramitações de hoje · ${a.tramitacoes.length}`}
                     </p>
                     <div className="grid gap-2">
                       {a.tramitacoes.map((t) => (
@@ -366,6 +387,8 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
             )
           })}
         </div>
+        </section>
+        ))
       )}
     </div>
   )

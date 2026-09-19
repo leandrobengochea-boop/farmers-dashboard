@@ -161,12 +161,21 @@ export interface Usuario {
   timeKey: string | null
 }
 
+/**
+ * Farmers que não usam o diário, mesmo constando na formação de `lib/constants.ts`.
+ * Fica aqui para não mexer nos outros dashboards, que dependem daquela lista.
+ */
+export const FORA_DO_DIARIO = new Set<string>([
+  '97204635', // Samuel
+])
+
 /** Farmers de um líder, na formação vigente. Líder sem time vê todos. */
 export function farmersDoLider(timeKey: string | null): string[] {
+  const valido = (id: string) => !FARMER_ALIASES[id] && !FORA_DO_DIARIO.has(id)
   if (!timeKey) {
-    return Object.values(TEAMS).flatMap((t) => t.farmerIds).filter((id) => !FARMER_ALIASES[id])
+    return Object.values(TEAMS).flatMap((t) => t.farmerIds).filter(valido)
   }
-  return (TEAMS[timeKey]?.farmerIds ?? []).filter((id) => !FARMER_ALIASES[id])
+  return (TEAMS[timeKey]?.farmerIds ?? []).filter(valido)
 }
 
 /** Todos os farmers em operação hoje, na ordem dos times. */
@@ -175,7 +184,7 @@ export function farmersAtivos(): Array<{ id: string; nome: string; timeKey: stri
   for (const [timeKey, time] of Object.entries(TEAMS)) {
     for (const id of time.farmerIds) {
       // contas duplicadas (alias) não viram um segundo farmer na lista
-      if (FARMER_ALIASES[id]) continue
+      if (FARMER_ALIASES[id] || FORA_DO_DIARIO.has(id)) continue
       if (out.some((f) => f.id === id)) continue
       out.push({ id, nome: FARMERS[id] ?? id, timeKey, timeLabel: time.label })
     }
