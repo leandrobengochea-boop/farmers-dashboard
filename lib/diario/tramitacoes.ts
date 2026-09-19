@@ -60,28 +60,33 @@ export function maisDiasUteis(iso: string, dias: number): string {
  * Contrato assinado baixa tanto a assinatura quanto o envio da minuta: se foi
  * assinado, foi enviado.
  */
-export async function pendenciasDoFarmer(farmerId: string, hoje: string): Promise<Pendencia[]> {
+export async function pendenciasDeVarios(farmerIds: string[], hoje: string): Promise<Map<string, Pendencia[]>> {
+  const fora = new Map<string, Pendencia[]>()
+  if (farmerIds.length === 0) return fora
   const pat = process.env.HUBSPOT_PAT
   if (!pat) throw new Error('HUBSPOT_PAT não configurado')
 
+  // Uma busca só para o time inteiro: 23 consultas separadas deixariam a agenda lenta.
   const tickets = await searchAllPages(
     pat,
     'tickets',
     [{ filters: [
-      { propertyName: 'hubspot_owner_id', operator: 'EQ', value: farmerId },
+      { propertyName: 'hubspot_owner_id', operator: 'IN', values: farmerIds },
       { propertyName: 'hs_pipeline', operator: 'EQ', value: TICKET_PIPELINE_CS },
       { propertyName: 'hs_pipeline_stage', operator: 'IN', values: TICKET_STAGES_ATIVOS },
     ] }],
     [
       'subject', 'hs_pipeline_stage', 'data_de_realizacao_do_onboarding',
       'data_do_evento__ganho_', 'status_do_contrato', 'data_de_assinatura_do_contrato',
+      'hubspot_owner_id',
     ],
   )
 
-  const pendencias: Pendencia[] = []
+  const pendencias: Array<Pendencia & { dono: string }> = []
 
   for (const t of tickets) {
     const p = t.properties
+    const dono = p.hubspot_owner_id ?? ''
     const onboarding = soData(p.data_de_realizacao_do_onboarding)
     const evento = soData(p.data_do_evento__ganho_)
     const statusContrato = p.status_do_contrato ?? null
@@ -89,6 +94,7 @@ export async function pendenciasDoFarmer(farmerId: string, hoje: string): Promis
     const eventoPassado = !!evento && evento < hoje
 
     const base = {
+      dono,
       ticketId: t.id,
       assunto: p.subject ?? `Ticket ${t.id}`,
       etapa: ETAPAS_TICKET[p.hs_pipeline_stage ?? ''] ?? '',
@@ -124,5 +130,17 @@ export async function pendenciasDoFarmer(farmerId: string, hoje: string): Promis
   }
 
   // Mais urgente primeiro: vencidas há mais tempo no topo.
-  return pendencias.sort((a, b) => a.diasParaPrazo - b.diasParaPrazo || a.assunto.localeCompare(b.assunto))
+  pendencias.sort((a, b) => a.diasParaPrazo - b.diasParaPrazo || a.assunto.localeCompare(b.assunto))
+
+  for (const farmerId of farmerIds) fora.set(farmerId, [])
+  for (const { dono, ...p } of pendencias) {
+    const lista = fora.get(dono)
+    if (lista) lista.push(p)
+  }
+  return fora
+}
+
+export async function pendenciasDoFarmer(farmerId: string, hoje: string): Promise<Pendencia[]> {
+  const porFarmer = await pendenciasDeVarios([farmerId], hoje)
+  return porFarmer.get(farmerId) ?? []
 }

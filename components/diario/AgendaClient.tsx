@@ -22,6 +22,7 @@ interface AgendaFarmer {
     resultado: string | null
     observacao: string | null
   }>
+  placarTramitacoes: { pendentes: number; vencidas: number; escolhidas: number; aguardandoLider: number }
   auxilios: Array<{
     companyId: string
     companyName: string
@@ -87,8 +88,10 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
     carrega()
   }
 
-  // Um farmer pode ter só tramitações escolhidas e nenhuma empresa — ainda assim o dia dele começou.
-  const temDia = (a: AgendaFarmer) => a.itens.length > 0 || a.tramitacoes.length > 0
+  // Aparece na agenda quem tem qualquer coisa para o líder olhar: empresas do dia,
+  // tramitações escolhidas ou pendências esperando — inclusive quem nem abriu o diário.
+  const temDia = (a: AgendaFarmer) =>
+    a.itens.length > 0 || a.tramitacoes.length > 0 || a.placarTramitacoes.pendentes > 0
   const comLista = dados?.agenda.filter(temDia) ?? []
   const semLista = dados?.agenda.filter((a) => !temDia(a)) ?? []
   const totalEmpresas = comLista.reduce((s, a) => s + a.placar.total, 0)
@@ -247,7 +250,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
       {carregando ? (
         <p className="py-16 text-center text-sm text-zinc-500">Carregando a agenda do time...</p>
       ) : comLista.length === 0 ? (
-        <p className="py-16 text-center text-sm text-zinc-500">Nenhum farmer abriu o diário hoje.</p>
+        <p className="py-16 text-center text-sm text-zinc-500">Nada para acompanhar hoje: ninguém abriu o diário e não há tramitação pendente.</p>
       ) : (
         porTime.map((grupo) => (
         <section key={grupo.time} className="mb-8 last:mb-0">
@@ -255,8 +258,13 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
             <div className="flex items-baseline gap-3 mb-3">
               <h2 className="text-sm font-bold uppercase tracking-wide text-zinc-500">{grupo.time}</h2>
               <span className="text-xs text-zinc-400">
-                {grupo.farmers.length} {grupo.farmers.length === 1 ? 'farmer' : 'farmers'} em campo ·{' '}
+                {grupo.farmers.length} {grupo.farmers.length === 1 ? 'farmer' : 'farmers'} ·{' '}
                 {grupo.farmers.reduce((s, a) => s + a.placar.efetivo, 0)} contatos efetivos
+                {grupo.farmers.reduce((s, a) => s + a.placarTramitacoes.vencidas, 0) > 0 && (
+                  <span className="text-orange-700">
+                    {' · '}{grupo.farmers.reduce((s, a) => s + a.placarTramitacoes.vencidas, 0)} tramitações vencidas
+                  </span>
+                )}
               </span>
             </div>
           )}
@@ -331,11 +339,27 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                   ))}
                 </div>
 
-                {a.tramitacoes.length > 0 && (
+                {(a.placarTramitacoes.pendentes > 0 || a.tramitacoes.length > 0) && (
                   <div className="px-4 py-3 border-t border-zinc-100 bg-zinc-50/40">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-400 mb-2">
-                      {a.tramitacoes.length === 1 ? 'Tramitação de hoje' : `Tramitações de hoje · ${a.tramitacoes.length}`}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-400">Tramitações</p>
+                      <span className="text-[11px] text-zinc-500">
+                        {a.placarTramitacoes.pendentes} pendente{a.placarTramitacoes.pendentes === 1 ? '' : 's'}
+                      </span>
+                      {a.placarTramitacoes.vencidas > 0 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-600 text-white">
+                          {a.placarTramitacoes.vencidas} VENCIDA{a.placarTramitacoes.vencidas === 1 ? '' : 'S'}
+                        </span>
+                      )}
+                      {a.placarTramitacoes.aguardandoLider > 0 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">
+                          {a.placarTramitacoes.aguardandoLider} AGUARDANDO VOCÊ
+                        </span>
+                      )}
+                      {a.tramitacoes.length === 0 && a.placarTramitacoes.pendentes > 0 && (
+                        <span className="text-[11px] text-orange-700">nenhuma escolhida para hoje</span>
+                      )}
+                    </div>
                     <div className="grid gap-2">
                       {a.tramitacoes.map((t) => (
                         <div key={`${t.ticketId}:${t.tipo}`}>

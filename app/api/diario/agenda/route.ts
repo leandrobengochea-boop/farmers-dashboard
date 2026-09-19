@@ -6,9 +6,10 @@ import { hojeSP } from '@/lib/diario/carteira'
 import { resumoDoMes } from '@/lib/diario/metrics'
 import {
   itensDoDiaDeVarios, briefingsDoDia, historicoDeVarios, orientacoesDe,
-  tramitacoesDoDia, ItemDiario,
+  tramitacoesDoDia, statusTramitacoes, chaveTramitacao, ItemDiario,
 } from '@/lib/diario/db'
 import { precisaAuxilio } from '@/lib/diario/carteira'
+import { Pendencia, pendenciasDeVarios } from '@/lib/diario/tramitacoes'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -40,13 +41,15 @@ export async function GET(req: Request) {
   const farmerIds = farmersDoLider(usuario.timeKey)
 
   try {
-    const [itens, briefings, resumo, historico, orientacoes, tramitacoes] = await Promise.all([
+    const [itens, briefings, resumo, historico, orientacoes, tramitacoes, pendencias, statusTram] = await Promise.all([
       itensDoDiaDeVarios(farmerIds, data),
       briefingsDoDia(farmerIds, data),
       resumoDoMes(farmerIds, data),
       historicoDeVarios(farmerIds, data),
       orientacoesDe(farmerIds),
       tramitacoesDoDia(farmerIds, data),
+      pendenciasDeVarios(farmerIds, data).catch(() => new Map<string, Pendencia[]>()),
+      statusTramitacoes(farmerIds),
     ])
 
     const timeLabelPorFarmer: Record<string, string> = {}
@@ -76,6 +79,18 @@ export async function GET(req: Request) {
             orientacao: o ? { texto: o.texto, autor: o.autor, criadoEm: o.criadoEm } : null,
           }
         })
+      // Estado das tramitações mesmo quando o farmer não escolheu nenhuma:
+      // pendência vencida sem ninguém olhando é o que o líder precisa ver.
+      const doFarmerPend = (pendencias.get(farmerId) ?? []).filter((p) => !p.eventoPassado)
+      const statusFarmer = statusTram.get(farmerId)
+      const abertas = doFarmerPend.filter((p) => !statusFarmer?.get(chaveTramitacao(p.ticketId, p.tipo))?.confirmadoEm)
+      const placarTramitacoes = {
+        pendentes: abertas.length,
+        vencidas: abertas.filter((p) => p.diasParaPrazo < 0).length,
+        escolhidas: 0, // preenchido abaixo
+        aguardandoLider: abertas.filter((p) => statusFarmer?.get(chaveTramitacao(p.ticketId, p.tipo))?.feitoEm).length,
+      }
+
       // O que o farmer escolheu tratar hoje na aba de tramitações.
       const escolhidas = [...(tramitacoes.get(farmerId)?.values() ?? [])]
         .filter((t) => t.selecionado)
@@ -88,6 +103,8 @@ export async function GET(req: Request) {
           observacao: t.observacao,
         }))
 
+      placarTramitacoes.escolhidas = escolhidas.length
+
       return {
         farmerId,
         nome: FARMERS[farmerId] ?? farmerId,
@@ -96,6 +113,7 @@ export async function GET(req: Request) {
         comentarioLider: brief?.comentarioLider ?? null,
         itens: doFarmer,
         tramitacoes: escolhidas,
+        placarTramitacoes,
         auxilios,
         placar: {
           total: doDia.length,
