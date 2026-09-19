@@ -194,24 +194,28 @@ export const TRAMITACOES: Record<TipoTramitacao, {
   label: string
   acao: string
   prazo: string
+  entra: string
   baixa: 'dupla_checagem' | 'crm'
 }> = {
   minuta: {
     label: 'Enviar minuta contratual',
     acao: 'Enviar o contrato para o cliente',
     prazo: '1 dia útil após o onboarding',
+    entra: 'assim que o onboarding acontece',
     baixa: 'dupla_checagem',
   },
   assinatura: {
     label: 'Assinatura do contrato',
     acao: 'Cobrar a assinatura',
     prazo: '20 dias após o onboarding',
+    entra: 'faltando 5 dias para o prazo',
     baixa: 'crm', // status_do_contrato = Assinado
   },
   checklist: {
     label: 'Checklist do evento',
     acao: 'Fazer e enviar o checklist',
     prazo: '2 dias antes do evento',
+    entra: 'na data do prazo',
     baixa: 'dupla_checagem',
   },
 }
@@ -219,6 +223,12 @@ export const TRAMITACOES: Record<TipoTramitacao, {
 /** Prazos, em dias, a partir da data que dispara cada pendência. */
 export const PRAZO_MINUTA_DIAS_UTEIS = 1
 export const PRAZO_ASSINATURA_DIAS = 20
+
+/**
+ * A cobrança de assinatura só entra na lista quando falta pouco para o prazo.
+ * Antes disso o contrato acabou de ser enviado e não há o que cobrar.
+ */
+export const ANTECEDENCIA_ASSINATURA_DIAS = 5
 export const ANTECEDENCIA_CHECKLIST_DIAS = 2
 
 /** Resultado registrado no fim do dia em cada tramitação trabalhada. */

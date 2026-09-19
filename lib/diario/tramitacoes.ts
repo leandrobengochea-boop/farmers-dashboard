@@ -1,6 +1,7 @@
 import { HUBSPOT_PORTAL_ID } from '../constants'
 import {
-  ANTECEDENCIA_CHECKLIST_DIAS, ETAPAS_TICKET, PRAZO_ASSINATURA_DIAS, PRAZO_MINUTA_DIAS_UTEIS,
+  ANTECEDENCIA_ASSINATURA_DIAS, ANTECEDENCIA_CHECKLIST_DIAS, ETAPAS_TICKET,
+  PRAZO_ASSINATURA_DIAS, PRAZO_MINUTA_DIAS_UTEIS,
   TICKET_PIPELINE_CS, TICKET_STAGES_ATIVOS, TipoTramitacao,
 } from './constants'
 import { searchAllPages } from './carteira'
@@ -52,7 +53,8 @@ export function maisDiasUteis(iso: string, dias: number): string {
  * Pendências de tramitação dos tickets abertos do farmer no pipeline CS.
  *
  * - minuta: nasce quando o onboarding já aconteceu; vence 1 dia útil depois
- * - assinatura: mesma origem, vence em 20 dias — baixa sozinha pelo CRM
+ * - assinatura: mesma origem, vence em 20 dias, mas só aparece na reta final
+ *   (baixa sozinha pelo CRM)
  * - checklist: nasce 2 dias antes do evento
  *
  * Contrato assinado baixa tanto a assinatura quanto o envio da minuta: se foi
@@ -103,8 +105,12 @@ export async function pendenciasDoFarmer(farmerId: string, hoje: string): Promis
         const prazoMinuta = maisDiasUteis(onboarding, PRAZO_MINUTA_DIAS_UTEIS)
         pendencias.push({ ...base, tipo: 'minuta', prazo: prazoMinuta, diasParaPrazo: diasEntre(hoje, prazoMinuta) })
 
+        // Cobrar assinatura no dia seguinte ao envio é ruído: só entra na reta final.
         const prazoAssinatura = maisDias(onboarding, PRAZO_ASSINATURA_DIAS)
-        pendencias.push({ ...base, tipo: 'assinatura', prazo: prazoAssinatura, diasParaPrazo: diasEntre(hoje, prazoAssinatura) })
+        const diasParaAssinatura = diasEntre(hoje, prazoAssinatura)
+        if (diasParaAssinatura <= ANTECEDENCIA_ASSINATURA_DIAS) {
+          pendencias.push({ ...base, tipo: 'assinatura', prazo: prazoAssinatura, diasParaPrazo: diasParaAssinatura })
+        }
       }
     }
 

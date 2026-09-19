@@ -171,7 +171,8 @@ export default function AjudaPage() {
           <thead className="bg-zinc-50 text-[11px] uppercase tracking-wide text-zinc-500">
             <tr>
               <th className="text-left font-semibold px-4 py-2.5">Pendência</th>
-              <th className="text-left font-semibold px-4 py-2.5 w-52">Prazo</th>
+              <th className="text-left font-semibold px-4 py-2.5 w-48">Prazo</th>
+              <th className="text-left font-semibold px-4 py-2.5 w-52">Quando aparece</th>
               <th className="text-left font-semibold px-4 py-2.5">Como sai da lista</th>
             </tr>
           </thead>
@@ -180,6 +181,7 @@ export default function AjudaPage() {
               <tr key={t} className="border-t border-zinc-100 align-top">
                 <td className="px-4 py-3 font-medium">{TRAMITACOES[t].label}</td>
                 <td className="px-4 py-3 text-zinc-600">{TRAMITACOES[t].prazo}</td>
+                <td className="px-4 py-3 text-zinc-600">{TRAMITACOES[t].entra}</td>
                 <td className="px-4 py-3 text-zinc-600">
                   {TRAMITACOES[t].baixa === 'crm'
                     ? 'Sozinha, quando o contrato fica como Assinado no HubSpot'
