@@ -136,15 +136,20 @@ export const WON_STAGES = ['1076664462', '1076664460']
 export interface Lider {
   id: string
   nome: string
-  timeKey: keyof typeof TEAMS | null // null = vê todos os times
+  /** null = gerência: enxerga todos os times. */
+  timeKey: keyof typeof TEAMS | null
 }
 
 export const LIDERES: Lider[] = [
+  // Líderes de time: cada um vê só a própria formação
   { id: '80454607', nome: 'Letícia Silva dos Santos', timeKey: 'leticia' },
   { id: '80454582', nome: 'Katyeli Ceroni Madril',    timeKey: 'katyeli' },
   { id: '81035544', nome: 'Camila Fay',               timeKey: 'camila'  },
   { id: '80454577', nome: 'Daniel Bento Sias',        timeKey: 'dani'    },
+  // Gerência: vê todos os farmers dos quatro times
   { id: '80454585', nome: 'Leandro Bengochea',        timeKey: null      },
+  { id: '80436289', nome: 'Márcio Spagnolo',          timeKey: null      },
+  { id: '86256444', nome: 'Ana Machado',              timeKey: null      }, // owner cadastrado como "Ana Carolina Vaz"
 ]
 
 export type Papel = 'farmer' | 'lider'
