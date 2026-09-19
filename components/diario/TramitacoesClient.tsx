@@ -123,7 +123,10 @@ export default function TramitacoesClient({ usuario, farmers }: Props) {
       const resp = await fetch('/api/diario/tramitacoes', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: dados.data, farmerId: dados.farmerId, ticketId: p.ticketId, tipo: p.tipo, ...corpo }),
+        body: JSON.stringify({
+          data: dados.data, farmerId: dados.farmerId, ticketId: p.ticketId, tipo: p.tipo,
+          assunto: p.assunto, ...corpo,
+        }),
       }).catch(() => null)
       if (!resp?.ok) setErro('não consegui salvar essa alteração')
     }, atraso)

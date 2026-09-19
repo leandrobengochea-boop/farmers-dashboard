@@ -93,7 +93,7 @@ export async function PATCH(req: Request) {
   if (!usuario) return NextResponse.json({ error: 'não autenticado' }, { status: 401 })
 
   const body = (await req.json()) as {
-    data: string; ticketId: string; tipo: string; farmerId?: string
+    data: string; ticketId: string; tipo: string; farmerId?: string; assunto?: string
     selecionado?: boolean; resultado?: string | null; observacao?: string | null
   }
 
@@ -113,6 +113,7 @@ export async function PATCH(req: Request) {
   }
 
   await atualizaTramitacaoDia(alvo, body.data, body.ticketId, body.tipo, {
+    assunto: body.assunto,
     selecionado: body.selecionado,
     resultado: body.resultado,
     observacao: body.observacao,

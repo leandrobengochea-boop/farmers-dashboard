@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { BUCKETS, RESULTADOS, Resultado } from '@/lib/diario/constants'
+import { BUCKETS, RESULTADOS, RESULTADOS_TRAMITACAO, Resultado } from '@/lib/diario/constants'
 import type { ItemDiario } from '@/lib/diario/db'
 import type { ResumoMes } from '@/lib/diario/metrics'
 import { dataLonga, iniciais, meses, moeda } from './Marca'
@@ -14,6 +14,14 @@ interface AgendaFarmer {
   status: string
   comentarioLider: string | null
   itens: ItemDiario[]
+  tramitacoes: Array<{
+    ticketId: string
+    tipo: string
+    rotulo: string
+    assunto: string
+    resultado: string | null
+    observacao: string | null
+  }>
   auxilios: Array<{
     companyId: string
     companyName: string
@@ -79,8 +87,10 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
     carrega()
   }
 
-  const comLista = dados?.agenda.filter((a) => a.itens.length > 0) ?? []
-  const semLista = dados?.agenda.filter((a) => a.itens.length === 0) ?? []
+  // Um farmer pode ter só tramitações escolhidas e nenhuma empresa — ainda assim o dia dele começou.
+  const temDia = (a: AgendaFarmer) => a.itens.length > 0 || a.tramitacoes.length > 0
+  const comLista = dados?.agenda.filter(temDia) ?? []
+  const semLista = dados?.agenda.filter((a) => !temDia(a)) ?? []
   const totalEmpresas = comLista.reduce((s, a) => s + a.placar.total, 0)
   const totalEfetivo = comLista.reduce((s, a) => s + a.placar.efetivo, 0)
   const totalPendente = comLista.reduce((s, a) => s + a.placar.pendente, 0)
@@ -243,19 +253,23 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                     <div>
                       <p className="font-semibold text-sm">{a.nome}</p>
                       <p className="text-xs text-zinc-500">
-                        {a.placar.total} empresas{a.placar.extras > 0 && ` + ${a.placar.extras} extras`} · {a.timeLabel}
+                        {a.placar.total} empresas{a.placar.extras > 0 && ` + ${a.placar.extras} extras`}
+                        {a.tramitacoes.length > 0 && ` · ${a.tramitacoes.length} tramitações`}
+                        {' · '}{a.timeLabel}
                       </p>
                     </div>
                   </div>
                   <span className={`text-[11px] font-bold px-2.5 py-1 rounded ${status.cor}`}>{status.texto}</span>
                 </div>
 
+                {a.placar.total > 0 && (
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-100 text-xs">
                   <Placar rotulo="efetivos" valor={a.placar.efetivo} cor="text-emerald-700 bg-emerald-50 border-emerald-100" />
                   <Placar rotulo="tentativas" valor={a.placar.tentativa} cor="text-amber-700 bg-amber-50 border-amber-100" />
                   <Placar rotulo="não abordou" valor={a.placar.naoAbordei} cor="text-zinc-600 bg-zinc-50 border-zinc-200" />
                   {a.placar.pendente > 0 && <Placar rotulo="sem resposta" valor={a.placar.pendente} cor="text-zinc-400 bg-white border-zinc-200" />}
                 </div>
+                )}
 
                 {a.comentarioLider && (
                   <p className="px-4 py-2 bg-blue-50 border-b border-blue-100 text-xs text-blue-900">{a.comentarioLider}</p>
@@ -263,7 +277,9 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
 
                 <div className="divide-y divide-zinc-50 flex-1">
                   {visiveis.length === 0 ? (
-                    <p className="px-4 py-6 text-xs text-zinc-400 text-center">Nada registrado ainda.</p>
+                    a.placar.total > 0
+                      ? <p className="px-4 py-6 text-xs text-zinc-400 text-center">Nada registrado ainda.</p>
+                      : null
                   ) : visiveis.map((i) => (
                     <div key={i.companyId} className="px-4 py-3">
                       <div className="flex items-start justify-between gap-3">
@@ -294,11 +310,51 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                   ))}
                 </div>
 
+                {a.tramitacoes.length > 0 && (
+                  <div className="px-4 py-3 border-t border-zinc-100 bg-zinc-50/40">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-400 mb-2">
+                      Tramitações de hoje · {a.tramitacoes.length}
+                    </p>
+                    <div className="grid gap-2">
+                      {a.tramitacoes.map((t) => (
+                        <div key={`${t.ticketId}:${t.tipo}`}>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded">
+                              {t.rotulo}
+                            </span>
+                            <a
+                              href={`https://app.hubspot.com/contacts/49656171/record/0-5/${t.ticketId}`}
+                              target="_blank" rel="noreferrer"
+                              className="text-xs font-medium hover:text-orange-600 hover:underline truncate"
+                            >
+                              {t.assunto}
+                            </a>
+                            {t.resultado && (
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                                t.resultado === 'resolvi' ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                  : t.resultado === 'avancei' ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                  : 'bg-amber-100 text-amber-800 border-amber-200'
+                              }`}>
+                                {RESULTADOS_TRAMITACAO.find((r) => r.key === t.resultado)?.label}
+                              </span>
+                            )}
+                          </div>
+                          {t.observacao && (
+                            <p className="text-xs text-zinc-600 mt-1 border-l-2 border-zinc-200 pl-2">{t.observacao}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2 px-4 py-3 border-t border-zinc-100 bg-zinc-50/60">
-                  <button onClick={() => setAberto(expandido ? null : a.farmerId)}
-                    className="flex-1 rounded-lg py-2 text-sm font-medium border border-zinc-300 bg-white hover:border-zinc-500">
-                    {expandido ? 'Ver só o que rolou' : `Ver as ${a.placar.total}`}
-                  </button>
+                  {a.placar.total > 0 && (
+                    <button onClick={() => setAberto(expandido ? null : a.farmerId)}
+                      className="flex-1 rounded-lg py-2 text-sm font-medium border border-zinc-300 bg-white hover:border-zinc-500">
+                      {expandido ? 'Ver só o que rolou' : `Ver as ${a.placar.total}`}
+                    </button>
+                  )}
                   {a.status === 'fechado' && (
                     <button onClick={() => revisa(a.farmerId)}
                       className="flex-1 rounded-lg py-2 text-sm font-semibold text-white" style={{ background: '#FF5200' }}>

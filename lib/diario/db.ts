@@ -126,12 +126,15 @@ async function garanteSchema(): Promise<void> {
       data          date NOT NULL,
       ticket_id     text NOT NULL,
       tipo          text NOT NULL,
+      assunto       text,
       selecionado   boolean NOT NULL DEFAULT false,
       resultado     text,
       observacao    text,
       atualizado_em timestamptz NOT NULL DEFAULT now(),
       PRIMARY KEY (farmer_id, data, ticket_id, tipo)
     )`
+  // tabelas criadas antes da Agenda mostrar tramitações não tinham o assunto
+  await q`ALTER TABLE diario_tramitacao_dia ADD COLUMN IF NOT EXISTS assunto text`
   schemaPronto = true
 }
 
@@ -461,6 +464,7 @@ export interface DiaTramitacao {
   data: string
   ticketId: string
   tipo: string
+  assunto: string | null
   selecionado: boolean
   resultado: string | null
   observacao: string | null
@@ -570,6 +574,7 @@ export async function tramitacoesDoDia(farmerIds: string[], data: string): Promi
         data: iso(r.data) ?? '',
         ticketId: String(r.ticket_id),
         tipo: String(r.tipo),
+        assunto: (r.assunto as string) ?? null,
         selecionado: !!r.selecionado,
         resultado: (r.resultado as string) ?? null,
         observacao: (r.observacao as string) ?? null,
@@ -583,12 +588,13 @@ export async function tramitacoesDoDia(farmerIds: string[], data: string): Promi
   return fora
 }
 
-export type PatchTramitacao = Partial<Pick<DiaTramitacao, 'selecionado' | 'resultado' | 'observacao'>>
+export type PatchTramitacao = Partial<Pick<DiaTramitacao, 'assunto' | 'selecionado' | 'resultado' | 'observacao'>>
 
 export async function atualizaTramitacaoDia(
   farmerId: string, data: string, ticketId: string, tipo: string, patch: PatchTramitacao,
 ): Promise<void> {
   const campos: PatchTramitacao = {}
+  if (patch.assunto !== undefined) campos.assunto = patch.assunto
   if (patch.selecionado !== undefined) campos.selecionado = patch.selecionado
   if (patch.resultado !== undefined) campos.resultado = patch.resultado
   if (patch.observacao !== undefined) campos.observacao = patch.observacao
@@ -598,23 +604,24 @@ export async function atualizaTramitacaoDia(
     await garanteSchema()
     const q = sql()
     const rows = await q`
-      SELECT selecionado, resultado, observacao FROM diario_tramitacao_dia
+      SELECT assunto, selecionado, resultado, observacao FROM diario_tramitacao_dia
       WHERE farmer_id = ${farmerId} AND data = ${data} AND ticket_id = ${ticketId} AND tipo = ${tipo}`
     const atual = rows[0]
+    const assunto = campos.assunto ?? ((atual?.assunto as string) ?? null)
     const selecionado = campos.selecionado ?? (atual ? !!atual.selecionado : false)
     const resultado = campos.resultado ?? ((atual?.resultado as string) ?? null)
     const observacao = campos.observacao ?? ((atual?.observacao as string) ?? null)
     await q`
-      INSERT INTO diario_tramitacao_dia (farmer_id, data, ticket_id, tipo, selecionado, resultado, observacao)
-      VALUES (${farmerId}, ${data}, ${ticketId}, ${tipo}, ${selecionado}, ${resultado}, ${observacao})
+      INSERT INTO diario_tramitacao_dia (farmer_id, data, ticket_id, tipo, assunto, selecionado, resultado, observacao)
+      VALUES (${farmerId}, ${data}, ${ticketId}, ${tipo}, ${assunto}, ${selecionado}, ${resultado}, ${observacao})
       ON CONFLICT (farmer_id, data, ticket_id, tipo) DO UPDATE SET
-        selecionado = EXCLUDED.selecionado, resultado = EXCLUDED.resultado,
+        assunto = EXCLUDED.assunto, selecionado = EXCLUDED.selecionado, resultado = EXCLUDED.resultado,
         observacao = EXCLUDED.observacao, atualizado_em = now()`
     return
   }
   const t = leTram()
   const i = t.dias.findIndex((x) => x.farmerId === farmerId && x.data === data && x.ticketId === ticketId && x.tipo === tipo)
   if (i >= 0) Object.assign(t.dias[i], campos)
-  else t.dias.push({ farmerId, data, ticketId, tipo, selecionado: false, resultado: null, observacao: null, ...campos })
+  else t.dias.push({ farmerId, data, ticketId, tipo, assunto: null, selecionado: false, resultado: null, observacao: null, ...campos })
   gravaTram(t)
 }

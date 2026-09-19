@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 import { FARMERS, TEAMS } from '@/lib/constants'
 import { usuarioAtual } from '@/lib/diario/session'
-import { farmersDoLider } from '@/lib/diario/constants'
+import { farmersDoLider, TRAMITACOES, TipoTramitacao } from '@/lib/diario/constants'
 import { hojeSP } from '@/lib/diario/carteira'
 import { resumoDoMes } from '@/lib/diario/metrics'
-import { itensDoDiaDeVarios, briefingsDoDia, historicoDeVarios, orientacoesDe, ItemDiario } from '@/lib/diario/db'
+import {
+  itensDoDiaDeVarios, briefingsDoDia, historicoDeVarios, orientacoesDe,
+  tramitacoesDoDia, ItemDiario,
+} from '@/lib/diario/db'
 import { precisaAuxilio } from '@/lib/diario/carteira'
 
 export const dynamic = 'force-dynamic'
@@ -37,12 +40,13 @@ export async function GET(req: Request) {
   const farmerIds = farmersDoLider(usuario.timeKey)
 
   try {
-    const [itens, briefings, resumo, historico, orientacoes] = await Promise.all([
+    const [itens, briefings, resumo, historico, orientacoes, tramitacoes] = await Promise.all([
       itensDoDiaDeVarios(farmerIds, data),
       briefingsDoDia(farmerIds, data),
       resumoDoMes(farmerIds, data),
       historicoDeVarios(farmerIds, data),
       orientacoesDe(farmerIds),
+      tramitacoesDoDia(farmerIds, data),
     ])
 
     const timeLabelPorFarmer: Record<string, string> = {}
@@ -72,6 +76,18 @@ export async function GET(req: Request) {
             orientacao: o ? { texto: o.texto, autor: o.autor, criadoEm: o.criadoEm } : null,
           }
         })
+      // O que o farmer escolheu tratar hoje na aba de tramitações.
+      const escolhidas = [...(tramitacoes.get(farmerId)?.values() ?? [])]
+        .filter((t) => t.selecionado)
+        .map((t) => ({
+          ticketId: t.ticketId,
+          tipo: t.tipo,
+          rotulo: TRAMITACOES[t.tipo as TipoTramitacao]?.label ?? t.tipo,
+          assunto: t.assunto ?? `Ticket ${t.ticketId}`,
+          resultado: t.resultado,
+          observacao: t.observacao,
+        }))
+
       return {
         farmerId,
         nome: FARMERS[farmerId] ?? farmerId,
@@ -79,6 +95,7 @@ export async function GET(req: Request) {
         status: brief?.status ?? 'rascunho',
         comentarioLider: brief?.comentarioLider ?? null,
         itens: doFarmer,
+        tramitacoes: escolhidas,
         auxilios,
         placar: {
           total: doDia.length,
