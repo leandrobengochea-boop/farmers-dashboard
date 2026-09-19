@@ -321,7 +321,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
               <tr className="text-[11px] uppercase tracking-wide text-zinc-400 border-b border-zinc-100">
                 <th className="text-left font-semibold px-5 py-3">Empresa</th>
                 <th className="text-left font-semibold px-3 py-3 w-[170px]">Fase</th>
-                <th className="text-left font-semibold px-3 py-3 w-[120px]">Últ. contato</th>
+                <th className="text-left font-semibold px-3 py-3 w-[130px]">Últ. contato efetivo</th>
                 <th className="text-left font-semibold px-3 py-3 w-[270px]">Abordagem</th>
                 <th className="text-left font-semibold px-3 py-3 w-[300px]">Contexto (opcional)</th>
               </tr>
@@ -331,7 +331,9 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                 <tr key={i.companyId} className="border-b border-zinc-50 align-top">
                   <td className="px-5 py-4"><Empresa item={i} /></td>
                   <td className="px-3 py-4"><Fase item={i} /></td>
-                  <td className="px-3 py-4 text-zinc-600">{dataCurta(i.ultimoContato)}</td>
+                  <td className="px-3 py-4 text-zinc-600" title="Campo Último Contato Efetivo, no HubSpot">
+                    {dataCurta(i.ultimoContato)}
+                  </td>
                   <td className="px-3 py-4">
                     <select
                       value={i.abordagem ?? ''}
