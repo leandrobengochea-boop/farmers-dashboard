@@ -248,7 +248,13 @@ export default function AjudaPage() {
         </p>
         <p className="mt-3">
           Quem é farmer cai na própria lista. Quem é líder cai na Agenda do dia, vê o andamento de cada farmer
-          do time e pode abrir o diário de qualquer um deles.
+          do time e pode abrir o diário de qualquer um deles. A gerência enxerga os quatro times.
+        </p>
+        <p className="mt-3">
+          <b>Líder e gerência também editam.</b> Abordagem, contexto, resultado e observação podem ser ajustados
+          por quem lidera, inclusive depois do dia revisado — e a alteração aparece para o farmer com o nome de
+          quem mexeu. A exceção é marcar uma tramitação como feita: isso continua sendo só do farmer, senão a
+          dupla checagem perderia o sentido.
         </p>
         <Nota>
           Empresa faltando ou sobrando na sua lista quase sempre é proprietário errado no HubSpot — corrigir lá

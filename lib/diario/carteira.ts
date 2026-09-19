@@ -299,6 +299,7 @@ export async function montaSugestoes(farmerId: string, hoje: string): Promise<Su
     observacao: null,
     resultado: null,
     observacaoResultado: null,
+    editadoPor: null,
   }))
 
   return { itens, resumo }

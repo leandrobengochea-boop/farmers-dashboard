@@ -91,13 +91,19 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   const usuario = usuarioAtual()
   if (!usuario) return NextResponse.json({ error: 'não autenticado' }, { status: 401 })
-  if (usuario.papel !== 'farmer') {
-    return NextResponse.json({ error: 'só o farmer edita o próprio dia' }, { status: 403 })
-  }
 
   const body = (await req.json()) as {
-    data: string; ticketId: string; tipo: string
+    data: string; ticketId: string; tipo: string; farmerId?: string
     selecionado?: boolean; resultado?: string | null; observacao?: string | null
+  }
+
+  // Líder e gerência ajustam o dia de quem está no time deles.
+  const alvo = usuario.papel === 'lider' ? (body.farmerId ?? '') : usuario.id
+  if (usuario.papel === 'lider' && !farmersDoLider(usuario.timeKey).includes(alvo)) {
+    return NextResponse.json({ error: 'farmer fora do seu time' }, { status: 403 })
+  }
+  if (usuario.papel === 'farmer' && body.farmerId && body.farmerId !== usuario.id) {
+    return NextResponse.json({ error: 'sem acesso a esse farmer' }, { status: 403 })
   }
   if (!body?.data || !body?.ticketId || !body?.tipo) {
     return NextResponse.json({ error: 'data, ticketId e tipo são obrigatórios' }, { status: 400 })
@@ -106,7 +112,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'resultado inválido' }, { status: 400 })
   }
 
-  await atualizaTramitacaoDia(usuario.id, body.data, body.ticketId, body.tipo, {
+  await atualizaTramitacaoDia(alvo, body.data, body.ticketId, body.tipo, {
     selecionado: body.selecionado,
     resultado: body.resultado,
     observacao: body.observacao,
@@ -131,6 +137,8 @@ export async function POST(req: Request) {
   }
 
   if (body.acao === 'feito' || body.acao === 'desfazer') {
+    // Marcar continua sendo do farmer: se o líder marcasse e confirmasse,
+    // a dupla checagem deixaria de existir.
     if (usuario.papel !== 'farmer') {
       return NextResponse.json({ error: 'só o farmer marca a própria tramitação' }, { status: 403 })
     }

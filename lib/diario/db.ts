@@ -19,6 +19,7 @@ export interface ItemDiario {
   observacao: string | null            // contexto definido de manhã
   resultado: string | null             // 'efetivo' | 'tentativa' | 'nao_abordei'
   observacaoResultado: string | null   // o que saiu do contato, registrado no fechamento
+  editadoPor: string | null            // líder ou gerente que mexeu no plano do farmer
 }
 
 export interface Briefing {
@@ -40,7 +41,7 @@ export interface Orientacao {
   criadoEm: string
 }
 
-export type PatchItem = Partial<Pick<ItemDiario, 'abordagem' | 'observacao' | 'resultado' | 'observacaoResultado'>>
+export type PatchItem = Partial<Pick<ItemDiario, 'abordagem' | 'observacao' | 'resultado' | 'observacaoResultado' | 'editadoPor'>>
 
 // ── Driver Postgres (Neon / Vercel Postgres) ──
 
@@ -79,6 +80,7 @@ async function garanteSchema(): Promise<void> {
       observacao        text,
       resultado         text,
       observacao_resultado text,
+      editado_por       text,
       criado_em         timestamptz NOT NULL DEFAULT now(),
       atualizado_em     timestamptz NOT NULL DEFAULT now(),
       PRIMARY KEY (farmer_id, data, company_id)
@@ -86,6 +88,7 @@ async function garanteSchema(): Promise<void> {
   await q`CREATE INDEX IF NOT EXISTS diario_item_farmer_data ON diario_item (farmer_id, data)`
   // tabelas criadas pela primeira versão não tinham a observação de resultado
   await q`ALTER TABLE diario_item ADD COLUMN IF NOT EXISTS observacao_resultado text`
+  await q`ALTER TABLE diario_item ADD COLUMN IF NOT EXISTS editado_por text`
   await q`
     CREATE TABLE IF NOT EXISTS diario_briefing (
       farmer_id        text NOT NULL,
@@ -175,6 +178,7 @@ function linhaParaItem(r: Record<string, unknown>): ItemDiario {
     observacao: (r.observacao as string) ?? null,
     resultado: (r.resultado as string) ?? null,
     observacaoResultado: (r.observacao_resultado as string) ?? null,
+    editadoPor: (r.editado_por as string) ?? null,
   }
 }
 
@@ -234,13 +238,14 @@ export async function atualizaItem(farmerId: string, data: string, companyId: st
   if (patch.observacao !== undefined) campos.observacao = patch.observacao
   if (patch.resultado !== undefined) campos.resultado = patch.resultado
   if (patch.observacaoResultado !== undefined) campos.observacaoResultado = patch.observacaoResultado
+  if (patch.editadoPor !== undefined) campos.editadoPor = patch.editadoPor
   if (Object.keys(campos).length === 0) return
 
   if (usandoPostgres) {
     await garanteSchema()
     const q = sql()
     const rows = await q`
-      SELECT abordagem, observacao, resultado, observacao_resultado FROM diario_item
+      SELECT abordagem, observacao, resultado, observacao_resultado, editado_por FROM diario_item
       WHERE farmer_id = ${farmerId} AND data = ${data} AND company_id = ${companyId}`
     if (rows.length === 0) return
     const atual = rows[0]
@@ -248,10 +253,11 @@ export async function atualizaItem(farmerId: string, data: string, companyId: st
     const observacao = campos.observacao ?? ((atual.observacao as string) ?? null)
     const resultado = campos.resultado ?? ((atual.resultado as string) ?? null)
     const observacaoResultado = campos.observacaoResultado ?? ((atual.observacao_resultado as string) ?? null)
+    const editadoPor = campos.editadoPor ?? ((atual.editado_por as string) ?? null)
     await q`
       UPDATE diario_item
       SET abordagem = ${abordagem}, observacao = ${observacao}, resultado = ${resultado},
-          observacao_resultado = ${observacaoResultado}, atualizado_em = now()
+          observacao_resultado = ${observacaoResultado}, editado_por = ${editadoPor}, atualizado_em = now()
       WHERE farmer_id = ${farmerId} AND data = ${data} AND company_id = ${companyId}`
     return
   }

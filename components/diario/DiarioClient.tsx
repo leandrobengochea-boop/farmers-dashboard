@@ -94,7 +94,9 @@ export default function DiarioClient({ usuario, farmers }: Props) {
 
   useEffect(() => { if (farmerId) carrega(farmerId) }, [farmerId, carrega])
 
-  const somenteLeitura = usuario.papel !== 'farmer' || dados?.briefing.status === 'revisado'
+  // Líder e gerência editam o plano de quem está no time deles; o farmer perde
+  // a edição quando o líder já revisou o dia.
+  const somenteLeitura = usuario.papel === 'farmer' && dados?.briefing.status === 'revisado'
 
   const itens = useMemo(() => {
     const ordem = (b: string) => ORDEM_BUCKET[b as keyof typeof ORDEM_BUCKET] ?? 9
@@ -144,7 +146,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
         const resp = await fetch('/api/diario/item', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: dados.data, companyId, ...corpo }),
+          body: JSON.stringify({ data: dados.data, farmerId: dados.farmerId, companyId, ...corpo }),
         })
         if (!resp.ok) {
           const d = await resp.json().catch(() => ({}))
@@ -184,9 +186,9 @@ export default function DiarioClient({ usuario, farmers }: Props) {
       />
 
       {usuario.papel === 'lider' && (
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex flex-wrap items-center gap-3 mb-6">
           <span className="text-xs font-bold uppercase tracking-wide bg-zinc-900 text-white px-3 py-1.5 rounded-full">Líder</span>
-          <span className="text-sm text-zinc-500">vendo o diário de</span>
+          <span className="text-sm text-zinc-500">editando o diário de</span>
           <select
             value={farmerId}
             onChange={(e) => setFarmerId(e.target.value)}
@@ -446,6 +448,11 @@ function Empresa({ item }: { item: ItemComHistorico }) {
         {item.precisaAuxilio && (
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-600 text-white tracking-wide">
             AUXÍLIO DO LÍDER
+          </span>
+        )}
+        {item.editadoPor && (
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-200 text-zinc-700">
+            editado por {item.editadoPor}
           </span>
         )}
       </div>

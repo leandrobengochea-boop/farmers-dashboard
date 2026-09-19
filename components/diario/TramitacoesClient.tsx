@@ -84,7 +84,8 @@ export default function TramitacoesClient({ usuario, farmers }: Props) {
 
   useEffect(() => { if (farmerId) carrega(farmerId) }, [farmerId, carrega])
 
-  const somenteLeitura = usuario.papel !== 'farmer'
+  // Líder e gerência ajustam seleção e resultado; marcar como feito segue sendo do farmer.
+  const somenteLeitura = false
   const pendencias = dados?.pendencias ?? []
 
   const grupos = useMemo(() => {
@@ -122,7 +123,7 @@ export default function TramitacoesClient({ usuario, farmers }: Props) {
       const resp = await fetch('/api/diario/tramitacoes', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: dados.data, ticketId: p.ticketId, tipo: p.tipo, ...corpo }),
+        body: JSON.stringify({ data: dados.data, farmerId: dados.farmerId, ticketId: p.ticketId, tipo: p.tipo, ...corpo }),
       }).catch(() => null)
       if (!resp?.ok) setErro('não consegui salvar essa alteração')
     }, atraso)
@@ -158,7 +159,7 @@ export default function TramitacoesClient({ usuario, farmers }: Props) {
       {usuario.papel === 'lider' && (
         <div className="flex items-center gap-3 mb-6">
           <span className="text-xs font-bold uppercase tracking-wide bg-zinc-900 text-white px-3 py-1.5 rounded-full">Líder</span>
-          <span className="text-sm text-zinc-500">vendo as tramitações de</span>
+          <span className="text-sm text-zinc-500">editando as tramitações de</span>
           <select
             value={farmerId}
             onChange={(e) => setFarmerId(e.target.value)}
@@ -298,7 +299,7 @@ export default function TramitacoesClient({ usuario, farmers }: Props) {
               />
               <span className={`text-sm ${p.selecionado ? 'font-semibold' : 'text-zinc-500'}`}>Tratar hoje</span>
             </label>
-            {!somenteLeitura && (
+            {usuario.papel === 'farmer' && (
               <button
                 onClick={() => marcaFeito(p, !p.feitoEm)}
                 className={`text-xs font-semibold px-3 py-2 rounded-lg border transition ${
