@@ -1,11 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { BUCKETS, RESULTADOS, Resultado } from '@/lib/diario/constants'
 import type { ItemDiario } from '@/lib/diario/db'
 import type { ResumoMes } from '@/lib/diario/metrics'
-import { LogoPSA, dataLonga, iniciais, meses, moeda } from './Marca'
+import { dataLonga, iniciais, meses, moeda } from './Marca'
+import Cabecalho from './Cabecalho'
 
 interface AgendaFarmer {
   farmerId: string
@@ -45,7 +45,6 @@ const CORES_RESULTADO: Record<Resultado, string> = {
 }
 
 export default function AgendaClient({ usuario }: { usuario: { id: string; nome: string } }) {
-  const router = useRouter()
   const [dados, setDados] = useState<Dados | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
@@ -80,12 +79,6 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
     carrega()
   }
 
-  async function sair() {
-    await fetch('/api/diario/logout', { method: 'POST' })
-    router.push('/diario/login')
-    router.refresh()
-  }
-
   const comLista = dados?.agenda.filter((a) => a.itens.length > 0) ?? []
   const semLista = dados?.agenda.filter((a) => a.itens.length === 0) ?? []
   const totalEmpresas = comLista.reduce((s, a) => s + a.placar.total, 0)
@@ -109,28 +102,16 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
 
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-6">
-      <header className="flex items-start justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <LogoPSA />
-          <div>
-            <h1 className="font-black tracking-tight text-2xl uppercase leading-none">Agenda do dia</h1>
-            <p className="text-sm text-zinc-500 mt-1">
-              {dados
-                ? `${dataLonga(dados.data)} · ${comLista.length} de ${dados.agenda.length} farmers · ${totalEmpresas} empresas · ${totalEfetivo} contatos efetivos`
-                : 'carregando...'}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <a href="/diario" className="text-sm px-4 py-2 rounded-full bg-white border border-zinc-200 hover:border-zinc-400">Diário de bordo</a>
-          <a href="/diario/ajuda" className="text-sm text-zinc-500 hover:text-zinc-900">Como funciona</a>
-          <div className="flex items-center gap-2 bg-white border border-zinc-200 rounded-full pl-1.5 pr-4 py-1.5">
-            <span className="w-8 h-8 rounded-full bg-zinc-900 text-white text-xs font-bold grid place-items-center">{iniciais(usuario.nome)}</span>
-            <span className="text-sm font-medium">{usuario.nome}</span>
-          </div>
-          <button onClick={sair} className="text-sm text-zinc-500 hover:text-zinc-900 underline underline-offset-2">Sair</button>
-        </div>
-      </header>
+      <Cabecalho
+        titulo="Agenda do dia"
+        subtitulo={
+          dados
+            ? `${dataLonga(dados.data)} · ${comLista.length} de ${dados.agenda.length} farmers · ${totalEmpresas} empresas · ${totalEfetivo} contatos efetivos`
+            : 'carregando...'
+        }
+        usuario={{ ...usuario, papel: 'lider' }}
+        ativa="agenda"
+      />
 
       {erro && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">{erro}</div>}
 

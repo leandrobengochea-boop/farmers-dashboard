@@ -1,14 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   ABORDAGEM_PADRAO, ABORDAGENS, Bucket, BUCKETS, COTA_DIARIA,
   ORDEM_BUCKET, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, Resultado,
 } from '@/lib/diario/constants'
 import type { Briefing, ItemDiario } from '@/lib/diario/db'
 import type { PoolCarteira, ResumoMes } from '@/lib/diario/metrics'
-import { LogoPSA, dataLonga, iniciais, meses, moeda, dataCurta } from './Marca'
+import { dataLonga, meses, moeda, dataCurta } from './Marca'
+import Cabecalho from './Cabecalho'
 
 interface Props {
   usuario: { id: string; nome: string; papel: string; timeKey: string | null }
@@ -65,7 +65,6 @@ const ROTULO_STATUS: Record<string, { texto: string; cor: string }> = {
 }
 
 export default function DiarioClient({ usuario, farmers }: Props) {
-  const router = useRouter()
   const [dados, setDados] = useState<Dados | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
@@ -173,42 +172,21 @@ export default function DiarioClient({ usuario, farmers }: Props) {
     carrega(farmerId)
   }
 
-  async function sair() {
-    await fetch('/api/diario/logout', { method: 'POST' })
-    router.push('/diario/login')
-    router.refresh()
-  }
-
   const status = ROTULO_STATUS[dados?.briefing.status ?? 'rascunho']
 
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-6">
-      <header className="flex items-start justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <LogoPSA />
-          <div>
-            <h1 className="font-black tracking-tight text-2xl uppercase leading-none">Diário de bordo</h1>
-            <p className="text-sm text-zinc-500 mt-1">Carteira do farmer · sincronizado com o HubSpot</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <a href="/diario/ajuda" className="text-sm text-zinc-500 hover:text-zinc-900">Como funciona</a>
-          <div className="flex items-center gap-2 bg-white border border-zinc-200 rounded-full pl-1.5 pr-4 py-1.5">
-            <span className="w-8 h-8 rounded-full bg-zinc-900 text-white text-xs font-bold grid place-items-center">
-              {iniciais(usuario.nome)}
-            </span>
-            <span className="text-sm font-medium">{usuario.nome}</span>
-          </div>
-          <button onClick={sair} className="text-sm text-zinc-500 hover:text-zinc-900 underline underline-offset-2">Sair</button>
-        </div>
-      </header>
+      <Cabecalho
+        titulo="Diário de bordo"
+        subtitulo="Carteira do farmer · sincronizado com o HubSpot"
+        usuario={usuario}
+        ativa="diario"
+      />
 
       {usuario.papel === 'lider' && (
         <div className="flex items-center gap-3 mb-6">
-          <a href="/diario/agenda" className="text-sm px-4 py-2 rounded-full bg-white border border-zinc-200 hover:border-zinc-400">
-            Agenda do dia
-          </a>
           <span className="text-xs font-bold uppercase tracking-wide bg-zinc-900 text-white px-3 py-1.5 rounded-full">Líder</span>
+          <span className="text-sm text-zinc-500">vendo o diário de</span>
           <select
             value={farmerId}
             onChange={(e) => setFarmerId(e.target.value)}

@@ -4,7 +4,7 @@ import {
   ABORDAGENS, BUCKETS, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, COTA_DIARIA,
   EMPRESAS_DO_DIA, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, TENTATIVAS_ATE_AUXILIO,
 } from '@/lib/diario/constants'
-import { LogoPSA } from '@/components/diario/Marca'
+import Cabecalho from '@/components/diario/Cabecalho'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,24 +16,19 @@ export default function AjudaPage() {
   const usuario = usuarioAtual()
   if (!usuario) redirect('/diario/login')
 
-  const voltar = usuario.papel === 'lider' ? '/diario/agenda' : '/diario'
   const dias = (n: number) => (n === 1 ? 'no dia seguinte' : `depois de ${n} dias`)
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
-      <header className="flex items-start justify-between mb-10">
-        <div className="flex items-center gap-4">
-          <LogoPSA />
-          <div>
-            <h1 className="font-black tracking-tight text-2xl uppercase leading-none">Como funciona</h1>
-            <p className="text-sm text-zinc-500 mt-1">As regras do Diário de Bordo, em uma página</p>
-          </div>
-        </div>
-        <a href={voltar} className="text-sm px-4 py-2 rounded-full bg-white border border-zinc-200 hover:border-zinc-400 shrink-0">
-          Voltar
-        </a>
-      </header>
+    <div className="max-w-screen-2xl mx-auto px-6 py-6">
+      <Cabecalho
+        titulo="Como funciona"
+        subtitulo="As regras do Diário de Bordo, em uma página"
+        usuario={usuario}
+        ativa="ajuda"
+      />
 
+      {/* texto em coluna estreita, mas o cabeçalho acompanha a largura das outras telas */}
+      <div className="max-w-3xl">
       <Secao titulo="Para que serve">
         <p>
           O diário existe para o dia começar decidido. Em vez de abrir o CRM e escolher por intuição quem
@@ -226,6 +221,7 @@ export default function AjudaPage() {
       <p className="text-xs text-zinc-400 border-t border-zinc-200 pt-6">
         Esta página lê as regras direto do código do diário — quando um prazo ou uma cota muda, o texto muda junto.
       </p>
+      </div>
     </div>
   )
 }
