@@ -3,7 +3,7 @@ import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider } from '@/lib/diario/constants'
 import { emDescanso, precisaAuxilio, hojeSP, montaSugestoes } from '@/lib/diario/carteira'
 import { poolDaCarteira, resumoDoMes } from '@/lib/diario/metrics'
-import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe, registraAcesso } from '@/lib/diario/db'
+import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe, registraAcesso, atualizaItem } from '@/lib/diario/db'
 import { empresasComSelo } from '@/lib/diario/relacionamento'
 import { AtividadeEmpresa, atividadeDoDia } from '@/lib/diario/atividade'
 
@@ -53,6 +53,24 @@ export async function GET(req: Request) {
       atividadeDoDia(farmerId, data).catch((e) => { console.error('atividadeDoDia falhou:', e); return new Map<string, AtividadeEmpresa>() }),
     ])
     const doFarmer = orientacoes.get(farmerId)
+
+    // A efetividade é automática: o que o HubSpot registrou hoje vira o resultado
+    // da empresa sem ninguém precisar clicar. Só preenche o que está vazio —
+    // escolha feita à mão pelo farmer ou pelo líder nunca é sobrescrita.
+    for (const item of itens) {
+      const a = atividade.get(item.companyId)
+      if (!a?.resultadoSugerido) continue
+      const preencheResultado = !item.resultado
+      const preencheTexto = !item.observacaoResultado?.trim() && !!a.texto
+      if (!preencheResultado && !preencheTexto) continue
+
+      if (preencheResultado) item.resultado = a.resultadoSugerido
+      if (preencheTexto) item.observacaoResultado = a.texto.slice(0, 600)
+      await atualizaItem(farmerId, data, item.companyId, {
+        ...(preencheResultado ? { resultado: a.resultadoSugerido } : {}),
+        ...(preencheTexto ? { observacaoResultado: a.texto.slice(0, 600) } : {}),
+      }).catch(() => {})
+    }
 
     // Contexto de cada empresa: quantas vezes já apareceu e o que aconteceu na última.
     const comHistorico = itens.map((i) => {

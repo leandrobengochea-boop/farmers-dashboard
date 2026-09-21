@@ -125,21 +125,11 @@ export default function DiarioClient({ usuario, farmers }: Props) {
     [doDia],
   )
 
-  // Empresas onde o HubSpot já sabe o que aconteceu e o diário ainda não.
-  const aPuxar = useMemo(
-    () => doDia.filter((i) => !i.resultado && i.atividade?.resultadoSugerido),
+  // Quantas vieram prontas do CRM, para o farmer saber que não foi ele que marcou.
+  const vindasDoHubSpot = useMemo(
+    () => doDia.filter((i) => i.atividade?.resultadoSugerido && i.resultado === i.atividade.resultadoSugerido).length,
     [doDia],
   )
-
-  function puxaDoHubSpot() {
-    for (const i of aPuxar) {
-      const a = i.atividade!
-      salva(i.companyId, {
-        resultado: a.resultadoSugerido,
-        ...(a.texto && !i.observacaoResultado ? { observacaoResultado: a.texto.slice(0, 600) } : {}),
-      })
-    }
-  }
   const efetivos = useMemo(() => doDia.filter((i) => i.resultado === 'efetivo').length, [doDia])
 
   const visiveis = useMemo(() => {
@@ -305,19 +295,10 @@ export default function DiarioClient({ usuario, farmers }: Props) {
           </div>
         </div>
 
-        {aba === 'fechamento' && aPuxar.length > 0 && !somenteLeitura && (
-          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-emerald-50 border-b border-emerald-200">
-            <p className="text-sm text-emerald-900">
-              O HubSpot já registrou atividade em <b>{aPuxar.length}</b>{' '}
-              {aPuxar.length === 1 ? 'empresa' : 'empresas'} da sua lista hoje.
-            </p>
-            <button
-              onClick={puxaDoHubSpot}
-              className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
-              style={{ background: '#059669' }}
-            >
-              Preencher pelo HubSpot
-            </button>
+        {aba === 'fechamento' && vindasDoHubSpot > 0 && (
+          <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-200 text-sm text-emerald-900">
+            <b>{vindasDoHubSpot}</b> {vindasDoHubSpot === 1 ? 'empresa foi preenchida' : 'empresas foram preenchidas'}{' '}
+            automaticamente pela sua atividade no HubSpot de hoje. Corrija o que estiver errado e complete o resto.
           </div>
         )}
         {aviso && <div className="px-5 py-3 bg-amber-50 border-b border-amber-200 text-sm text-amber-800">{aviso}</div>}
@@ -439,7 +420,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                     <td className="px-3 py-4">
                       {i.atividade && (
                         <p className="text-[11px] text-zinc-500 mb-1.5">
-                          no HubSpot hoje:{' '}
+                          {i.resultado === i.atividade.resultadoSugerido ? 'preenchido pelo HubSpot: ' : 'no HubSpot hoje: '}
                           {[
                             i.atividade.ligacoes > 0 && `${i.atividade.ligacoes} ligação(ões)`,
                             i.atividade.conectadas > 0 && `${i.atividade.conectadas} conectada(s)`,
