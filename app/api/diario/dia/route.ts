@@ -4,6 +4,7 @@ import { farmersDoLider } from '@/lib/diario/constants'
 import { emDescanso, precisaAuxilio, hojeSP, montaSugestoes } from '@/lib/diario/carteira'
 import { poolDaCarteira, resumoDoMes } from '@/lib/diario/metrics'
 import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe } from '@/lib/diario/db'
+import { empresasComSelo } from '@/lib/diario/relacionamento'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -35,12 +36,13 @@ export async function GET(req: Request) {
       itens = await itensDoDia(farmerId, data)
     }
 
-    const [resumo, brief, pool, historico, orientacoes] = await Promise.all([
+    const [resumo, brief, pool, historico, orientacoes, selos] = await Promise.all([
       resumoDoMes([farmerId], data),
       briefing(farmerId, data),
       poolDaCarteira(farmerId, data),
       historicoDoFarmer(farmerId, data),
       orientacoesDe([farmerId]),
+      empresasComSelo(farmerId, itens.map((i) => i.companyId)).catch(() => new Set<string>()),
     ])
     const doFarmer = orientacoes.get(farmerId)
 
@@ -54,6 +56,7 @@ export async function GET(req: Request) {
           ? { aparicoes: h.aparicoes, ultimaData: h.ultimaData, ultimoResultado: h.ultimoResultado, tentativasSeguidas: h.tentativasSeguidas }
           : null,
         precisaAuxilio: precisaAuxilio(h),
+        seloRelacionamento: selos.has(i.companyId),
         orientacao: orientacao ? { texto: orientacao.texto, autor: orientacao.autor, criadoEm: orientacao.criadoEm } : null,
       }
     })

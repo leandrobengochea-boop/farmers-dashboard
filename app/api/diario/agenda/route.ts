@@ -35,10 +35,9 @@ export interface AgendaFarmer {
 export async function GET(req: Request) {
   const usuario = usuarioAtual()
   if (!usuario) return NextResponse.json({ error: 'não autenticado' }, { status: 401 })
-  if (usuario.papel !== 'lider') return NextResponse.json({ error: 'visão exclusiva do líder' }, { status: 403 })
-
   const data = new URL(req.url).searchParams.get('data') || hojeSP()
-  const farmerIds = farmersDoLider(usuario.timeKey)
+  // Líder vê o time; farmer vê a si mesmo.
+  const farmerIds = usuario.papel === 'lider' ? farmersDoLider(usuario.timeKey) : [usuario.id]
 
   try {
     const [itens, briefings, resumo, historico, orientacoes, tramitacoes, pendencias, statusTram] = await Promise.all([

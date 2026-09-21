@@ -31,6 +31,7 @@ export interface OrientacaoItem {
 export type ItemComHistorico = ItemDiario & {
   historico: HistoricoItem | null
   precisaAuxilio: boolean
+  seloRelacionamento: boolean
   orientacao: OrientacaoItem | null
 }
 
@@ -451,6 +452,14 @@ function Empresa({ item }: { item: ItemComHistorico }) {
         {item.precisaAuxilio && (
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-600 text-white tracking-wide">
             AUXÍLIO DO LÍDER
+          </span>
+        )}
+        {item.seloRelacionamento && (
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-600 text-white tracking-wide"
+            title="Negócio registrado e mais de uma reunião de relacionamento realizada por você nesta empresa"
+          >
+            RELACIONAMENTO
           </span>
         )}
         {item.editadoPor && (

@@ -16,7 +16,7 @@ export interface Aba {
  * aparece no mesmo lugar em todas as telas.
  */
 export const ABAS: Aba[] = [
-  { chave: 'agenda', rotulo: 'Agenda do dia', href: '/diario/agenda', papeis: ['lider'] },
+  { chave: 'agenda', rotulo: 'Agenda do dia', href: '/diario/agenda' },
   { chave: 'diario', rotulo: 'Diário de bordo', href: '/diario' },
   { chave: 'tramitacoes', rotulo: 'Tramitações', href: '/diario/tramitacoes' },
   { chave: 'ajuda', rotulo: 'Como funciona', href: '/diario/ajuda' },

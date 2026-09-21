@@ -54,6 +54,7 @@ const CORES_RESULTADO: Record<Resultado, string> = {
 }
 
 export default function AgendaClient({ usuario }: { usuario: { id: string; nome: string; papel?: string; timeKey?: string | null } }) {
+  const souLider = usuario.papel === 'lider'
   const [dados, setDados] = useState<Dados | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
@@ -100,7 +101,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   const comAuxilio = dados?.agenda.filter((a) => a.auxilios.length > 0) ?? []
 
   // Gerência enxerga os quatro times: agrupar evita uma parede de 24 cards soltos.
-  const gerencia = usuario.timeKey === null || usuario.timeKey === undefined
+  const gerencia = souLider && (usuario.timeKey === null || usuario.timeKey === undefined)
   const porTime = gerencia
     ? Array.from(new Set(comLista.map((a) => a.timeLabel))).sort().map((time) => ({
         time,
@@ -125,11 +126,13 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-6">
       <Cabecalho
-        titulo="Agenda do dia"
+        titulo={souLider ? 'Agenda do dia' : 'Meu dia'}
         subtitulo={
-          dados
-            ? `${dataLonga(dados.data)} · ${comLista.length} de ${dados.agenda.length} farmers · ${totalEmpresas} empresas · ${totalEfetivo} contatos efetivos`
-            : 'carregando...'
+          !dados
+            ? 'carregando...'
+            : souLider
+              ? `${dataLonga(dados.data)} · ${comLista.length} de ${dados.agenda.length} farmers · ${totalEmpresas} empresas · ${totalEfetivo} contatos efetivos`
+              : `${dataLonga(dados.data)} · ${totalEmpresas} empresas · ${totalEfetivo} contatos efetivos`
         }
         usuario={{ ...usuario, papel: 'lider' }}
         ativa="agenda"
@@ -139,14 +142,14 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
 
       {dados && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Cartao titulo="Oportunidades no mês" valor={String(dados.resumo.oportunidadesCriadas)} rodape="do time inteiro" />
+          <Cartao titulo="Oportunidades no mês" valor={String(dados.resumo.oportunidadesCriadas)} rodape={souLider ? 'do time inteiro' : 'na sua carteira'} />
           <Cartao titulo="Tickets ativos" valor={String(dados.resumo.ticketsAtivos)} rodape="eventos em execução no CS" />
           <Cartao titulo="Receita gerada" valor={moeda(dados.resumo.receitaGerada)} rodape="negócios ganhos no mês" cor="#FF5200" />
           <Cartao titulo="Contato efetivo" valor={`${dados.resumo.pctContatoEfetivo}%`} rodape={`${dados.resumo.empresasComContatoEfetivo} de ${dados.resumo.carteira} empresas`} />
         </div>
       )}
 
-      {semLista.length > 0 && (
+      {souLider && semLista.length > 0 && (
         <div className="mb-6 rounded-xl border border-zinc-200 bg-white px-5 py-3 flex flex-wrap items-center gap-3">
           <span className="text-xs font-bold uppercase tracking-wide text-zinc-400">Sem lista hoje ({semLista.length})</span>
           {semLista.map((a) => (
@@ -161,7 +164,9 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
       {comAuxilio.length > 0 && (
         <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50/50 px-5 py-4">
           <div className="flex items-baseline gap-2 mb-1">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-orange-800">Pedidos de auxílio</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-orange-800">
+              {souLider ? 'Pedidos de auxílio' : 'Empresas travadas'}
+            </h2>
             <span className="text-xs text-orange-700">
               {(() => {
                 const n = comAuxilio.reduce((s, a) => s + a.auxilios.length, 0)
@@ -170,13 +175,15 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
             </span>
           </div>
           <p className="text-xs text-orange-700/80 mb-4">
-            Elas continuam na lista do farmer. Escreva a orientação e ela aparece no card da empresa para ele.
+            {souLider
+              ? 'Elas continuam na lista do farmer. Escreva a orientação e ela aparece no card da empresa para ele.'
+              : 'Três tentativas sem contato. Seu líder foi avisado e a orientação dele aparece aqui e no card da empresa.'}
           </p>
 
           <div className="grid gap-3">
             {comAuxilio.map((a) => (
               <div key={a.farmerId}>
-                <p className="text-xs font-semibold text-zinc-600 mb-1.5">{a.nome}</p>
+                {souLider && <p className="text-xs font-semibold text-zinc-600 mb-1.5">{a.nome}</p>}
                 <div className="grid gap-2">
                   {a.auxilios.map((p) => {
                     const chave = `${a.farmerId}:${p.companyId}`
@@ -199,12 +206,14 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-900 text-white">NA LISTA DE HOJE</span>
                             )}
                           </div>
-                          <button
-                            onClick={() => { setOrientando(editando ? null : chave); setRascunho(p.orientacao?.texto ?? '') }}
-                            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-300 bg-white hover:border-zinc-500"
-                          >
-                            {editando ? 'Cancelar' : p.orientacao ? 'Editar orientação' : 'Orientar'}
-                          </button>
+                          {souLider && (
+                            <button
+                              onClick={() => { setOrientando(editando ? null : chave); setRascunho(p.orientacao?.texto ?? '') }}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-300 bg-white hover:border-zinc-500"
+                            >
+                              {editando ? 'Cancelar' : p.orientacao ? 'Editar orientação' : 'Orientar'}
+                            </button>
+                          )}
                         </div>
 
                         {p.orientacao && !editando && (
@@ -243,14 +252,18 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
         </div>
       )}
 
-      {totalPendente > 0 && comLista.length > 0 && (
+      {souLider && totalPendente > 0 && comLista.length > 0 && (
         <p className="mb-4 text-sm text-zinc-500">{totalPendente} empresa(s) ainda sem resultado registrado no time.</p>
       )}
 
       {carregando ? (
         <p className="py-16 text-center text-sm text-zinc-500">Carregando a agenda do time...</p>
       ) : comLista.length === 0 ? (
-        <p className="py-16 text-center text-sm text-zinc-500">Nada para acompanhar hoje: ninguém abriu o diário e não há tramitação pendente.</p>
+        <p className="py-16 text-center text-sm text-zinc-500">
+          {souLider
+            ? 'Nada para acompanhar hoje: ninguém abriu o diário e não há tramitação pendente.'
+            : 'Seu dia ainda não começou. Abra o Diário de bordo e mapeie as empresas.'}
+        </p>
       ) : (
         porTime.map((grupo) => (
         <section key={grupo.time} className="mb-8 last:mb-0">
@@ -400,7 +413,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                       {expandido ? 'Ver só o que rolou' : `Ver as ${a.placar.total}`}
                     </button>
                   )}
-                  {a.status === 'fechado' && (
+                  {souLider && a.status === 'fechado' && (
                     <button onClick={() => revisa(a.farmerId)}
                       className="flex-1 rounded-lg py-2 text-sm font-semibold text-white" style={{ background: '#FF5200' }}>
                       Revisar

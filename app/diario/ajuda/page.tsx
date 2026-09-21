@@ -157,6 +157,19 @@ export default function AjudaPage() {
         </p>
       </Secao>
 
+      <Secao titulo="Selo de relacionamento">
+        <p>
+          Algumas empresas aparecem com o selo <b>RELACIONAMENTO</b>. Ele significa que <i>você</i> já construiu
+          história ali: registrou negócio e realizou mais de uma reunião de relacionamento com essa empresa.
+        </p>
+        <p className="mt-3">
+          As duas condições contam apenas o que foi registrado e concluído <b>pelo dono atual da carteira</b> —
+          herdar uma carteira não herda o relacionamento de quem veio antes. Por isso o selo é raro: hoje ele
+          existe em pouco mais de uma dezena de empresas no time inteiro, e cresce conforme as reuniões forem
+          marcadas com o tipo correto no HubSpot.
+        </p>
+      </Secao>
+
       <Secao titulo="Tramitações: os tickets do dia">
         <p>
           A aba <b>Tramitações</b> é o mesmo ritual do diário, aplicado aos tickets de CS em vez das empresas:
@@ -243,8 +256,9 @@ export default function AjudaPage() {
           proprietária no CRM.
         </p>
         <p className="mt-3">
-          Quem é farmer cai na própria lista. Quem é líder cai na Agenda do dia, vê o andamento de cada farmer
-          do time e pode abrir o diário de qualquer um deles. A gerência enxerga os quatro times.
+          Quem é farmer cai na própria lista e acompanha o andamento do dia em <b>Meu dia</b>. Quem é líder abre
+          a mesma tela como <b>Agenda do dia</b>, com um cartão por farmer do time, e pode abrir o diário de
+          qualquer um deles. A gerência enxerga os quatro times, agrupados.
         </p>
         <p className="mt-3">
           <b>Líder e gerência também editam.</b> Abordagem, contexto, resultado e observação podem ser ajustados
