@@ -321,6 +321,12 @@ export default function AjudaPage() {
           do farmer.
         </p>
         <p className="mt-3">
+          <b>Confirmar ou negar.</b> No painel de confirmação o líder tem as duas saídas. <b>Negar</b> pede o
+          motivo e devolve a pendência ao board do farmer com o prazo original — se já tinha vencido, volta
+          vencida, com o selo <i>DEVOLVIDA PELO LÍDER</i> e o motivo no card. Confirmar sem conferir e negar sem
+          dizer o que falta dão no mesmo: retrabalho às cegas.
+        </p>
+        <p className="mt-3">
           <b>O nome do ticket é um atalho.</b> Em Tramitações — na lista e no painel de confirmação do líder —
           clicar no assunto abre o registro no HubSpot em outra aba. Confirmar sem conferir no CRM esvazia a
           dupla checagem, então o caminho até lá tinha que ser um clique.

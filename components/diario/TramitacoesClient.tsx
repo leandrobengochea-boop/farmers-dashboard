@@ -28,6 +28,9 @@ interface Pendencia {
   feitoEm: string | null
   confirmadoEm: string | null
   confirmadoPor: string | null
+  negadoEm: string | null
+  negadoPor: string | null
+  motivoNegado: string | null
   selecionado: boolean
   resultado: string | null
   observacao: string | null
@@ -62,6 +65,11 @@ const CORES_RESULTADO: Record<ResultadoTramitacao, string> = {
   avancei: 'bg-blue-600 text-white border-blue-600',
   travado: 'bg-amber-500 text-white border-amber-500',
 }
+
+/** Devolver sem dizer o que falta só gera retrabalho às cegas. */
+const MINIMO_MOTIVO = 15
+
+const chaveAguardando = (a: Aguardando) => `${a.farmerId}:${a.ticketId}:${a.tipo}`
 
 /** Deixa explícito que o nome do ticket sai do diário e cai no CRM. */
 function IconeLink() {
@@ -152,6 +160,22 @@ export default function TramitacoesClient({ usuario, farmers }: Props) {
     carrega(farmerId)
   }
 
+  const [negando, setNegando] = useState<string | null>(null)
+  const [motivo, setMotivo] = useState('')
+
+  async function nega(a: Aguardando) {
+    if (motivo.trim().length < MINIMO_MOTIVO) return
+    const resp = await fetch('/api/diario/tramitacoes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ acao: 'negar', farmerId: a.farmerId, ticketId: a.ticketId, tipo: a.tipo, motivo }),
+    })
+    if (!resp.ok) { setErro('não consegui devolver essa tramitação'); return }
+    setNegando(null)
+    setMotivo('')
+    carrega(farmerId)
+  }
+
   async function confirma(a: Aguardando) {
     await fetch('/api/diario/tramitacoes', {
       method: 'POST',
@@ -202,8 +226,9 @@ export default function TramitacoesClient({ usuario, farmers }: Props) {
           </p>
           <div className="grid gap-2">
             {dados!.aguardando.map((a) => (
-              <div key={`${a.farmerId}:${a.ticketId}:${a.tipo}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white border border-emerald-200 px-3 py-2.5">
-                <div className="flex items-center gap-2 min-w-0">
+              <div key={chaveAguardando(a)} className="rounded-xl bg-white border border-emerald-200 px-3 py-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="w-6 h-6 rounded-full bg-zinc-900 text-white text-[10px] font-bold grid place-items-center shrink-0">
                     {iniciais(a.nome)}
                   </span>
@@ -219,14 +244,45 @@ export default function TramitacoesClient({ usuario, farmers }: Props) {
                   </a>
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded border bg-zinc-50 border-zinc-200 shrink-0">{a.rotulo}</span>
                 </div>
-                <button
-                  onClick={() => confirma(a)}
-                  className="text-xs font-semibold px-4 py-2 rounded-lg text-white shrink-0"
-                  style={{ background: '#059669' }}
-                >
-                  Confirmar
-                </button>
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    onClick={() => confirma(a)}
+                    className="text-xs font-semibold px-4 py-2 rounded-lg text-white"
+                    style={{ background: '#059669' }}
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNegando(negando === chaveAguardando(a) ? null : chaveAguardando(a))
+                      setMotivo('')
+                    }}
+                    className="text-xs font-semibold px-4 py-2 rounded-lg border border-zinc-300 bg-white text-zinc-600 hover:border-red-400 hover:text-red-700"
+                  >
+                    {negando === chaveAguardando(a) ? 'Cancelar' : 'Negar'}
+                  </button>
+                </div>
               </div>
+
+              {negando === chaveAguardando(a) && (
+                <div className="w-full flex flex-wrap items-center gap-2 pt-1">
+                  <input
+                    value={motivo}
+                    onChange={(e) => setMotivo(e.target.value)}
+                    autoFocus
+                    placeholder="O que ainda falta? (o farmer vê isso no card)"
+                    className="flex-1 min-w-[260px] rounded-lg border border-zinc-300 px-2.5 py-2 text-sm"
+                  />
+                  <button
+                    onClick={() => nega(a)}
+                    disabled={motivo.trim().length < MINIMO_MOTIVO}
+                    className="text-xs font-semibold px-4 py-2 rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-40"
+                  >
+                    Devolver para o farmer
+                  </button>
+                </div>
+              )}
+            </div>
             ))}
           </div>
         </div>
@@ -303,6 +359,9 @@ function Card({ p, somenteLeitura, souFarmer, onSalva, onMarcaFeito }: { p: Pend
             {p.feitoEm && (
               <span className="text-[11px] font-bold px-2 py-1 rounded bg-emerald-600 text-white">AGUARDANDO LÍDER</span>
             )}
+            {p.negadoEm && !p.feitoEm && (
+              <span className="text-[11px] font-bold px-2 py-1 rounded bg-red-600 text-white">DEVOLVIDA PELO LÍDER</span>
+            )}
           </div>
           <a href={p.hubspotUrl} target="_blank" rel="noreferrer"
             className="inline-flex items-center gap-1.5 font-medium mt-2 hover:text-orange-600 hover:underline"
@@ -320,6 +379,11 @@ function Card({ p, somenteLeitura, souFarmer, onSalva, onMarcaFeito }: { p: Pend
             {p.dataEvento && ` · evento ${dataCurta(p.dataEvento)}`}
             {p.statusContrato && ` · contrato ${p.statusContrato.toLowerCase()}`}
           </p>
+          {p.negadoEm && !p.feitoEm && p.motivoNegado && (
+            <p className="text-xs text-red-800 bg-red-50 border border-red-100 rounded-lg px-2.5 py-2 mt-2">
+              <b>{p.negadoPor}:</b> {p.motivoNegado}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col items-end gap-2 shrink-0">

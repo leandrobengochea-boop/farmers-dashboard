@@ -5,12 +5,15 @@ import { farmersDoLider, RESULTADOS_TRAMITACAO, TRAMITACOES, TipoTramitacao, url
 import { hojeSP } from '@/lib/diario/carteira'
 import { pendenciasDoFarmer } from '@/lib/diario/tramitacoes'
 import {
-  atualizaTramitacaoDia, chaveTramitacao, confirmaTramitacao, marcaFeito,
+  atualizaTramitacaoDia, chaveTramitacao, confirmaTramitacao, marcaFeito, negaTramitacao,
   statusTramitacoes, tramitacoesDoDia,
 } from '@/lib/diario/db'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
+
+/** Devolver sem dizer o que falta só gera retrabalho às cegas. */
+const MINIMO_MOTIVO = 15
 
 function resolveFarmer(usuario: { id: string; papel: string; timeKey: string | null }, pedido: string | null): string | null {
   if (usuario.papel === 'lider') {
@@ -52,6 +55,9 @@ export async function GET(req: Request) {
           feitoEm: st?.feitoEm ?? null,
           confirmadoEm: st?.confirmadoEm ?? null,
           confirmadoPor: st?.confirmadoPor ?? null,
+          negadoEm: st?.negadoEm ?? null,
+          negadoPor: st?.negadoPor ?? null,
+          motivoNegado: st?.motivoNegado ?? null,
           selecionado: dia?.selecionado ?? false,
           resultado: dia?.resultado ?? null,
           observacao: dia?.observacao ?? null,
@@ -128,8 +134,8 @@ export async function POST(req: Request) {
   if (!usuario) return NextResponse.json({ error: 'não autenticado' }, { status: 401 })
 
   const body = (await req.json()) as {
-    acao: 'feito' | 'desfazer' | 'confirmar' | 'reabrir'
-    ticketId: string; tipo: string; farmerId?: string; assunto?: string
+    acao: 'feito' | 'desfazer' | 'confirmar' | 'reabrir' | 'negar'
+    ticketId: string; tipo: string; farmerId?: string; assunto?: string; motivo?: string
   }
   if (!body?.ticketId || !body?.tipo) {
     return NextResponse.json({ error: 'ticketId e tipo são obrigatórios' }, { status: 400 })
@@ -153,6 +159,17 @@ export async function POST(req: Request) {
   if (!farmersDoLider(usuario.timeKey).includes(farmerId)) {
     return NextResponse.json({ error: 'farmer fora do seu time' }, { status: 403 })
   }
+  if (body.acao === 'negar') {
+    const motivo = (body.motivo ?? '').trim()
+    if (motivo.length < MINIMO_MOTIVO) {
+      return NextResponse.json(
+        { error: `diga o que falta, em pelo menos ${MINIMO_MOTIVO} caracteres` }, { status: 400 },
+      )
+    }
+    await negaTramitacao(farmerId, body.ticketId, body.tipo, usuario.nome, motivo)
+    return NextResponse.json({ ok: true })
+  }
+
   await confirmaTramitacao(farmerId, body.ticketId, body.tipo, usuario.nome, body.acao === 'confirmar')
   return NextResponse.json({ ok: true })
 }

@@ -152,6 +152,10 @@ async function garanteSchema(): Promise<void> {
       confirmado_por text,
       PRIMARY KEY (farmer_id, ticket_id, tipo)
     )`
+  // o líder pode devolver o que o farmer marcou como feito
+  await q`ALTER TABLE diario_tramitacao_status ADD COLUMN IF NOT EXISTS negado_em timestamptz`
+  await q`ALTER TABLE diario_tramitacao_status ADD COLUMN IF NOT EXISTS negado_por text`
+  await q`ALTER TABLE diario_tramitacao_status ADD COLUMN IF NOT EXISTS motivo_negado text`
   await q`
     CREATE TABLE IF NOT EXISTS diario_tramitacao_dia (
       farmer_id     text NOT NULL,
@@ -678,6 +682,9 @@ export interface StatusTramitacao {
   feitoEm: string | null
   confirmadoEm: string | null
   confirmadoPor: string | null
+  negadoEm: string | null
+  negadoPor: string | null
+  motivoNegado: string | null
 }
 
 export interface DiaTramitacao {
@@ -727,6 +734,9 @@ export async function statusTramitacoes(farmerIds: string[]): Promise<Map<string
         feitoEm: r.feito_em ? new Date(r.feito_em as string).toISOString() : null,
         confirmadoEm: r.confirmado_em ? new Date(r.confirmado_em as string).toISOString() : null,
         confirmadoPor: (r.confirmado_por as string) ?? null,
+        negadoEm: r.negado_em ? new Date(r.negado_em as string).toISOString() : null,
+        negadoPor: (r.negado_por as string) ?? null,
+        motivoNegado: (r.motivo_negado as string) ?? null,
       })
     }
     return fora
@@ -746,13 +756,22 @@ export async function marcaFeito(
       INSERT INTO diario_tramitacao_status (farmer_id, ticket_id, tipo, assunto, feito_em)
       VALUES (${farmerId}, ${ticketId}, ${tipo}, ${assunto}, ${agora})
       ON CONFLICT (farmer_id, ticket_id, tipo) DO UPDATE SET
-        feito_em = ${agora}, assunto = COALESCE(NULLIF(${assunto}, ''), diario_tramitacao_status.assunto)`
+        feito_em = ${agora}, assunto = COALESCE(NULLIF(${assunto}, ''), diario_tramitacao_status.assunto),
+        negado_em = NULL, negado_por = NULL, motivo_negado = NULL`
     return
   }
   const t = leTram()
   const i = t.status.findIndex((x) => x.farmerId === farmerId && x.ticketId === ticketId && x.tipo === tipo)
-  if (i >= 0) { t.status[i].feitoEm = agora; if (assunto) t.status[i].assunto = assunto }
-  else t.status.push({ farmerId, ticketId, tipo, assunto, feitoEm: agora, confirmadoEm: null, confirmadoPor: null })
+  if (i >= 0) {
+    t.status[i].feitoEm = agora
+    if (assunto) t.status[i].assunto = assunto
+    t.status[i].negadoEm = null; t.status[i].negadoPor = null; t.status[i].motivoNegado = null
+  } else {
+    t.status.push({
+      farmerId, ticketId, tipo, assunto, feitoEm: agora,
+      confirmadoEm: null, confirmadoPor: null, negadoEm: null, negadoPor: null, motivoNegado: null,
+    })
+  }
   gravaTram(t)
 }
 
@@ -771,7 +790,37 @@ export async function confirmaTramitacao(farmerId: string, ticketId: string, tip
   const t = leTram()
   const i = t.status.findIndex((x) => x.farmerId === farmerId && x.ticketId === ticketId && x.tipo === tipo)
   if (i >= 0) { t.status[i].confirmadoEm = agora; t.status[i].confirmadoPor = por }
-  else t.status.push({ farmerId, ticketId, tipo, assunto: null, feitoEm: null, confirmadoEm: agora, confirmadoPor: por })
+  else t.status.push({
+    farmerId, ticketId, tipo, assunto: null, feitoEm: null,
+    confirmadoEm: agora, confirmadoPor: por, negadoEm: null, negadoPor: null, motivoNegado: null,
+  })
+  gravaTram(t)
+}
+
+/**
+ * O líder devolve o que o farmer marcou como feito: a pendência volta ao board
+ * dele, com o prazo original — se já venceu, volta vencida. O motivo aparece no
+ * card, senão a devolução vira um "faça de novo" sem explicação.
+ */
+export async function negaTramitacao(
+  farmerId: string, ticketId: string, tipo: string, autor: string, motivo: string,
+): Promise<void> {
+  const agora = new Date().toISOString()
+  if (usandoPostgres) {
+    await garanteSchema()
+    await sql()`
+      UPDATE diario_tramitacao_status
+      SET feito_em = NULL, negado_em = ${agora}, negado_por = ${autor}, motivo_negado = ${motivo}
+      WHERE farmer_id = ${farmerId} AND ticket_id = ${ticketId} AND tipo = ${tipo}`
+    return
+  }
+  const t = leTram()
+  const linha = t.status.find((x) => x.farmerId === farmerId && x.ticketId === ticketId && x.tipo === tipo)
+  if (!linha) return
+  linha.feitoEm = null
+  linha.negadoEm = agora
+  linha.negadoPor = autor
+  linha.motivoNegado = motivo
   gravaTram(t)
 }
 
