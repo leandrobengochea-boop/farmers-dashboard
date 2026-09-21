@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
-import { farmersDoLider, MINIMO_OBSERVACAO } from '@/lib/diario/constants'
+import { farmersDoLider, MINIMO_OBSERVACAO, RESULTADO_EXIGE_OBSERVACAO, Resultado } from '@/lib/diario/constants'
 import { itensDoDia, briefing, salvaBriefing } from '@/lib/diario/db'
 
 export const dynamic = 'force-dynamic'
@@ -47,7 +47,10 @@ export async function POST(req: Request) {
         { status: 400 },
       )
     }
-    const semObservacao = doDia.filter((i) => (i.observacaoResultado?.trim().length ?? 0) < MINIMO_OBSERVACAO)
+    const semObservacao = doDia.filter(
+      (i) => RESULTADO_EXIGE_OBSERVACAO.includes(i.resultado as Resultado) &&
+        (i.observacaoResultado?.trim().length ?? 0) < MINIMO_OBSERVACAO,
+    )
     if (semObservacao.length > 0) {
       return NextResponse.json(
         {

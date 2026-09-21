@@ -111,9 +111,20 @@ export default function AjudaPage() {
           {RESULTADOS.map((r) => <li key={r.key}><b>{r.label}</b></li>)}
         </ul>
         <p className="mt-4">
-          <b>A observação é obrigatória em qualquer resultado</b>, com no mínimo {MINIMO_OBSERVACAO} caracteres.
-          O mínimo existe porque &quot;ok&quot; e &quot;sem sucesso&quot; não dizem nada a quem lê depois — nem ao
-          líder, nem a você mesmo daqui a três semanas.
+          <b>O fechamento é conferência, não digitação.</b> O diário lê o que você já registrou no HubSpot hoje
+          — ligações com a disposição, reuniões realizadas, e-mails e notas — e propõe o resultado de cada
+          empresa. O botão <b>Preencher pelo HubSpot</b> aplica tudo de uma vez, inclusive trazendo a anotação
+          da ligação como observação. Você corrige o que estiver errado e completa o que o CRM não sabe, como
+          um contato por WhatsApp.
+        </p>
+        <p className="mt-3">
+          Ligação conectada ou reunião realizada viram <b>contato efetivo</b>; ligação sem resposta, ocupado ou
+          caixa postal viram <b>tentativa</b>; empresa sem nenhuma atividade fica como <b>não abordei</b>.
+        </p>
+        <p className="mt-3">
+          A observação, com no mínimo {MINIMO_OBSERVACAO} caracteres, é obrigatória só onde o CRM não tem a
+          resposta: no <b>contato efetivo</b> (o que saiu da conversa) e no <b>não abordei</b> (por quê). Na
+          tentativa, a ligação registrada já é a evidência.
         </p>
       </Secao>
 

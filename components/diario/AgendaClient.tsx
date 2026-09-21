@@ -12,6 +12,7 @@ interface AgendaFarmer {
   nome: string
   timeLabel: string
   status: string
+  primeiroAcesso: string | null
   comentarioLider: string | null
   itens: ItemDiario[]
   tramitacoes: Array<{
@@ -38,6 +39,11 @@ interface Dados {
   data: string
   agenda: AgendaFarmer[]
   resumo: ResumoMes
+}
+
+function horaCurta(iso: string | null): string {
+  if (!iso) return ''
+  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
 }
 
 const ROTULO_STATUS: Record<string, { texto: string; cor: string }> = {
@@ -301,7 +307,12 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                       </p>
                     </div>
                   </div>
-                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded ${status.cor}`}>{status.texto}</span>
+                  <div className="text-right shrink-0">
+                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded ${status.cor}`}>{status.texto}</span>
+                    <p className={`text-[10px] mt-1 ${a.primeiroAcesso ? 'text-zinc-400' : 'text-orange-600 font-medium'}`}>
+                      {a.primeiroAcesso ? `abriu às ${horaCurta(a.primeiroAcesso)}` : 'não abriu hoje'}
+                    </p>
+                  </div>
                 </div>
 
                 {a.placar.total > 0 && (

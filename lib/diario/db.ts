@@ -26,6 +26,7 @@ export interface Briefing {
   farmerId: string
   data: string
   status: StatusBriefing
+  primeiroAcesso: string | null   // quando o próprio farmer abriu o dia
   enviadoEm: string | null
   decididoEm: string | null
   decididoPor: string | null
@@ -98,8 +99,11 @@ async function garanteSchema(): Promise<void> {
       decidido_em      timestamptz,
       decidido_por     text,
       comentario_lider text,
+      primeiro_acesso  timestamptz,
       PRIMARY KEY (farmer_id, data)
     )`
+  // saber se o farmer entrou é diferente de saber se ele preencheu
+  await q`ALTER TABLE diario_briefing ADD COLUMN IF NOT EXISTS primeiro_acesso timestamptz`
   await q`
     CREATE TABLE IF NOT EXISTS diario_orientacao (
       farmer_id  text NOT NULL,
@@ -190,6 +194,7 @@ function linhaParaBriefing(r: Record<string, unknown>): Briefing {
     farmerId: String(r.farmer_id),
     data: iso(r.data) ?? '',
     status: (r.status as StatusBriefing) ?? 'rascunho',
+    primeiroAcesso: r.primeiro_acesso ? new Date(r.primeiro_acesso as string).toISOString() : null,
     enviadoEm: r.enviado_em ? new Date(r.enviado_em as string).toISOString() : null,
     decididoEm: r.decidido_em ? new Date(r.decidido_em as string).toISOString() : null,
     decididoPor: (r.decidido_por as string) ?? null,
@@ -340,7 +345,7 @@ export async function historicoDoFarmer(farmerId: string, hoje: string): Promise
 }
 
 export async function briefing(farmerId: string, data: string): Promise<Briefing> {
-  const vazio: Briefing = { farmerId, data, status: 'rascunho', enviadoEm: null, decididoEm: null, decididoPor: null, comentarioLider: null }
+  const vazio: Briefing = { farmerId, data, status: 'rascunho', primeiroAcesso: null, enviadoEm: null, decididoEm: null, decididoPor: null, comentarioLider: null }
   if (usandoPostgres) {
     await garanteSchema()
     const rows = await sql()`SELECT * FROM diario_briefing WHERE farmer_id = ${farmerId} AND data = ${data}`
@@ -379,10 +384,11 @@ export async function salvaBriefing(b: Briefing): Promise<void> {
   if (usandoPostgres) {
     await garanteSchema()
     await sql()`
-      INSERT INTO diario_briefing (farmer_id, data, status, enviado_em, decidido_em, decidido_por, comentario_lider)
-      VALUES (${b.farmerId}, ${b.data}, ${b.status}, ${b.enviadoEm}, ${b.decididoEm}, ${b.decididoPor}, ${b.comentarioLider})
+      INSERT INTO diario_briefing (farmer_id, data, status, primeiro_acesso, enviado_em, decidido_em, decidido_por, comentario_lider)
+      VALUES (${b.farmerId}, ${b.data}, ${b.status}, ${b.primeiroAcesso}, ${b.enviadoEm}, ${b.decididoEm}, ${b.decididoPor}, ${b.comentarioLider})
       ON CONFLICT (farmer_id, data) DO UPDATE SET
         status = EXCLUDED.status,
+        primeiro_acesso = COALESCE(diario_briefing.primeiro_acesso, EXCLUDED.primeiro_acesso),
         enviado_em = EXCLUDED.enviado_em,
         decidido_em = EXCLUDED.decidido_em,
         decidido_por = EXCLUDED.decidido_por,
@@ -624,4 +630,29 @@ export async function atualizaTramitacaoDia(
   if (i >= 0) Object.assign(t.dias[i], campos)
   else t.dias.push({ farmerId, data, ticketId, tipo, assunto: null, selecionado: false, resultado: null, observacao: null, ...campos })
   gravaTram(t)
+}
+
+/** Marca que o próprio farmer abriu o dia. Só a primeira vez conta. */
+export async function registraAcesso(farmerId: string, data: string): Promise<void> {
+  const agora = new Date().toISOString()
+  if (usandoPostgres) {
+    await garanteSchema()
+    await sql()`
+      INSERT INTO diario_briefing (farmer_id, data, status, primeiro_acesso)
+      VALUES (${farmerId}, ${data}, 'rascunho', ${agora})
+      ON CONFLICT (farmer_id, data) DO UPDATE SET
+        primeiro_acesso = COALESCE(diario_briefing.primeiro_acesso, ${agora})`
+    return
+  }
+  const dados = leLocal()
+  const atual = dados.briefings.find((b) => b.farmerId === farmerId && b.data === data)
+  if (atual) {
+    if (!atual.primeiroAcesso) atual.primeiroAcesso = agora
+  } else {
+    dados.briefings.push({
+      farmerId, data, status: 'rascunho', primeiroAcesso: agora,
+      enviadoEm: null, decididoEm: null, decididoPor: null, comentarioLider: null,
+    })
+  }
+  gravaLocal(dados)
 }

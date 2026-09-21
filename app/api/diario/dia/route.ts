@@ -3,8 +3,9 @@ import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider } from '@/lib/diario/constants'
 import { emDescanso, precisaAuxilio, hojeSP, montaSugestoes } from '@/lib/diario/carteira'
 import { poolDaCarteira, resumoDoMes } from '@/lib/diario/metrics'
-import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe } from '@/lib/diario/db'
+import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe, registraAcesso } from '@/lib/diario/db'
 import { empresasComSelo } from '@/lib/diario/relacionamento'
+import { AtividadeEmpresa, atividadeDoDia } from '@/lib/diario/atividade'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -27,6 +28,12 @@ export async function GET(req: Request) {
   }
 
   try {
+    // Só conta como acesso quando é o próprio farmer abrindo: líder navegando
+    // pelo seletor não pode parecer que o farmer entrou.
+    if (usuario.papel === 'farmer' && farmerId === usuario.id && data === hojeSP()) {
+      await registraAcesso(farmerId, data).catch(() => {})
+    }
+
     let itens = await itensDoDia(farmerId, data)
 
     // Primeira abertura do dia: gera a lista e congela (refresh não reembaralha).
@@ -36,13 +43,14 @@ export async function GET(req: Request) {
       itens = await itensDoDia(farmerId, data)
     }
 
-    const [resumo, brief, pool, historico, orientacoes, selos] = await Promise.all([
+    const [resumo, brief, pool, historico, orientacoes, selos, atividade] = await Promise.all([
       resumoDoMes([farmerId], data),
       briefing(farmerId, data),
       poolDaCarteira(farmerId, data),
       historicoDoFarmer(farmerId, data),
       orientacoesDe([farmerId]),
       empresasComSelo(farmerId, itens.map((i) => i.companyId)).catch(() => new Set<string>()),
+      atividadeDoDia(farmerId, data).catch((e) => { console.error('atividadeDoDia falhou:', e); return new Map<string, AtividadeEmpresa>() }),
     ])
     const doFarmer = orientacoes.get(farmerId)
 
@@ -57,6 +65,8 @@ export async function GET(req: Request) {
           : null,
         precisaAuxilio: precisaAuxilio(h),
         seloRelacionamento: selos.has(i.companyId),
+        // o que já está registrado no HubSpot hoje: o fechamento vira conferência
+        atividade: atividade.get(i.companyId) ?? null,
         orientacao: orientacao ? { texto: orientacao.texto, autor: orientacao.autor, criadoEm: orientacao.criadoEm } : null,
       }
     })

@@ -19,6 +19,7 @@ export interface AgendaFarmer {
   nome: string
   timeLabel: string
   status: string
+  primeiroAcesso: string | null
   comentarioLider: string | null
   itens: ItemDiario[]
   auxilios: Array<{
@@ -109,6 +110,7 @@ export async function GET(req: Request) {
         nome: FARMERS[farmerId] ?? farmerId,
         timeLabel: timeLabelPorFarmer[farmerId] ?? '',
         status: brief?.status ?? 'rascunho',
+        primeiroAcesso: brief?.primeiroAcesso ?? null,
         comentarioLider: brief?.comentarioLider ?? null,
         itens: doFarmer,
         tramitacoes: escolhidas,

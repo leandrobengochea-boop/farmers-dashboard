@@ -29,7 +29,12 @@ export type Resultado = (typeof RESULTADOS)[number]['key']
  */
 export const MINIMO_OBSERVACAO = 50
 
-export const RESULTADO_EXIGE_OBSERVACAO: Resultado[] = RESULTADOS.map((r) => r.key)
+/**
+ * Com a atividade vindo do HubSpot, a tentativa já tem evidência lá (a ligação
+ * e a disposição). Só pedimos texto onde o CRM não sabe: o que saiu da conversa
+ * e por que a empresa ficou pra trás.
+ */
+export const RESULTADO_EXIGE_OBSERVACAO: Resultado[] = ['efetivo', 'nao_abordei']
 
 // ── Baldes de sugestão, por tempo desde a última compra ──
 export type Bucket = 'extra' | 'nutricao' | 'recompra' | 'reativacao' | 'primeiro_contato'

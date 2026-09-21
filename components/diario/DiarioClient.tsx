@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ABORDAGEM_PADRAO, ABORDAGENS, Bucket, BUCKETS, COTA_DIARIA, MINIMO_OBSERVACAO,
-  ORDEM_BUCKET, RESULTADOS, Resultado,
+  ORDEM_BUCKET, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, Resultado,
 } from '@/lib/diario/constants'
 import type { Briefing, ItemDiario } from '@/lib/diario/db'
 import type { PoolCarteira, ResumoMes } from '@/lib/diario/metrics'
@@ -28,11 +28,21 @@ export interface OrientacaoItem {
   criadoEm: string
 }
 
+export interface AtividadeItem {
+  ligacoes: number
+  conectadas: number
+  reunioes: number
+  outras: number
+  texto: string
+  resultadoSugerido: 'efetivo' | 'tentativa' | null
+}
+
 export type ItemComHistorico = ItemDiario & {
   historico: HistoricoItem | null
   precisaAuxilio: boolean
   seloRelacionamento: boolean
   orientacao: OrientacaoItem | null
+  atividade: AtividadeItem | null
 }
 
 interface Dados {
@@ -109,9 +119,27 @@ export default function DiarioClient({ usuario, farmers }: Props) {
   const semAbordagem = useMemo(() => doDia.filter((i) => !i.abordagem).length, [doDia])
   const comResultado = useMemo(() => doDia.filter((i) => i.resultado).length, [doDia])
   const pendenciasFechamento = useMemo(
-    () => doDia.filter((i) => !i.resultado || (i.observacaoResultado?.trim().length ?? 0) < MINIMO_OBSERVACAO).length,
+    () => doDia.filter((i) => !i.resultado ||
+      (RESULTADO_EXIGE_OBSERVACAO.includes(i.resultado as Resultado) &&
+        (i.observacaoResultado?.trim().length ?? 0) < MINIMO_OBSERVACAO)).length,
     [doDia],
   )
+
+  // Empresas onde o HubSpot já sabe o que aconteceu e o diário ainda não.
+  const aPuxar = useMemo(
+    () => doDia.filter((i) => !i.resultado && i.atividade?.resultadoSugerido),
+    [doDia],
+  )
+
+  function puxaDoHubSpot() {
+    for (const i of aPuxar) {
+      const a = i.atividade!
+      salva(i.companyId, {
+        resultado: a.resultadoSugerido,
+        ...(a.texto && !i.observacaoResultado ? { observacaoResultado: a.texto.slice(0, 600) } : {}),
+      })
+    }
+  }
   const efetivos = useMemo(() => doDia.filter((i) => i.resultado === 'efetivo').length, [doDia])
 
   const visiveis = useMemo(() => {
@@ -277,6 +305,21 @@ export default function DiarioClient({ usuario, farmers }: Props) {
           </div>
         </div>
 
+        {aba === 'fechamento' && aPuxar.length > 0 && !somenteLeitura && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-emerald-50 border-b border-emerald-200">
+            <p className="text-sm text-emerald-900">
+              O HubSpot já registrou atividade em <b>{aPuxar.length}</b>{' '}
+              {aPuxar.length === 1 ? 'empresa' : 'empresas'} da sua lista hoje.
+            </p>
+            <button
+              onClick={puxaDoHubSpot}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
+              style={{ background: '#059669' }}
+            >
+              Preencher pelo HubSpot
+            </button>
+          </div>
+        )}
         {aviso && <div className="px-5 py-3 bg-amber-50 border-b border-amber-200 text-sm text-amber-800">{aviso}</div>}
         {dados?.briefing.comentarioLider && (
           <div className="px-5 py-3 bg-blue-50 border-b border-blue-200 text-sm text-blue-900">
@@ -382,7 +425,8 @@ export default function DiarioClient({ usuario, farmers }: Props) {
             <tbody>
               {visiveis.map((i) => {
                 const escrito = i.observacaoResultado?.trim().length ?? 0
-                const faltaObs = escrito < MINIMO_OBSERVACAO
+                const exigeObs = RESULTADO_EXIGE_OBSERVACAO.includes(i.resultado as Resultado)
+                const faltaObs = exigeObs && escrito < MINIMO_OBSERVACAO
                 return (
                   <tr key={i.companyId} className={`border-b border-zinc-50 align-top ${i.resultado === 'efetivo' ? 'bg-emerald-50/40' : ''}`}>
                     <td className="px-5 py-4"><Empresa item={i} /></td>
@@ -393,6 +437,17 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                         : <span className="text-xs text-zinc-400">sem abordagem definida</span>}
                     </td>
                     <td className="px-3 py-4">
+                      {i.atividade && (
+                        <p className="text-[11px] text-zinc-500 mb-1.5">
+                          no HubSpot hoje:{' '}
+                          {[
+                            i.atividade.ligacoes > 0 && `${i.atividade.ligacoes} ligação(ões)`,
+                            i.atividade.conectadas > 0 && `${i.atividade.conectadas} conectada(s)`,
+                            i.atividade.reunioes > 0 && `${i.atividade.reunioes} reunião(ões)`,
+                            i.atividade.outras > 0 && `${i.atividade.outras} e-mail/nota`,
+                          ].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
                       <div className="flex flex-wrap gap-1.5">
                         {RESULTADOS.map((r) => {
                           const ativo = i.resultado === r.key
@@ -416,15 +471,17 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                         value={i.observacaoResultado ?? ''}
                         disabled={somenteLeitura}
                         rows={2}
-                        placeholder="O que saiu daí? (obrigatório)"
+                        placeholder={exigeObs ? 'O que saiu daí? (obrigatório)' : 'Observação (o HubSpot já tem a evidência)'}
                         onChange={(e) => salva(i.companyId, { observacaoResultado: e.target.value }, 600)}
                         className={`w-full rounded-lg border px-2.5 py-2 text-sm resize-y disabled:bg-zinc-50 ${
                           faltaObs ? 'border-orange-400' : 'border-zinc-200'
                         }`}
                       />
-                      <p className={`text-[10px] mt-1 ${faltaObs ? 'text-orange-600' : 'text-zinc-400'}`}>
-                        {escrito}/{MINIMO_OBSERVACAO} caracteres
-                      </p>
+                      {exigeObs && (
+                        <p className={`text-[10px] mt-1 ${faltaObs ? 'text-orange-600' : 'text-zinc-400'}`}>
+                          {escrito}/{MINIMO_OBSERVACAO} caracteres
+                        </p>
+                      )}
                     </td>
                   </tr>
                 )
