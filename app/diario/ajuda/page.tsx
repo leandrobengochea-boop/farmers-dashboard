@@ -282,6 +282,11 @@ export default function AjudaPage() {
           quem mexeu. A exceção é marcar uma tramitação como feita: isso continua sendo só do farmer, senão a
           dupla checagem perderia o sentido.
         </p>
+        <p className="mt-3">
+          <b>O nome do ticket é um atalho.</b> Em Tramitações — na lista e no painel de confirmação do líder —
+          clicar no assunto abre o registro no HubSpot em outra aba. Confirmar sem conferir no CRM esvazia a
+          dupla checagem, então o caminho até lá tinha que ser um clique.
+        </p>
         <Nota>
           Empresa faltando ou sobrando na sua lista quase sempre é proprietário errado no HubSpot — corrigir lá
           corrige aqui no dia seguinte.

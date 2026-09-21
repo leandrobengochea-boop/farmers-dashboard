@@ -1,8 +1,7 @@
-import { HUBSPOT_PORTAL_ID } from '../constants'
 import {
   ANTECEDENCIA_ASSINATURA_DIAS, ANTECEDENCIA_CHECKLIST_DIAS, ETAPAS_TICKET,
   PRAZO_ASSINATURA_DIAS, PRAZO_MINUTA_DIAS_UTEIS,
-  TICKET_PIPELINE_CS, TICKET_STAGES_ATIVOS, TipoTramitacao,
+  TICKET_PIPELINE_CS, TICKET_STAGES_ATIVOS, TipoTramitacao, urlTicket,
 } from './constants'
 import { searchAllPages } from './carteira'
 
@@ -102,7 +101,7 @@ export async function pendenciasDeVarios(farmerIds: string[], hoje: string): Pro
       dataEvento: evento,
       statusContrato,
       eventoPassado,
-      hubspotUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/record/0-5/${t.id}`,
+      hubspotUrl: urlTicket(t.id),
     }
 
     // O onboarding precisa ter acontecido — data futura é agendamento, não realização.

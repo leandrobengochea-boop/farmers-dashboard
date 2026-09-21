@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { FARMERS } from '@/lib/constants'
 import { usuarioAtual } from '@/lib/diario/session'
-import { farmersDoLider, RESULTADOS_TRAMITACAO, TRAMITACOES, TipoTramitacao } from '@/lib/diario/constants'
+import { farmersDoLider, RESULTADOS_TRAMITACAO, TRAMITACOES, TipoTramitacao, urlTicket } from '@/lib/diario/constants'
 import { hojeSP } from '@/lib/diario/carteira'
 import { pendenciasDoFarmer } from '@/lib/diario/tramitacoes'
 import {
@@ -70,6 +70,7 @@ export async function GET(req: Request) {
               ticketId: s.ticketId,
               tipo: s.tipo,
               assunto: s.assunto ?? `Ticket ${s.ticketId}`,
+              hubspotUrl: urlTicket(s.ticketId),
               feitoEm: s.feitoEm,
               rotulo: TRAMITACOES[s.tipo as TipoTramitacao]?.label ?? s.tipo,
             })),

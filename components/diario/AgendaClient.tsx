@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { BUCKETS, RESULTADOS, RESULTADOS_TRAMITACAO, Resultado } from '@/lib/diario/constants'
+import { BUCKETS, RESULTADOS, RESULTADOS_TRAMITACAO, Resultado, urlEmpresa, urlTicket } from '@/lib/diario/constants'
 import type { ItemDiario } from '@/lib/diario/db'
 import type { ResumoMes } from '@/lib/diario/metrics'
 import { dataLonga, iniciais, meses, moeda } from './Marca'
@@ -199,7 +199,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <a
-                              href={`https://app.hubspot.com/contacts/49656171/record/0-2/${p.companyId}`}
+                              href={urlEmpresa(p.companyId)}
                               target="_blank" rel="noreferrer"
                               className="text-sm font-medium hover:text-orange-600 hover:underline"
                             >
@@ -336,7 +336,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                   ) : visiveis.map((i) => (
                     <div key={i.companyId} className="px-4 py-3">
                       <div className="flex items-start justify-between gap-3">
-                        <a href={`https://app.hubspot.com/contacts/49656171/record/0-2/${i.companyId}`} target="_blank" rel="noreferrer"
+                        <a href={urlEmpresa(i.companyId)} target="_blank" rel="noreferrer"
                           className="text-sm font-medium hover:text-orange-600 hover:underline">
                           {i.companyName}
                         </a>
@@ -392,7 +392,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                               {t.rotulo}
                             </span>
                             <a
-                              href={`https://app.hubspot.com/contacts/49656171/record/0-5/${t.ticketId}`}
+                              href={urlTicket(t.ticketId)}
                               target="_blank" rel="noreferrer"
                               className="text-xs font-medium hover:text-orange-600 hover:underline truncate"
                             >

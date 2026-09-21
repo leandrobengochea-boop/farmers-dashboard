@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ABORDAGEM_PADRAO, ABORDAGENS, Bucket, BUCKETS, COTA_DIARIA, MINIMO_OBSERVACAO,
-  ORDEM_BUCKET, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, Resultado,
+  ORDEM_BUCKET, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, Resultado, urlEmpresa,
 } from '@/lib/diario/constants'
 import type { Briefing, ItemDiario } from '@/lib/diario/db'
 import type { PoolCarteira, ResumoMes } from '@/lib/diario/metrics'
@@ -478,7 +478,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
 function Empresa({ item }: { item: ItemComHistorico }) {
   return (
     <>
-      <a href={`https://app.hubspot.com/contacts/49656171/record/0-2/${item.companyId}`} target="_blank" rel="noreferrer"
+      <a href={urlEmpresa(item.companyId)} target="_blank" rel="noreferrer"
         className="font-medium hover:text-orange-600 hover:underline">
         {item.companyName}
       </a>

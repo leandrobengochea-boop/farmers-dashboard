@@ -1,6 +1,5 @@
-import { HUBSPOT_PORTAL_ID } from '../constants'
 import {
-  Bucket, COTA_DIARIA, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, LIMITE_MESES, TENTATIVAS_ATE_AUXILIO,
+  Bucket, COTA_DIARIA, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, LIMITE_MESES, TENTATIVAS_ATE_AUXILIO, urlEmpresa,
 } from './constants'
 import { HistoricoEmpresa, ItemDiario, historicoDoFarmer } from './db'
 
@@ -179,7 +178,7 @@ export async function fetchCarteira(farmerId: string, hoje: string): Promise<Emp
       ultimaCompra,
       ultimoContato: (r.properties.ultimo_contato_efetivo ?? '')?.slice(0, 10) || null,
       cidade: r.properties.city ?? '',
-      hubspotUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/record/0-2/${r.id}`,
+      hubspotUrl: urlEmpresa(r.id),
       bucket,
       diasDesdeCompra: dias,
       noFunil: noFunil.has(r.id),

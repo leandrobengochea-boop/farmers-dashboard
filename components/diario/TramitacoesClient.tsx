@@ -39,6 +39,7 @@ interface Aguardando {
   ticketId: string
   tipo: string
   assunto: string
+  hubspotUrl: string
   feitoEm: string | null
   rotulo: string
 }
@@ -60,6 +61,16 @@ const CORES_RESULTADO: Record<ResultadoTramitacao, string> = {
   resolvi: 'bg-emerald-600 text-white border-emerald-600',
   avancei: 'bg-blue-600 text-white border-blue-600',
   travado: 'bg-amber-500 text-white border-amber-500',
+}
+
+/** Deixa explícito que o nome do ticket sai do diário e cai no CRM. */
+function IconeLink() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+      strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 shrink-0 opacity-50">
+      <path d="M15 3h6v6M10 14 21 3M21 14v7H3V3h7" />
+    </svg>
+  )
 }
 
 export default function TramitacoesClient({ usuario, farmers }: Props) {
@@ -197,7 +208,15 @@ export default function TramitacoesClient({ usuario, farmers }: Props) {
                     {iniciais(a.nome)}
                   </span>
                   <span className="text-xs text-zinc-500 shrink-0">{a.nome}</span>
-                  <span className="text-sm font-medium truncate">{a.assunto}</span>
+                  <a
+                    href={a.hubspotUrl}
+                    target="_blank" rel="noreferrer"
+                    className="text-sm font-medium truncate hover:text-orange-600 hover:underline inline-flex items-center gap-1"
+                    title="Abrir o ticket no HubSpot"
+                  >
+                    {a.assunto}
+                    <IconeLink />
+                  </a>
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded border bg-zinc-50 border-zinc-200 shrink-0">{a.rotulo}</span>
                 </div>
                 <button
@@ -286,8 +305,10 @@ function Card({ p, somenteLeitura, souFarmer, onSalva, onMarcaFeito }: { p: Pend
             )}
           </div>
           <a href={p.hubspotUrl} target="_blank" rel="noreferrer"
-            className="block font-medium mt-2 hover:text-orange-600 hover:underline">
+            className="inline-flex items-center gap-1.5 font-medium mt-2 hover:text-orange-600 hover:underline"
+            title="Abrir o ticket no HubSpot">
             {p.assunto}
+            <IconeLink />
           </a>
           <p className="text-xs text-zinc-500 mt-1">
             {tipo.acao} · prazo {dataCurta(p.prazo)}

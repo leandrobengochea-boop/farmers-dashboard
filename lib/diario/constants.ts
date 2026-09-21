@@ -1,4 +1,4 @@
-import { FARMERS, TEAMS } from '../constants'
+import { FARMERS, TEAMS, HUBSPOT_PORTAL_ID } from '../constants'
 
 // ── Abordagens disponíveis no dropdown do plano do dia ──
 export const ABORDAGENS = [
@@ -294,3 +294,8 @@ export const ETAPAS_TICKET: Record<string, string> = {
   '1088361911': 'Pagamento pós-palestra',
   '1333136740': 'Aguardando NF palestrante',
 }
+
+// ── Atalhos para o registro no HubSpot ──
+// O líder confere no CRM antes de confirmar; o nome na tela precisa levar até lá.
+export const urlTicket = (id: string) => `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/record/0-5/${id}`
+export const urlEmpresa = (id: string) => `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/record/0-2/${id}`
