@@ -219,15 +219,15 @@ export default function TramitacoesClient({ usuario, farmers }: Props) {
         <p className="py-16 text-center text-sm text-zinc-500">Nenhuma tramitação pendente hoje. Bom sinal.</p>
       ) : (
         <>
-          <Grupo titulo="Vencidas" itens={grupos.vencidas} cor="text-orange-700" />
-          <Grupo titulo="Vencem hoje" itens={grupos.hoje} cor="text-zinc-900" />
-          <Grupo titulo="No prazo" itens={grupos.noPrazo} cor="text-zinc-500" />
+          <Grupo titulo="Vencidas" itens={grupos.vencidas} cor="text-orange-700" somenteLeitura={somenteLeitura} souFarmer={usuario.papel === 'farmer'} onSalva={salva} onMarcaFeito={marcaFeito} />
+          <Grupo titulo="Vencem hoje" itens={grupos.hoje} cor="text-zinc-900" somenteLeitura={somenteLeitura} souFarmer={usuario.papel === 'farmer'} onSalva={salva} onMarcaFeito={marcaFeito} />
+          <Grupo titulo="No prazo" itens={grupos.noPrazo} cor="text-zinc-500" somenteLeitura={somenteLeitura} souFarmer={usuario.papel === 'farmer'} onSalva={salva} onMarcaFeito={marcaFeito} />
           {grupos.passados.length > 0 && (
             <Grupo
               titulo="Eventos que já aconteceram"
               subtitulo="O ticket segue aberto no pipeline — vale conferir se ainda falta algo."
               itens={grupos.passados}
-              cor="text-zinc-400"
+              cor="text-zinc-400" somenteLeitura={somenteLeitura} souFarmer={usuario.papel === 'farmer'} onSalva={salva} onMarcaFeito={marcaFeito}
             />
           )}
         </>
@@ -235,120 +235,129 @@ export default function TramitacoesClient({ usuario, farmers }: Props) {
     </div>
   )
 
-  function Grupo({ titulo, subtitulo, itens, cor }: { titulo: string; subtitulo?: string; itens: Pendencia[]; cor: string }) {
-    if (itens.length === 0) return null
-    return (
-      <section className="mb-8">
-        <div className="flex items-baseline gap-2 mb-3">
-          <h2 className={`text-sm font-bold uppercase tracking-wide ${cor}`}>{titulo}</h2>
-          <span className="text-xs text-zinc-400">{itens.length}</span>
-        </div>
-        {subtitulo && <p className="text-xs text-zinc-500 mb-3 -mt-2">{subtitulo}</p>}
-        <div className="grid gap-3">
-          {itens.map((p) => <Card key={`${p.ticketId}:${p.tipo}`} p={p} />)}
-        </div>
-      </section>
-    )
-  }
+}
 
-  function Card({ p }: { p: Pendencia }) {
-    const tipo = TRAMITACOES[p.tipo]
-    const exigeObs = RESULTADO_TRAMITACAO_EXIGE_OBSERVACAO.includes(p.resultado as ResultadoTramitacao)
-    const faltaObs = exigeObs && !p.observacao?.trim()
-    const atrasada = p.diasParaPrazo < 0 && !p.eventoPassado
 
-    return (
-      <div className={`rounded-2xl border bg-white px-5 py-4 ${p.selecionado ? 'border-orange-300 bg-orange-50/30' : 'border-zinc-200'}`}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`text-[11px] font-semibold px-2 py-1 rounded border ${CORES_TIPO[p.tipo]}`}>{tipo.label}</span>
-              {atrasada && (
-                <span className="text-[11px] font-bold px-2 py-1 rounded bg-orange-600 text-white">
-                  VENCIDA HÁ {Math.abs(p.diasParaPrazo)} {Math.abs(p.diasParaPrazo) === 1 ? 'DIA' : 'DIAS'}
-                </span>
-              )}
-              {p.diasParaPrazo === 0 && !p.eventoPassado && (
-                <span className="text-[11px] font-bold px-2 py-1 rounded bg-zinc-900 text-white">VENCE HOJE</span>
-              )}
-              {p.feitoEm && (
-                <span className="text-[11px] font-bold px-2 py-1 rounded bg-emerald-600 text-white">AGUARDANDO LÍDER</span>
-              )}
-            </div>
-            <a href={p.hubspotUrl} target="_blank" rel="noreferrer"
-              className="block font-medium mt-2 hover:text-orange-600 hover:underline">
-              {p.assunto}
-            </a>
-            <p className="text-xs text-zinc-500 mt-1">
-              {tipo.acao} · prazo {dataCurta(p.prazo)}
-              {p.diasParaPrazo > 0 && ` (em ${p.diasParaPrazo} ${p.diasParaPrazo === 1 ? 'dia' : 'dias'})`}
-              {p.etapa && ` · ${p.etapa}`}
-            </p>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              {p.dataOnboarding && `onboarding ${dataCurta(p.dataOnboarding)}`}
-              {p.dataEvento && ` · evento ${dataCurta(p.dataEvento)}`}
-              {p.statusContrato && ` · contrato ${p.statusContrato.toLowerCase()}`}
-            </p>
-          </div>
+interface PropsCard {
+somenteLeitura: boolean
+souFarmer: boolean
+onSalva: (p: Pendencia, patch: Partial<Pendencia>, atraso?: number) => void
+onMarcaFeito: (p: Pendencia, feito: boolean) => void
+}
 
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={p.selecionado}
-                disabled={somenteLeitura}
-                onChange={(e) => salva(p, { selecionado: e.target.checked })}
-                className="w-4 h-4 accent-orange-600"
-              />
-              <span className={`text-sm ${p.selecionado ? 'font-semibold' : 'text-zinc-500'}`}>Tratar hoje</span>
-            </label>
-            {usuario.papel === 'farmer' && (
-              <button
-                onClick={() => marcaFeito(p, !p.feitoEm)}
-                className={`text-xs font-semibold px-3 py-2 rounded-lg border transition ${
-                  p.feitoEm ? 'border-zinc-300 bg-white text-zinc-600 hover:border-zinc-500' : 'border-emerald-600 bg-emerald-600 text-white'
-                }`}
-              >
-                {p.feitoEm ? 'Desfazer' : 'Marcar como feito'}
-              </button>
+function Grupo({ titulo, subtitulo, itens, cor, ...acoes }: { titulo: string; subtitulo?: string; itens: Pendencia[]; cor: string } & PropsCard) {
+  if (itens.length === 0) return null
+  return (
+    <section className="mb-8">
+      <div className="flex items-baseline gap-2 mb-3">
+        <h2 className={`text-sm font-bold uppercase tracking-wide ${cor}`}>{titulo}</h2>
+        <span className="text-xs text-zinc-400">{itens.length}</span>
+      </div>
+      {subtitulo && <p className="text-xs text-zinc-500 mb-3 -mt-2">{subtitulo}</p>}
+      <div className="grid gap-3">
+        {itens.map((p) => <Card key={`${p.ticketId}:${p.tipo}`} p={p} {...acoes} />)}
+      </div>
+    </section>
+  )
+}
+
+function Card({ p, somenteLeitura, souFarmer, onSalva, onMarcaFeito }: { p: Pendencia } & PropsCard) {
+  const tipo = TRAMITACOES[p.tipo]
+  const exigeObs = RESULTADO_TRAMITACAO_EXIGE_OBSERVACAO.includes(p.resultado as ResultadoTramitacao)
+  const faltaObs = exigeObs && !p.observacao?.trim()
+  const atrasada = p.diasParaPrazo < 0 && !p.eventoPassado
+
+  return (
+    <div className={`rounded-2xl border bg-white px-5 py-4 ${p.selecionado ? 'border-orange-300 bg-orange-50/30' : 'border-zinc-200'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`text-[11px] font-semibold px-2 py-1 rounded border ${CORES_TIPO[p.tipo]}`}>{tipo.label}</span>
+            {atrasada && (
+              <span className="text-[11px] font-bold px-2 py-1 rounded bg-orange-600 text-white">
+                VENCIDA HÁ {Math.abs(p.diasParaPrazo)} {Math.abs(p.diasParaPrazo) === 1 ? 'DIA' : 'DIAS'}
+              </span>
+            )}
+            {p.diasParaPrazo === 0 && !p.eventoPassado && (
+              <span className="text-[11px] font-bold px-2 py-1 rounded bg-zinc-900 text-white">VENCE HOJE</span>
+            )}
+            {p.feitoEm && (
+              <span className="text-[11px] font-bold px-2 py-1 rounded bg-emerald-600 text-white">AGUARDANDO LÍDER</span>
             )}
           </div>
+          <a href={p.hubspotUrl} target="_blank" rel="noreferrer"
+            className="block font-medium mt-2 hover:text-orange-600 hover:underline">
+            {p.assunto}
+          </a>
+          <p className="text-xs text-zinc-500 mt-1">
+            {tipo.acao} · prazo {dataCurta(p.prazo)}
+            {p.diasParaPrazo > 0 && ` (em ${p.diasParaPrazo} ${p.diasParaPrazo === 1 ? 'dia' : 'dias'})`}
+            {p.etapa && ` · ${p.etapa}`}
+          </p>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            {p.dataOnboarding && `onboarding ${dataCurta(p.dataOnboarding)}`}
+            {p.dataEvento && ` · evento ${dataCurta(p.dataEvento)}`}
+            {p.statusContrato && ` · contrato ${p.statusContrato.toLowerCase()}`}
+          </p>
         </div>
 
-        {p.selecionado && (
-          <div className="mt-4 pt-4 border-t border-zinc-100 flex flex-wrap items-start gap-3">
-            <div className="flex gap-1.5">
-              {RESULTADOS_TRAMITACAO.map((r) => {
-                const ativo = p.resultado === r.key
-                return (
-                  <button
-                    key={r.key}
-                    disabled={somenteLeitura}
-                    onClick={() => salva(p, { resultado: ativo ? null : r.key })}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition disabled:opacity-60 ${
-                      ativo ? CORES_RESULTADO[r.key] : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
-                    }`}
-                  >
-                    {r.label}
-                  </button>
-                )
-              })}
-            </div>
-            <textarea
-              value={p.observacao ?? ''}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={p.selecionado}
               disabled={somenteLeitura}
-              rows={1}
-              placeholder={exigeObs ? 'Obrigatório: o que travou?' : 'Observação (opcional)'}
-              onChange={(e) => salva(p, { observacao: e.target.value }, 600)}
-              className={`flex-1 min-w-[240px] rounded-lg border px-2.5 py-2 text-sm resize-y disabled:bg-zinc-50 ${
-                faltaObs ? 'border-orange-400' : 'border-zinc-200'
-              }`}
+              onChange={(e) => onSalva(p, { selecionado: e.target.checked })}
+              className="w-4 h-4 accent-orange-600"
             />
-          </div>
-        )}
+            <span className={`text-sm ${p.selecionado ? 'font-semibold' : 'text-zinc-500'}`}>Tratar hoje</span>
+          </label>
+          {souFarmer && (
+            <button
+              onClick={() => onMarcaFeito(p, !p.feitoEm)}
+              className={`text-xs font-semibold px-3 py-2 rounded-lg border transition ${
+                p.feitoEm ? 'border-zinc-300 bg-white text-zinc-600 hover:border-zinc-500' : 'border-emerald-600 bg-emerald-600 text-white'
+              }`}
+            >
+              {p.feitoEm ? 'Desfazer' : 'Marcar como feito'}
+            </button>
+          )}
+        </div>
       </div>
-    )
-  }
+
+      {p.selecionado && (
+        <div className="mt-4 pt-4 border-t border-zinc-100 flex flex-wrap items-start gap-3">
+          <div className="flex gap-1.5">
+            {RESULTADOS_TRAMITACAO.map((r) => {
+              const ativo = p.resultado === r.key
+              return (
+                <button
+                  key={r.key}
+                  disabled={somenteLeitura}
+                  onClick={() => onSalva(p, { resultado: ativo ? null : r.key })}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition disabled:opacity-60 ${
+                    ativo ? CORES_RESULTADO[r.key] : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              )
+            })}
+          </div>
+          <textarea
+            value={p.observacao ?? ''}
+            disabled={somenteLeitura}
+            rows={1}
+            placeholder={exigeObs ? 'Obrigatório: o que travou?' : 'Observação (opcional)'}
+            onChange={(e) => onSalva(p, { observacao: e.target.value }, 600)}
+            className={`flex-1 min-w-[240px] rounded-lg border px-2.5 py-2 text-sm resize-y disabled:bg-zinc-50 ${
+              faltaObs ? 'border-orange-400' : 'border-zinc-200'
+            }`}
+          />
+        </div>
+      )}
+    </div>
+  )
 }
 
 function Cartao({ titulo, valor, rodape, cor }: { titulo: string; valor: number; rodape: string; cor?: string }) {
