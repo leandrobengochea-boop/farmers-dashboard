@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
 import { ABORDAGENS, farmersDoLider, RESULTADOS } from '@/lib/diario/constants'
-import { atualizaItem, briefing, PatchItem } from '@/lib/diario/db'
+import { atualizaItem, briefing, PatchItem, sincronizaTrocaSegmento } from '@/lib/diario/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,5 +47,10 @@ export async function PATCH(req: Request) {
     // fica registrado quando quem editou não é o dono do dia
     editadoPor: usuario.papel === 'lider' ? usuario.nome : undefined,
   })
+
+  // Pedir a troca de segmento abre (ou cancela) o item na lista do líder.
+  if (body.resultado !== undefined || body.observacaoResultado !== undefined) {
+    await sincronizaTrocaSegmento(farmerId, body.data, body.companyId)
+  }
   return NextResponse.json({ ok: true })
 }

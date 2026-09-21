@@ -1,7 +1,7 @@
 import {
   Bucket, COTA_DIARIA, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, LIMITE_MESES, TENTATIVAS_ATE_AUXILIO, urlEmpresa,
 } from './constants'
-import { HistoricoEmpresa, ItemDiario, historicoDoFarmer } from './db'
+import { HistoricoEmpresa, ItemDiario, historicoDoFarmer, trocasPendentes } from './db'
 
 export interface Empresa {
   id: string
@@ -23,6 +23,7 @@ export interface ResumoPool {
   precisandoAuxilio: number
   noFunil: number
   contatoEfetivoNoMes: number
+  trocandoSegmento: number
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -219,6 +220,9 @@ export interface Sugestoes {
 export async function montaSugestoes(farmerId: string, hoje: string): Promise<Sugestoes> {
   const carteira = await fetchCarteira(farmerId, hoje)
   const historico = await historicoDoFarmer(farmerId, hoje)
+  // Empresa com troca de segmento em aberto não volta: ela é o problema,
+  // não a tarefa. Volta sozinha se o líder disser que o segmento está certo.
+  const trocando = (await trocasPendentes([farmerId])).get(farmerId) ?? new Map()
   const inicioMes = `${hoje.slice(0, 7)}-01`
 
 
@@ -230,10 +234,13 @@ export async function montaSugestoes(farmerId: string, hoje: string): Promise<Su
     precisandoAuxilio: carteira.filter((e) => precisaAuxilio(historico.get(e.id))).length,
     noFunil: carteira.filter((e) => e.noFunil).length,
     contatoEfetivoNoMes: carteira.filter((e) => e.ultimoContato && e.ultimoContato >= inicioMes).length,
+    trocandoSegmento: carteira.filter((e) => trocando.has(e.id)).length,
   }
   for (const e of carteira) resumo.porBucket[e.bucket] = (resumo.porBucket[e.bucket] ?? 0) + 1
 
-  const disponiveis = carteira.filter((e) => !emDescanso(historico.get(e.id), hoje) && !e.noFunil)
+  const disponiveis = carteira.filter(
+    (e) => !emDescanso(historico.get(e.id), hoje) && !e.noFunil && !trocando.has(e.id),
+  )
   const pools = {} as Record<Bucket, Empresa[]>
   for (const b of ['recompra', 'nutricao', 'reativacao', 'extra', 'primeiro_contato'] as Bucket[]) {
     pools[b] = disponiveis

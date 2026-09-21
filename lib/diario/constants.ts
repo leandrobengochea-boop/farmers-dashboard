@@ -18,6 +18,8 @@ export const RESULTADOS = [
   { key: 'efetivo',     label: 'Contato efetivo',    cor: 'emerald' },
   { key: 'tentativa',   label: 'Tentei, sem sucesso', cor: 'amber'  },
   { key: 'nao_abordei', label: 'Não abordei',         cor: 'zinc'   },
+  // Não é resultado de abordagem: é dizer que a empresa não deveria estar aqui.
+  { key: 'trocar_segmento', label: 'Trocar de segmento', cor: 'red' },
 ] as const
 
 export type Resultado = (typeof RESULTADOS)[number]['key']
@@ -34,7 +36,14 @@ export const MINIMO_OBSERVACAO = 50
  * e a disposição). Só pedimos texto onde o CRM não sabe: o que saiu da conversa
  * e por que a empresa ficou pra trás.
  */
-export const RESULTADO_EXIGE_OBSERVACAO: Resultado[] = ['efetivo', 'nao_abordei']
+export const RESULTADO_EXIGE_OBSERVACAO: Resultado[] = ['efetivo', 'nao_abordei', 'trocar_segmento']
+
+/**
+ * "Trocar de segmento" não é abordagem: a empresa está na carteira errada.
+ * Fica fora do placar de efetividade para o farmer não precisar marcar contato
+ * efetivo só para a empresa sumir da lista — que era o que acontecia antes.
+ */
+export const RESULTADO_FORA_DO_PLACAR: Resultado[] = ['trocar_segmento']
 
 // ── Baldes de sugestão, por tempo desde a última compra ──
 export type Bucket = 'extra' | 'nutricao' | 'recompra' | 'reativacao' | 'primeiro_contato'
@@ -104,6 +113,9 @@ export const COOLDOWN_POR_RESULTADO: Record<string, number> = {
   nao_abordei: 1,   // não foi tocada: volta amanhã, não pode evaporar
   tentativa: 3,     // ninguém fala com decisor na primeira ligação
   efetivo: 30,      // a conversa aconteceu; o follow-up vive no negócio, não aqui
+  // Rede de segurança: quem segura a empresa fora da lista é o pedido de troca
+  // em aberto. Este número só vale se o pedido não tiver sido gravado.
+  trocar_segmento: 30,
 }
 
 /** Dia que ficou sem fechamento: trata como não abordada e volta amanhã. */

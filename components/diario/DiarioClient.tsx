@@ -66,6 +66,8 @@ const CORES_RESULTADO: Record<Resultado, { ativo: string; badge: string }> = {
   efetivo:     { ativo: 'bg-emerald-600 text-white border-emerald-600', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
   tentativa:   { ativo: 'bg-amber-500 text-white border-amber-500',     badge: 'bg-amber-100 text-amber-800 border-amber-200' },
   nao_abordei: { ativo: 'bg-zinc-700 text-white border-zinc-700',       badge: 'bg-zinc-100 text-zinc-700 border-zinc-200' },
+  // Vermelho porque não é resultado do dia: é um erro de carteira para o líder resolver.
+  trocar_segmento: { ativo: 'bg-red-600 text-white border-red-600',     badge: 'bg-red-100 text-red-800 border-red-200' },
 }
 
 const ROTULO_STATUS: Record<string, { texto: string; cor: string }> = {
@@ -131,6 +133,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
     [doDia],
   )
   const efetivos = useMemo(() => doDia.filter((i) => i.resultado === 'efetivo').length, [doDia])
+  const trocas = useMemo(() => doDia.filter((i) => i.resultado === 'trocar_segmento').length, [doDia])
 
   const visiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase()
@@ -257,6 +260,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
             <span className="text-sm text-zinc-500">
               <b className="text-zinc-900">{comResultado}</b>/{doDia.length} com resultado
               {efetivos > 0 && <span className="text-emerald-700"> · {efetivos} efetivo(s)</span>}
+              {trocas > 0 && <span className="text-red-600"> · {trocas} p/ trocar de segmento</span>}
             </span>
           </div>
 
@@ -409,7 +413,9 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                 const exigeObs = RESULTADO_EXIGE_OBSERVACAO.includes(i.resultado as Resultado)
                 const faltaObs = exigeObs && escrito < MINIMO_OBSERVACAO
                 return (
-                  <tr key={i.companyId} className={`border-b border-zinc-50 align-top ${i.resultado === 'efetivo' ? 'bg-emerald-50/40' : ''}`}>
+                  <tr key={i.companyId} className={`border-b border-zinc-50 align-top ${
+                    i.resultado === 'efetivo' ? 'bg-emerald-50/40' : i.resultado === 'trocar_segmento' ? 'bg-red-50/40' : ''
+                  }`}>
                     <td className="px-5 py-4"><Empresa item={i} /></td>
                     <td className="px-3 py-4"><Fase item={i} /></td>
                     <td className="px-3 py-4">
@@ -427,6 +433,11 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                             i.atividade.reunioes > 0 && `${i.atividade.reunioes} reunião(ões)`,
                             i.atividade.outras > 0 && `${i.atividade.outras} e-mail/nota`,
                           ].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                      {i.resultado === 'trocar_segmento' && (
+                        <p className="text-[11px] text-red-700 mb-1.5">
+                          fora do placar · seu líder decide a troca
                         </p>
                       )}
                       <div className="flex flex-wrap gap-1.5">
@@ -452,7 +463,11 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                         value={i.observacaoResultado ?? ''}
                         disabled={somenteLeitura}
                         rows={2}
-                        placeholder={exigeObs ? 'O que saiu daí? (obrigatório)' : 'Observação (o HubSpot já tem a evidência)'}
+                        placeholder={
+                          i.resultado === 'trocar_segmento'
+                            ? 'Para qual segmento ela deveria ir, e por quê? (obrigatório)'
+                            : exigeObs ? 'O que saiu daí? (obrigatório)' : 'Observação (o HubSpot já tem a evidência)'
+                        }
                         onChange={(e) => salva(i.companyId, { observacaoResultado: e.target.value }, 600)}
                         className={`w-full rounded-lg border px-2.5 py-2 text-sm resize-y disabled:bg-zinc-50 ${
                           faltaObs ? 'border-orange-400' : 'border-zinc-200'

@@ -32,7 +32,11 @@ interface AgendaFarmer {
     naListaDeHoje: boolean
     orientacao: { texto: string; autor: string; criadoEm: string } | null
   }>
-  placar: { total: number; extras: number; efetivo: number; tentativa: number; naoAbordei: number; pendente: number }
+  trocas: Array<{ companyId: string; companyName: string; motivo: string; pedidoEm: string }>
+  placar: {
+    total: number; extras: number; efetivo: number; tentativa: number
+    naoAbordei: number; trocaSegmento: number; pendente: number
+  }
 }
 
 interface Dados {
@@ -57,6 +61,7 @@ const CORES_RESULTADO: Record<Resultado, string> = {
   efetivo: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   tentativa: 'bg-amber-100 text-amber-800 border-amber-200',
   nao_abordei: 'bg-zinc-100 text-zinc-600 border-zinc-200',
+  trocar_segmento: 'bg-red-100 text-red-800 border-red-200',
 }
 
 export default function AgendaClient({ usuario }: { usuario: { id: string; nome: string; papel?: string; timeKey?: string | null } }) {
@@ -105,6 +110,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   const totalEfetivo = comLista.reduce((s, a) => s + a.placar.efetivo, 0)
   const totalPendente = comLista.reduce((s, a) => s + a.placar.pendente, 0)
   const comAuxilio = dados?.agenda.filter((a) => a.auxilios.length > 0) ?? []
+  const comTroca = dados?.agenda.filter((a) => a.trocas.length > 0) ?? []
 
   // Gerência enxerga os quatro times: agrupar evita uma parede de 24 cards soltos.
   const gerencia = souLider && (usuario.timeKey === null || usuario.timeKey === undefined)
@@ -114,6 +120,17 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
         farmers: comLista.filter((a) => a.timeLabel === time),
       }))
     : [{ time: '', farmers: comLista }]
+
+  async function decideTroca(farmerId: string, companyId: string, decisao: 'trocado' | 'mantido') {
+    setSalvando(true)
+    await fetch('/api/diario/troca', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ farmerId, companyId, decisao }),
+    })
+    setSalvando(false)
+    carrega()
+  }
 
   async function orienta(farmerId: string, companyId: string) {
     if (!rascunho.trim()) return
@@ -164,6 +181,77 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
               {a.nome}
             </span>
           ))}
+        </div>
+      )}
+
+      {comTroca.length > 0 && (
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50/50 px-5 py-4">
+          <div className="flex items-baseline gap-2 mb-1">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-red-800">
+              {souLider ? 'Trocas de segmento para fazer' : 'Trocas de segmento pedidas'}
+            </h2>
+            <span className="text-xs text-red-700">
+              {(() => {
+                const n = comTroca.reduce((s, a) => s + a.trocas.length, 0)
+                return `${n} ${n === 1 ? 'empresa' : 'empresas'} na carteira errada`
+              })()}
+            </span>
+          </div>
+          <p className="text-xs text-red-700/80 mb-4">
+            {souLider
+              ? 'Enquanto o pedido está aberto a empresa não volta para a lista do farmer. Troque o segmento no HubSpot e dê baixa aqui — ou devolva ela ao rodízio.'
+              : 'Elas saíram da sua lista e estão com o líder. Voltam ao rodízio se ele disser que o segmento está certo.'}
+          </p>
+
+          <div className="grid gap-3">
+            {comTroca.map((a) => (
+              <div key={a.farmerId}>
+                {souLider && <p className="text-xs font-semibold text-zinc-600 mb-1.5">{a.nome}</p>}
+                <div className="grid gap-2">
+                  {a.trocas.map((t) => (
+                    <div key={t.companyId} className="rounded-xl bg-white border border-red-200 px-3 py-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <a
+                            href={urlEmpresa(t.companyId)}
+                            target="_blank" rel="noreferrer"
+                            className="text-sm font-medium hover:text-red-700 hover:underline truncate"
+                            title="Abrir a empresa no HubSpot"
+                          >
+                            {t.companyName}
+                          </a>
+                          <span className="text-[11px] text-zinc-500 shrink-0">
+                            pedido em {t.pedidoEm.slice(8, 10)}/{t.pedidoEm.slice(5, 7)}
+                          </span>
+                        </div>
+                        {souLider && (
+                          <div className="flex gap-1.5 shrink-0">
+                            <button
+                              onClick={() => decideTroca(a.farmerId, t.companyId, 'trocado')}
+                              disabled={salvando}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-60"
+                            >
+                              Troquei no HubSpot
+                            </button>
+                            <button
+                              onClick={() => decideTroca(a.farmerId, t.companyId, 'mantido')}
+                              disabled={salvando}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-300 bg-white hover:border-zinc-500 disabled:opacity-60"
+                            >
+                              Segmento está certo
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {t.motivo && (
+                        <p className="text-xs text-zinc-600 mt-2 border-l-2 border-red-200 pl-2">{t.motivo}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -320,6 +408,9 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                   <Placar rotulo="efetivos" valor={a.placar.efetivo} cor="text-emerald-700 bg-emerald-50 border-emerald-100" />
                   <Placar rotulo="tentativas" valor={a.placar.tentativa} cor="text-amber-700 bg-amber-50 border-amber-100" />
                   <Placar rotulo="não abordou" valor={a.placar.naoAbordei} cor="text-zinc-600 bg-zinc-50 border-zinc-200" />
+                  {a.placar.trocaSegmento > 0 && (
+                    <Placar rotulo="trocar segmento" valor={a.placar.trocaSegmento} cor="text-red-700 bg-red-50 border-red-200" />
+                  )}
                   {a.placar.pendente > 0 && <Placar rotulo="sem resposta" valor={a.placar.pendente} cor="text-zinc-400 bg-white border-zinc-200" />}
                 </div>
                 )}

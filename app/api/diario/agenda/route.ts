@@ -6,7 +6,7 @@ import { hojeSP } from '@/lib/diario/carteira'
 import { resumoDoMes } from '@/lib/diario/metrics'
 import {
   itensDoDiaDeVarios, briefingsDoDia, historicoDeVarios, orientacoesDe,
-  tramitacoesDoDia, statusTramitacoes, chaveTramitacao, ItemDiario,
+  tramitacoesDoDia, statusTramitacoes, chaveTramitacao, trocasPendentes, ItemDiario,
 } from '@/lib/diario/db'
 import { precisaAuxilio } from '@/lib/diario/carteira'
 import { Pendencia, pendenciasDeVarios } from '@/lib/diario/tramitacoes'
@@ -31,7 +31,11 @@ export interface AgendaFarmer {
     naListaDeHoje: boolean
     orientacao: { texto: string; autor: string; criadoEm: string } | null
   }>
-  placar: { total: number; extras: number; efetivo: number; tentativa: number; naoAbordei: number; pendente: number }
+  trocas: Array<{ companyId: string; companyName: string; motivo: string; pedidoEm: string }>
+  placar: {
+    total: number; extras: number; efetivo: number; tentativa: number
+    naoAbordei: number; trocaSegmento: number; pendente: number
+  }
 }
 
 export async function GET(req: Request) {
@@ -42,7 +46,7 @@ export async function GET(req: Request) {
   const farmerIds = usuario.papel === 'lider' ? farmersDoLider(usuario.timeKey) : [usuario.id]
 
   try {
-    const [itens, briefings, resumo, historico, orientacoes, tramitacoes, pendencias, statusTram] = await Promise.all([
+    const [itens, briefings, resumo, historico, orientacoes, tramitacoes, pendencias, statusTram, trocas] = await Promise.all([
       itensDoDiaDeVarios(farmerIds, data),
       briefingsDoDia(farmerIds, data),
       resumoDoMes(farmerIds, data),
@@ -51,6 +55,7 @@ export async function GET(req: Request) {
       tramitacoesDoDia(farmerIds, data),
       pendenciasDeVarios(farmerIds, data).catch(() => new Map<string, Pendencia[]>()),
       statusTramitacoes(farmerIds),
+      trocasPendentes(farmerIds),
     ])
 
     // O acompanhamento do dia é automático: a agenda deriva a efetividade da
@@ -126,12 +131,20 @@ export async function GET(req: Request) {
         tramitacoes: escolhidas,
         placarTramitacoes,
         auxilios,
+        // A empresa está na carteira errada: fica com o líder até ele decidir.
+        trocas: [...(trocas.get(farmerId)?.values() ?? [])].map((t) => ({
+          companyId: t.companyId,
+          companyName: t.companyName,
+          motivo: t.motivo,
+          pedidoEm: t.pedidoEm,
+        })),
         placar: {
           total: doDia.length,
           extras: doFarmer.length - doDia.length,
           efetivo: doDia.filter((i) => i.resultado === 'efetivo').length,
           tentativa: doDia.filter((i) => i.resultado === 'tentativa').length,
           naoAbordei: doDia.filter((i) => i.resultado === 'nao_abordei').length,
+          trocaSegmento: doDia.filter((i) => i.resultado === 'trocar_segmento').length,
           pendente: doDia.filter((i) => !i.resultado).length,
         },
       }

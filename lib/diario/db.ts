@@ -42,6 +42,22 @@ export interface Orientacao {
   criadoEm: string
 }
 
+/**
+ * Pedido de troca de segmento: o farmer diz que a empresa não é da carteira
+ * dele e o líder decide. Enquanto está em aberto, a empresa fica fora do
+ * rodízio — senão ela volta amanhã e o farmer marca qualquer coisa de novo.
+ */
+export interface TrocaSegmento {
+  farmerId: string
+  companyId: string
+  companyName: string
+  motivo: string            // a observação que o farmer escreveu no fechamento
+  pedidoEm: string
+  decisao: 'trocado' | 'mantido' | null
+  resolvidoEm: string | null
+  resolvidoPor: string | null
+}
+
 export type PatchItem = Partial<Pick<ItemDiario, 'abordagem' | 'observacao' | 'resultado' | 'observacaoResultado' | 'editadoPor'>>
 
 // ── Driver Postgres (Neon / Vercel Postgres) ──
@@ -111,6 +127,18 @@ async function garanteSchema(): Promise<void> {
       texto      text NOT NULL,
       autor      text NOT NULL,
       criado_em  timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (farmer_id, company_id)
+    )`
+  await q`
+    CREATE TABLE IF NOT EXISTS diario_troca_segmento (
+      farmer_id    text NOT NULL,
+      company_id   text NOT NULL,
+      company_name text NOT NULL,
+      motivo       text,
+      pedido_em    timestamptz NOT NULL DEFAULT now(),
+      decisao      text,
+      resolvido_em timestamptz,
+      resolvido_por text,
       PRIMARY KEY (farmer_id, company_id)
     )`
   await q`
@@ -257,11 +285,15 @@ export async function atualizaItem(farmerId: string, data: string, companyId: st
       WHERE farmer_id = ${farmerId} AND data = ${data} AND company_id = ${companyId}`
     if (rows.length === 0) return
     const atual = rows[0]
-    const abordagem = campos.abordagem ?? ((atual.abordagem as string) ?? null)
-    const observacao = campos.observacao ?? ((atual.observacao as string) ?? null)
-    const resultado = campos.resultado ?? ((atual.resultado as string) ?? null)
-    const observacaoResultado = campos.observacaoResultado ?? ((atual.observacao_resultado as string) ?? null)
-    const editadoPor = campos.editadoPor ?? ((atual.editado_por as string) ?? null)
+    // `null` no patch é escolha desfeita e precisa apagar o valor — por isso
+    // olhamos a presença da chave, não o valor (`??` guardaria o antigo).
+    const escolhe = (chave: keyof PatchItem, coluna: string) =>
+      (chave in campos ? campos[chave] ?? null : ((atual[coluna] as string) ?? null))
+    const abordagem = escolhe('abordagem', 'abordagem')
+    const observacao = escolhe('observacao', 'observacao')
+    const resultado = escolhe('resultado', 'resultado')
+    const observacaoResultado = escolhe('observacaoResultado', 'observacao_resultado')
+    const editadoPor = escolhe('editadoPor', 'editado_por')
     await q`
       UPDATE diario_item
       SET abordagem = ${abordagem}, observacao = ${observacao}, resultado = ${resultado},
@@ -450,6 +482,124 @@ export async function salvaOrientacao(o: Orientacao): Promise<void> {
   else lista.push(o)
   dados.orientacoes = lista
   gravaLocal(dados)
+}
+
+// ── Troca de segmento ──
+
+function leTrocas(): TrocaSegmento[] {
+  const d = leLocal() as DadosLocais & { trocas?: TrocaSegmento[] }
+  return d.trocas ?? []
+}
+
+function gravaTrocas(lista: TrocaSegmento[]): void {
+  const d = leLocal() as DadosLocais & { trocas?: TrocaSegmento[] }
+  gravaLocal({ ...d, trocas: lista } as DadosLocais)
+}
+
+/**
+ * Sincroniza o pedido com o que está marcado no item do dia: marcar
+ * "trocar de segmento" abre o pedido, desmarcar cancela. Lê do próprio item
+ * para o nome e o motivo não dependerem do que o cliente mandou.
+ */
+export async function sincronizaTrocaSegmento(farmerId: string, data: string, companyId: string): Promise<void> {
+  if (usandoPostgres) {
+    await garanteSchema()
+    const q = sql()
+    const rows = await q`
+      SELECT company_name, resultado, observacao_resultado FROM diario_item
+      WHERE farmer_id = ${farmerId} AND data = ${data} AND company_id = ${companyId}`
+    if (rows.length === 0) return
+    const item = rows[0]
+    if (item.resultado !== 'trocar_segmento') {
+      // só cancela pedido ainda em aberto: decisão do líder não se desfaz sozinha
+      await q`
+        DELETE FROM diario_troca_segmento
+        WHERE farmer_id = ${farmerId} AND company_id = ${companyId} AND decisao IS NULL`
+      return
+    }
+    await q`
+      INSERT INTO diario_troca_segmento (farmer_id, company_id, company_name, motivo)
+      VALUES (${farmerId}, ${companyId}, ${String(item.company_name ?? '')}, ${(item.observacao_resultado as string) ?? null})
+      ON CONFLICT (farmer_id, company_id) DO UPDATE SET
+        company_name = EXCLUDED.company_name, motivo = EXCLUDED.motivo,
+        decisao = NULL, resolvido_em = NULL, resolvido_por = NULL, pedido_em = now()`
+    return
+  }
+
+  const dados = leLocal()
+  const item = dados.itens.find((x) => x.farmerId === farmerId && x.data === data && x.companyId === companyId)
+  if (!item) return
+  const lista = leTrocas()
+  const i = lista.findIndex((t) => t.farmerId === farmerId && t.companyId === companyId)
+  if (item.resultado !== 'trocar_segmento') {
+    if (i >= 0 && !lista[i].decisao) { lista.splice(i, 1); gravaTrocas(lista) }
+    return
+  }
+  const pedido: TrocaSegmento = {
+    farmerId, companyId,
+    companyName: item.companyName,
+    motivo: item.observacaoResultado ?? '',
+    pedidoEm: new Date().toISOString(),
+    decisao: null, resolvidoEm: null, resolvidoPor: null,
+  }
+  if (i >= 0) lista[i] = pedido
+  else lista.push(pedido)
+  gravaTrocas(lista)
+}
+
+/** Pedidos ainda sem decisão do líder, por farmer. */
+export async function trocasPendentes(farmerIds: string[]): Promise<Map<string, Map<string, TrocaSegmento>>> {
+  const fora = new Map<string, Map<string, TrocaSegmento>>()
+  if (farmerIds.length === 0) return fora
+  const guarda = (t: TrocaSegmento) => {
+    let m = fora.get(t.farmerId)
+    if (!m) { m = new Map(); fora.set(t.farmerId, m) }
+    m.set(t.companyId, t)
+  }
+
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`
+      SELECT * FROM diario_troca_segmento
+      WHERE farmer_id = ANY(${farmerIds}) AND decisao IS NULL
+      ORDER BY pedido_em DESC`
+    for (const r of rows) {
+      guarda({
+        farmerId: String(r.farmer_id),
+        companyId: String(r.company_id),
+        companyName: String(r.company_name ?? ''),
+        motivo: (r.motivo as string) ?? '',
+        pedidoEm: r.pedido_em ? new Date(r.pedido_em as string).toISOString() : '',
+        decisao: null, resolvidoEm: null, resolvidoPor: null,
+      })
+    }
+    return fora
+  }
+  for (const t of leTrocas()) {
+    if (farmerIds.includes(t.farmerId) && !t.decisao) guarda(t)
+  }
+  return fora
+}
+
+/** O líder decide: trocou no HubSpot, ou o segmento estava certo. */
+export async function resolveTrocaSegmento(
+  farmerId: string, companyId: string, decisao: 'trocado' | 'mantido', autor: string,
+): Promise<void> {
+  if (usandoPostgres) {
+    await garanteSchema()
+    await sql()`
+      UPDATE diario_troca_segmento
+      SET decisao = ${decisao}, resolvido_em = now(), resolvido_por = ${autor}
+      WHERE farmer_id = ${farmerId} AND company_id = ${companyId}`
+    return
+  }
+  const lista = leTrocas()
+  const t = lista.find((x) => x.farmerId === farmerId && x.companyId === companyId)
+  if (!t) return
+  t.decisao = decisao
+  t.resolvidoEm = new Date().toISOString()
+  t.resolvidoPor = autor
+  gravaTrocas(lista)
 }
 
 // ── Tramitações ──

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { usuarioAtual } from '@/lib/diario/session'
 import {
   ABORDAGENS, BUCKETS, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, COTA_DIARIA,
-  EMPRESAS_DO_DIA, MINIMO_OBSERVACAO, RESULTADOS, TENTATIVAS_ATE_AUXILIO,
+  EMPRESAS_DO_DIA, MINIMO_OBSERVACAO, RESULTADOS, RESULTADO_FORA_DO_PLACAR, TENTATIVAS_ATE_AUXILIO,
   ANTECEDENCIA_CHECKLIST_DIAS, PRAZO_ASSINATURA_DIAS, PRAZO_MINUTA_DIAS_UTEIS,
   RESULTADOS_TRAMITACAO, TRAMITACOES, TipoTramitacao,
 } from '@/lib/diario/constants'
@@ -128,8 +128,15 @@ export default function AjudaPage() {
         </p>
         <p className="mt-3">
           A observação, com no mínimo {MINIMO_OBSERVACAO} caracteres, é obrigatória só onde o CRM não tem a
-          resposta: no <b>contato efetivo</b> (o que saiu da conversa) e no <b>não abordei</b> (por quê). Na
-          tentativa, a ligação registrada já é a evidência.
+          resposta: no <b>contato efetivo</b> (o que saiu da conversa), no <b>não abordei</b> (por quê) e no
+          <b> trocar de segmento</b> (para onde ela deveria ir). Na tentativa, a ligação registrada já é a
+          evidência.
+        </p>
+        <p className="mt-3">
+          <b>Trocar de segmento</b> não é resultado de abordagem: é dizer que a empresa não deveria estar na
+          sua carteira. Ela sai do placar — não conta como efetivo, tentativa nem não abordei — e fica fora do
+          rodízio enquanto o líder não decide. Marcar isso é o caminho certo para a empresa que você marcava
+          como contato efetivo só para ela parar de aparecer: aquilo inflava o número de efetivos de todo mundo.
         </p>
       </Secao>
 
@@ -137,12 +144,19 @@ export default function AjudaPage() {
         <p>Depende do que aconteceu na última vez que ela apareceu:</p>
         <table className="w-full text-sm mt-4 border border-zinc-200 rounded-lg overflow-hidden">
           <tbody>
-            {RESULTADOS.map((r) => (
+            {RESULTADOS.filter((r) => !RESULTADO_FORA_DO_PLACAR.includes(r.key)).map((r) => (
               <tr key={r.key} className="border-t border-zinc-100 first:border-t-0">
                 <td className="px-4 py-3 font-medium w-56">{r.label}</td>
                 <td className="px-4 py-3 text-zinc-600">volta {dias(COOLDOWN_POR_RESULTADO[r.key])}</td>
               </tr>
             ))}
+            <tr className="border-t border-zinc-100">
+              <td className="px-4 py-3 font-medium">Trocar de segmento</td>
+              <td className="px-4 py-3 text-zinc-600">
+                não volta enquanto o líder não decidir — ele troca no HubSpot (e a empresa sai da carteira) ou
+                diz que o segmento está certo, e aí ela volta ao rodízio
+              </td>
+            </tr>
             <tr className="border-t border-zinc-100">
               <td className="px-4 py-3 font-medium">Dia não fechado</td>
               <td className="px-4 py-3 text-zinc-600">
@@ -281,6 +295,12 @@ export default function AjudaPage() {
           por quem lidera, inclusive depois do dia revisado — e a alteração aparece para o farmer com o nome de
           quem mexeu. A exceção é marcar uma tramitação como feita: isso continua sendo só do farmer, senão a
           dupla checagem perderia o sentido.
+        </p>
+        <p className="mt-3">
+          <b>Trocas de segmento.</b> O que o time marcou como carteira errada aparece num painel vermelho no
+          topo da Agenda, com o motivo que o farmer escreveu e o link para a empresa no HubSpot. Duas saídas:
+          <b> Troquei no HubSpot</b> fecha o pedido, e <b>Segmento está certo</b> devolve a empresa ao rodízio
+          do farmer.
         </p>
         <p className="mt-3">
           <b>O nome do ticket é um atalho.</b> Em Tramitações — na lista e no painel de confirmação do líder —
