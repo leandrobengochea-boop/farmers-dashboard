@@ -484,6 +484,71 @@ export async function salvaOrientacao(o: Orientacao): Promise<void> {
   gravaLocal(dados)
 }
 
+/** Uma linha por farmer/dia, para o relatório de evolução. */
+export interface DiaDoFarmer {
+  farmerId: string
+  data: string
+  setadas: number        // as do compromisso: sem os extras e sem as de segmento errado
+  efetivo: number
+  tentativa: number
+  naoAbordei: number
+  semRegistro: number
+  trocaSegmento: number
+}
+
+/**
+ * Série do período para o relatório. Agrega no banco — trazer item a item de
+ * 23 farmers por 30 dias seriam ~14 mil linhas para somar na memória.
+ */
+export async function serieDoPeriodo(farmerIds: string[], de: string, ate: string): Promise<DiaDoFarmer[]> {
+  if (farmerIds.length === 0) return []
+
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`
+      SELECT farmer_id, data::text AS dia,
+        count(*) FILTER (WHERE bucket <> 'extra' AND resultado IS DISTINCT FROM 'trocar_segmento') AS setadas,
+        count(*) FILTER (WHERE bucket <> 'extra' AND resultado = 'efetivo')     AS efetivo,
+        count(*) FILTER (WHERE bucket <> 'extra' AND resultado = 'tentativa')   AS tentativa,
+        count(*) FILTER (WHERE bucket <> 'extra' AND resultado = 'nao_abordei') AS nao_abordei,
+        count(*) FILTER (WHERE bucket <> 'extra' AND resultado IS NULL)         AS sem_registro,
+        count(*) FILTER (WHERE bucket <> 'extra' AND resultado = 'trocar_segmento') AS troca
+      FROM diario_item
+      WHERE farmer_id = ANY(${farmerIds}) AND data >= ${de}::date AND data <= ${ate}::date
+      GROUP BY farmer_id, data
+      ORDER BY data`
+    return rows.map((r) => ({
+      farmerId: String(r.farmer_id),
+      data: String(r.dia),
+      setadas: Number(r.setadas),
+      efetivo: Number(r.efetivo),
+      tentativa: Number(r.tentativa),
+      naoAbordei: Number(r.nao_abordei),
+      semRegistro: Number(r.sem_registro),
+      trocaSegmento: Number(r.troca),
+    }))
+  }
+
+  const porChave = new Map<string, DiaDoFarmer>()
+  for (const i of leLocal().itens) {
+    if (!farmerIds.includes(i.farmerId) || i.data < de || i.data > ate) continue
+    if (i.bucket === 'extra') continue   // extra é bônus: fora da conta do dia
+    const chave = `${i.farmerId}:${i.data}`
+    let d = porChave.get(chave)
+    if (!d) {
+      d = { farmerId: i.farmerId, data: i.data, setadas: 0, efetivo: 0, tentativa: 0, naoAbordei: 0, semRegistro: 0, trocaSegmento: 0 }
+      porChave.set(chave, d)
+    }
+    if (i.resultado !== 'trocar_segmento') d.setadas++
+    if (i.resultado === 'efetivo') d.efetivo++
+    else if (i.resultado === 'tentativa') d.tentativa++
+    else if (i.resultado === 'nao_abordei') d.naoAbordei++
+    else if (i.resultado === 'trocar_segmento') d.trocaSegmento++
+    else d.semRegistro++
+  }
+  return [...porChave.values()].sort((a, b) => a.data.localeCompare(b.data))
+}
+
 // ── Troca de segmento ──
 
 function leTrocas(): TrocaSegmento[] {

@@ -297,6 +297,18 @@ export default function AjudaPage() {
           dupla checagem perderia o sentido.
         </p>
         <p className="mt-3">
+          <b>Evolução.</b> A Agenda tem duas vistas: <b>Hoje</b> e <b>Evolução</b>. A segunda mostra, por dia, a
+          composição das empresas setadas — contato efetivo, tentativa, não abordei e sem registro — e o número
+          de cima é <b>contato efetivo sobre as empresas setadas</b>, não sobre as preenchidas. É de propósito:
+          medir só o que foi preenchido premiaria quem trabalha menos. Extras e empresas marcadas para troca de
+          segmento ficam fora da conta, então as quatro faixas sempre somam as empresas do compromisso.
+        </p>
+        <p className="mt-3">
+          A faixa cinza clara, <b>sem registro</b>, é a que explica quase tudo: dia com muita faixa cinza não é
+          time que não conecta, é lista que não foi trabalhada. Por isso ela aparece no gráfico em vez de sumir
+          da conta.
+        </p>
+        <p className="mt-3">
           <b>Filtro por time.</b> Na Agenda, quem enxerga mais de um time escolhe um pelo nome do líder e a
           tela inteira passa a falar só dele — farmers, pedidos de auxílio, trocas de segmento e os números do
           mês no topo. Os números do time aparecem um instante depois do clique: eles são buscados na hora, para

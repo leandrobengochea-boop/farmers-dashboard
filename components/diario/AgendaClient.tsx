@@ -6,6 +6,7 @@ import type { ItemDiario } from '@/lib/diario/db'
 import type { ResumoMes } from '@/lib/diario/metrics'
 import { dataLonga, iniciais, meses, moeda } from './Marca'
 import Cabecalho from './Cabecalho'
+import Evolucao from './Evolucao'
 
 interface AgendaFarmer {
   farmerId: string
@@ -118,6 +119,8 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   // Filtro de time da gerência. A lista de farmers filtra na hora; os números
   // do mês daquele time vêm numa chamada leve, guardada depois da primeira vez.
   const [timeFiltro, setTimeFiltro] = useState<string | null>(null)
+  // A evolução divide a tela com o dia de hoje em vez de virar outra aba no topo.
+  const [vista, setVista] = useState<'hoje' | 'evolucao'>('hoje')
   const [resumoPorTime, setResumoPorTime] = useState<Record<string, ResumoMes>>({})
   const [carregandoResumo, setCarregandoResumo] = useState(false)
 
@@ -220,20 +223,39 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
 
       {erro && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">{erro}</div>}
 
-      {times.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mb-5">
-          <span className="text-xs font-bold uppercase tracking-wide text-zinc-400 mr-1">Time</span>
-          <Chip ativo={!timeFiltro} onClick={() => setTimeFiltro(null)}>
-            Todos · {dados?.agenda.length ?? 0}
-          </Chip>
-          {times.map((t) => (
-            <Chip key={t.timeKey} ativo={timeFiltro === t.timeKey} onClick={() => setTimeFiltro(t.timeKey)}>
-              {primeiroNome(t.lider)} · {t.farmers}
-            </Chip>
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        <div className="flex rounded-full bg-zinc-100 p-1 mr-1">
+          {([['hoje', 'Hoje'], ['evolucao', 'Evolução']] as const).map(([chave, rotulo]) => (
+            <button
+              key={chave}
+              onClick={() => setVista(chave)}
+              className={`px-4 py-1.5 text-sm rounded-full transition ${
+                vista === chave ? 'bg-white shadow-sm font-medium' : 'text-zinc-500 hover:text-zinc-900'
+              }`}
+            >
+              {rotulo}
+            </button>
           ))}
         </div>
-      )}
+        {times.length > 0 && (
+          <>
+            <span className="text-xs font-bold uppercase tracking-wide text-zinc-400 mx-1">Time</span>
+            <Chip ativo={!timeFiltro} onClick={() => setTimeFiltro(null)}>
+              Todos · {dados?.agenda.length ?? 0}
+            </Chip>
+            {times.map((t) => (
+              <Chip key={t.timeKey} ativo={timeFiltro === t.timeKey} onClick={() => setTimeFiltro(t.timeKey)}>
+                {primeiroNome(t.lider)} · {t.farmers}
+              </Chip>
+            ))}
+          </>
+        )}
+      </div>
 
+      {vista === 'evolucao' ? (
+        <Evolucao timeFiltro={timeFiltro} souLider={souLider} />
+      ) : (
+      <>
       {resumoVisivel && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Cartao titulo="Oportunidades no mês" valor={String(resumoVisivel.oportunidadesCriadas)} rodape={rodapeEscopo} />
@@ -599,6 +621,8 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
         </div>
         </section>
         ))
+      )}
+      </>
       )}
     </div>
   )
