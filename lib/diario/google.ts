@@ -1,4 +1,4 @@
-import { Usuario, usuarioPorId } from './constants'
+import { EMAIL_DO_DIARIO, Usuario, usuarioPorId } from './constants'
 
 export const DOMINIO_PERMITIDO = 'profissionaissa.com'
 export const googleConfigurado = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
@@ -98,8 +98,9 @@ async function mapaEmailParaOwner(): Promise<Record<string, string>> {
 
 /** Resolve o e-mail corporativo no usuário do diário (farmer ou líder). */
 export async function usuarioPorEmail(email: string): Promise<Usuario | null> {
+  const chave = email.toLowerCase()
   const mapa = await mapaEmailParaOwner()
-  const ownerId = mapa[email.toLowerCase()]
+  const ownerId = EMAIL_DO_DIARIO[chave] ?? mapa[chave]
   if (!ownerId) return null
   return usuarioPorId(ownerId)
 }

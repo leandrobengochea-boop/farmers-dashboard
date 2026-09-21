@@ -159,7 +159,16 @@ export const LIDERES: Lider[] = [
   { id: '80454585', nome: 'Leandro Bengochea',        timeKey: null      },
   { id: '80436289', nome: 'Márcio Spagnolo',          timeKey: null      },
   { id: '86256444', nome: 'Ana Machado',              timeKey: null      }, // owner cadastrado como "Ana Carolina Vaz"
+  { id: '91810791', nome: 'Mattheus Faleiro',         timeKey: null      }, // owner cadastrado com o e-mail .santos
 ]
+
+/**
+ * Quem entra no diário por um e-mail diferente do cadastrado como owner no
+ * HubSpot. O login é pelo Google, então o que vale é o endereço da conta dele.
+ */
+export const EMAIL_DO_DIARIO: Record<string, string> = {
+  'mattheus.faleiro@profissionaissa.com': '91810791', // no HubSpot o owner está como mattheus.santos@
+}
 
 export type Papel = 'farmer' | 'lider'
 
