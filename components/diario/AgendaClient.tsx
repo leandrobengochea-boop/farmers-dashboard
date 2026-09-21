@@ -10,6 +10,7 @@ import Cabecalho from './Cabecalho'
 interface AgendaFarmer {
   farmerId: string
   nome: string
+  timeKey: string
   timeLabel: string
   status: string
   primeiroAcesso: string | null
@@ -39,10 +40,17 @@ interface AgendaFarmer {
   }
 }
 
+interface TimeDaAgenda {
+  timeKey: string
+  lider: string
+  farmers: number
+}
+
 interface Dados {
   data: string
   agenda: AgendaFarmer[]
   resumo: ResumoMes
+  times?: TimeDaAgenda[]
 }
 
 function horaCurta(iso: string | null): string {
@@ -55,6 +63,24 @@ const ROTULO_STATUS: Record<string, { texto: string; cor: string }> = {
   planejado: { texto: 'EM CAMPO',      cor: 'bg-blue-600 text-white' },
   fechado:   { texto: 'DIA FECHADO',   cor: 'bg-emerald-600 text-white' },
   revisado:  { texto: 'REVISADO',      cor: 'bg-zinc-900 text-white' },
+}
+
+/** "Daniel Bento Sias" vira "Daniel": o time é conhecido pelo primeiro nome. */
+function primeiroNome(nome: string): string {
+  return nome.trim().split(/\s+/)[0] ?? nome
+}
+
+function Chip({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3.5 py-1.5 text-sm rounded-full border transition ${
+        ativo ? 'bg-zinc-900 text-white border-zinc-900 font-medium' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
+      }`}
+    >
+      {children}
+    </button>
+  )
 }
 
 const CORES_RESULTADO: Record<Resultado, string> = {
@@ -89,6 +115,24 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
 
   useEffect(() => { carrega() }, [carrega])
 
+  // Filtro de time da gerência. A lista de farmers filtra na hora; os números
+  // do mês daquele time vêm numa chamada leve, guardada depois da primeira vez.
+  const [timeFiltro, setTimeFiltro] = useState<string | null>(null)
+  const [resumoPorTime, setResumoPorTime] = useState<Record<string, ResumoMes>>({})
+  const [carregandoResumo, setCarregandoResumo] = useState(false)
+
+  useEffect(() => {
+    if (!timeFiltro || resumoPorTime[timeFiltro] || !dados) return
+    let cancelado = false
+    setCarregandoResumo(true)
+    fetch(`/api/diario/resumo?time=${timeFiltro}&data=${dados.data}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.resumo && !cancelado) setResumoPorTime((m) => ({ ...m, [timeFiltro]: d.resumo })) })
+      .catch(() => {})
+      .finally(() => { if (!cancelado) setCarregandoResumo(false) })
+    return () => { cancelado = true }
+  }, [timeFiltro, resumoPorTime, dados])
+
   async function revisa(farmerId: string) {
     if (!dados) return
     const comentario = window.prompt('Comentário para o farmer (opcional):') ?? ''
@@ -104,13 +148,26 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   // tramitações escolhidas ou pendências esperando — inclusive quem nem abriu o diário.
   const temDia = (a: AgendaFarmer) =>
     a.itens.length > 0 || a.tramitacoes.length > 0 || a.placarTramitacoes.pendentes > 0
-  const comLista = dados?.agenda.filter(temDia) ?? []
-  const semLista = dados?.agenda.filter((a) => !temDia(a)) ?? []
+  const visiveis = (dados?.agenda ?? []).filter((a) => !timeFiltro || a.timeKey === timeFiltro)
+  const comLista = visiveis.filter(temDia)
+  const semLista = visiveis.filter((a) => !temDia(a))
   const totalEmpresas = comLista.reduce((s, a) => s + a.placar.total, 0)
   const totalEfetivo = comLista.reduce((s, a) => s + a.placar.efetivo, 0)
   const totalPendente = comLista.reduce((s, a) => s + a.placar.pendente, 0)
-  const comAuxilio = dados?.agenda.filter((a) => a.auxilios.length > 0) ?? []
-  const comTroca = dados?.agenda.filter((a) => a.trocas.length > 0) ?? []
+  const comAuxilio = visiveis.filter((a) => a.auxilios.length > 0)
+  const comTroca = visiveis.filter((a) => a.trocas.length > 0)
+
+  const times = dados?.times ?? []
+  // Cartões do topo acompanham o filtro: mostrar o número da empresa inteira
+  // embaixo do nome de um time seria mentira.
+  const resumoVisivel = (timeFiltro && resumoPorTime[timeFiltro]) || dados?.resumo
+  const liderDoFiltro = times.find((t) => t.timeKey === timeFiltro)?.lider
+  const resumoEhDoTime = !!(timeFiltro && resumoPorTime[timeFiltro])
+  const rodapeEscopo = !souLider
+    ? 'na sua carteira'
+    : resumoEhDoTime && liderDoFiltro ? `time de ${primeiroNome(liderDoFiltro)}`
+    : carregandoResumo ? 'somando o time...'
+    : 'todos os times'
 
   // Gerência enxerga os quatro times: agrupar evita uma parede de 24 cards soltos.
   const gerencia = souLider && (usuario.timeKey === null || usuario.timeKey === undefined)
@@ -154,7 +211,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
           !dados
             ? 'carregando...'
             : souLider
-              ? `${dataLonga(dados.data)} · ${comLista.length} de ${dados.agenda.length} farmers · ${totalEmpresas} empresas · ${totalEfetivo} contatos efetivos`
+              ? `${dataLonga(dados.data)} · ${comLista.length} de ${visiveis.length} farmers · ${totalEmpresas} empresas · ${totalEfetivo} contatos efetivos`
               : `${dataLonga(dados.data)} · ${totalEmpresas} empresas · ${totalEfetivo} contatos efetivos`
         }
         usuario={{ ...usuario, papel: 'lider' }}
@@ -163,12 +220,26 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
 
       {erro && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">{erro}</div>}
 
-      {dados && (
+      {times.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-5">
+          <span className="text-xs font-bold uppercase tracking-wide text-zinc-400 mr-1">Time</span>
+          <Chip ativo={!timeFiltro} onClick={() => setTimeFiltro(null)}>
+            Todos · {dados?.agenda.length ?? 0}
+          </Chip>
+          {times.map((t) => (
+            <Chip key={t.timeKey} ativo={timeFiltro === t.timeKey} onClick={() => setTimeFiltro(t.timeKey)}>
+              {primeiroNome(t.lider)} · {t.farmers}
+            </Chip>
+          ))}
+        </div>
+      )}
+
+      {resumoVisivel && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Cartao titulo="Oportunidades no mês" valor={String(dados.resumo.oportunidadesCriadas)} rodape={souLider ? 'do time inteiro' : 'na sua carteira'} />
-          <Cartao titulo="Tickets ativos" valor={String(dados.resumo.ticketsAtivos)} rodape="eventos em execução no CS" />
-          <Cartao titulo="Receita gerada" valor={moeda(dados.resumo.receitaGerada)} rodape="negócios ganhos no mês" cor="#FF5200" />
-          <Cartao titulo="Contato efetivo" valor={`${dados.resumo.pctContatoEfetivo}%`} rodape={`${dados.resumo.empresasComContatoEfetivo} de ${dados.resumo.carteira} empresas`} />
+          <Cartao titulo="Oportunidades no mês" valor={String(resumoVisivel.oportunidadesCriadas)} rodape={rodapeEscopo} />
+          <Cartao titulo="Tickets ativos" valor={String(resumoVisivel.ticketsAtivos)} rodape="eventos em execução no CS" />
+          <Cartao titulo="Receita gerada" valor={moeda(resumoVisivel.receitaGerada)} rodape="negócios ganhos no mês" cor="#FF5200" />
+          <Cartao titulo="Contato efetivo" valor={`${resumoVisivel.pctContatoEfetivo}%`} rodape={`${resumoVisivel.empresasComContatoEfetivo} de ${resumoVisivel.carteira} empresas`} />
         </div>
       )}
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { FARMERS, TEAMS } from '@/lib/constants'
 import { usuarioAtual } from '@/lib/diario/session'
-import { farmersDoLider, TRAMITACOES, TipoTramitacao } from '@/lib/diario/constants'
+import { farmersDoLider, LIDERES, TRAMITACOES, TipoTramitacao } from '@/lib/diario/constants'
 import { hojeSP } from '@/lib/diario/carteira'
 import { resumoDoMes } from '@/lib/diario/metrics'
 import {
@@ -18,6 +18,7 @@ export const maxDuration = 120
 export interface AgendaFarmer {
   farmerId: string
   nome: string
+  timeKey: string
   timeLabel: string
   status: string
   primeiroAcesso: string | null
@@ -45,6 +46,16 @@ export async function GET(req: Request) {
   // Líder vê o time; farmer vê a si mesmo.
   const farmerIds = usuario.papel === 'lider' ? farmersDoLider(usuario.timeKey) : [usuario.id]
 
+  // Gerência enxerga os quatro times e pode filtrar por um deles.
+  const gerencia = usuario.papel === 'lider' && !usuario.timeKey
+  const times = gerencia
+    ? LIDERES.filter((l) => l.timeKey).map((l) => ({
+        timeKey: l.timeKey as string,
+        lider: l.nome,
+        farmerIds: farmersDoLider(l.timeKey),
+      }))
+    : []
+
   try {
     const [itens, briefings, resumo, historico, orientacoes, tramitacoes, pendencias, statusTram, trocas] = await Promise.all([
       itensDoDiaDeVarios(farmerIds, data),
@@ -67,9 +78,9 @@ export async function GET(req: Request) {
       if (doFarmer.length > 0 && dele?.size) await aplicaAtividade(farmerId, data, doFarmer, dele)
     }
 
-    const timeLabelPorFarmer: Record<string, string> = {}
-    for (const time of Object.values(TEAMS)) {
-      for (const id of time.farmerIds) timeLabelPorFarmer[id] = time.label
+    const timePorFarmer: Record<string, { key: string; label: string }> = {}
+    for (const [key, time] of Object.entries(TEAMS)) {
+      for (const id of time.farmerIds) timePorFarmer[id] = { key, label: time.label }
     }
 
     const agenda: AgendaFarmer[] = farmerIds.map((farmerId) => {
@@ -123,7 +134,8 @@ export async function GET(req: Request) {
       return {
         farmerId,
         nome: FARMERS[farmerId] ?? farmerId,
-        timeLabel: timeLabelPorFarmer[farmerId] ?? '',
+        timeKey: timePorFarmer[farmerId]?.key ?? '',
+        timeLabel: timePorFarmer[farmerId]?.label ?? '',
         status: brief?.status ?? 'rascunho',
         primeiroAcesso: brief?.primeiroAcesso ?? null,
         comentarioLider: brief?.comentarioLider ?? null,
@@ -150,7 +162,15 @@ export async function GET(req: Request) {
       }
     })
 
-    return NextResponse.json({ usuario, data, agenda, resumo }, { headers: { 'Cache-Control': 'no-store' } })
+    return NextResponse.json(
+      {
+        usuario, data, agenda, resumo,
+        // O filtro de time é da gerência. Os números de cada time saem daqui e
+        // vêm depois, sob demanda: cobrá-los no carregamento custava 7 segundos.
+        times: times.map((t) => ({ timeKey: t.timeKey, lider: t.lider, farmers: t.farmerIds.length })),
+      },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   } catch (erro) {
     const msg = erro instanceof Error ? erro.message : 'erro desconhecido'
     console.error('diario/agenda falhou:', erro)

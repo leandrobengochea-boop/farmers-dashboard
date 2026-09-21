@@ -297,6 +297,12 @@ export default function AjudaPage() {
           dupla checagem perderia o sentido.
         </p>
         <p className="mt-3">
+          <b>Filtro por time.</b> Na Agenda, quem enxerga mais de um time escolhe um pelo nome do líder e a
+          tela inteira passa a falar só dele — farmers, pedidos de auxílio, trocas de segmento e os números do
+          mês no topo. Os números do time aparecem um instante depois do clique: eles são buscados na hora, para
+          não pesar na abertura da página.
+        </p>
+        <p className="mt-3">
           <b>Trocas de segmento.</b> O que o time marcou como carteira errada aparece num painel vermelho no
           topo da Agenda, com o motivo que o farmer escreveu e o link para a empresa no HubSpot. Duas saídas:
           <b> Troquei no HubSpot</b> fecha o pedido, e <b>Segmento está certo</b> devolve a empresa ao rodízio
