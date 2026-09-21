@@ -10,6 +10,7 @@ import {
 } from '@/lib/diario/db'
 import { precisaAuxilio } from '@/lib/diario/carteira'
 import { Pendencia, pendenciasDeVarios } from '@/lib/diario/tramitacoes'
+import { AtividadeEmpresa, aplicaAtividade, atividadeDeVarios } from '@/lib/diario/atividade'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -51,6 +52,15 @@ export async function GET(req: Request) {
       pendenciasDeVarios(farmerIds, data).catch(() => new Map<string, Pendencia[]>()),
       statusTramitacoes(farmerIds),
     ])
+
+    // O acompanhamento do dia é automático: a agenda deriva a efetividade da
+    // atividade no HubSpot, sem depender de o farmer reabrir o diário.
+    const atividade = await atividadeDeVarios(farmerIds, data).catch(() => new Map<string, Map<string, AtividadeEmpresa>>())
+    for (const farmerId of farmerIds) {
+      const doFarmer = itens.filter((i) => i.farmerId === farmerId)
+      const dele = atividade.get(farmerId)
+      if (doFarmer.length > 0 && dele?.size) await aplicaAtividade(farmerId, data, doFarmer, dele)
+    }
 
     const timeLabelPorFarmer: Record<string, string> = {}
     for (const time of Object.values(TEAMS)) {

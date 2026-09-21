@@ -122,6 +122,11 @@ export default function AjudaPage() {
           caixa postal viram <b>tentativa</b>; empresa sem nenhuma atividade fica como <b>não abordei</b>.
         </p>
         <p className="mt-3">
+          Isso acontece <b>sozinho, ao longo do dia</b>, e vale também para a Agenda: o líder vê o placar do time
+          evoluindo mesmo que ninguém reabra o diário. O que o sistema nunca sobrescreve é escolha feita à mão —
+          se você marcou algo, fica o que você marcou.
+        </p>
+        <p className="mt-3">
           A observação, com no mínimo {MINIMO_OBSERVACAO} caracteres, é obrigatória só onde o CRM não tem a
           resposta: no <b>contato efetivo</b> (o que saiu da conversa) e no <b>não abordei</b> (por quê). Na
           tentativa, a ligação registrada já é a evidência.

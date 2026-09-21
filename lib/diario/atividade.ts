@@ -1,4 +1,5 @@
 import { fetchWithRetry, searchAllPages } from './carteira'
+import { ItemDiario, atualizaItem } from './db'
 
 /**
  * Atividade registrada no HubSpot hoje, por empresa. É a fonte do fechamento:
@@ -61,32 +62,40 @@ async function porEmpresa(pat: string, objeto: string, ids: string[]): Promise<M
   return mapa
 }
 
-export async function atividadeDoDia(farmerId: string, dia: string): Promise<Map<string, AtividadeEmpresa>> {
-  const fora = new Map<string, AtividadeEmpresa>()
+/**
+ * Atividade do dia de vários farmers de uma vez. Uma busca por tipo de
+ * engajamento para o time inteiro: a agenda do líder precisa disso a cada
+ * carga, e 23 consultas separadas por farmer inviabilizariam a tela.
+ */
+export async function atividadeDeVarios(farmerIds: string[], dia: string): Promise<Map<string, Map<string, AtividadeEmpresa>>> {
+  const porFarmer = new Map<string, Map<string, AtividadeEmpresa>>()
+  for (const id of farmerIds) porFarmer.set(id, new Map())
   const pat = process.env.HUBSPOT_PAT
-  if (!pat) return fora
+  if (!pat || farmerIds.length === 0) return porFarmer
 
   const inicio = String(new Date(`${dia}T00:00:00-03:00`).getTime())
   const fim = String(new Date(`${dia}T23:59:59-03:00`).getTime())
   const janela = (prop: string) => [
-    { propertyName: 'hubspot_owner_id', operator: 'EQ', value: farmerId },
+    { propertyName: 'hubspot_owner_id', operator: 'IN', values: farmerIds },
     { propertyName: prop, operator: 'GTE', value: inicio },
     { propertyName: prop, operator: 'LTE', value: fim },
   ]
 
   const [efetivas, ligacoes, reunioes, emails, notas] = await Promise.all([
     disposicoesEfetivas(pat),
-    searchAllPages(pat, 'calls', [{ filters: janela('hs_timestamp') }], ['hs_call_disposition', 'hs_call_body', 'hs_timestamp']).catch(() => []),
-    searchAllPages(pat, 'meetings', [{ filters: janela('hs_timestamp') }], ['hs_meeting_outcome', 'hs_meeting_body', 'hs_timestamp']).catch(() => []),
-    searchAllPages(pat, 'emails', [{ filters: janela('hs_timestamp') }], ['hs_email_subject']).catch(() => []),
-    searchAllPages(pat, 'notes', [{ filters: janela('hs_timestamp') }], ['hs_note_body']).catch(() => []),
+    searchAllPages(pat, 'calls', [{ filters: janela('hs_timestamp') }], ['hs_call_disposition', 'hs_call_body', 'hubspot_owner_id']).catch(() => []),
+    searchAllPages(pat, 'meetings', [{ filters: janela('hs_timestamp') }], ['hs_meeting_outcome', 'hs_meeting_body', 'hubspot_owner_id']).catch(() => []),
+    searchAllPages(pat, 'emails', [{ filters: janela('hs_timestamp') }], ['hubspot_owner_id']).catch(() => []),
+    searchAllPages(pat, 'notes', [{ filters: janela('hs_timestamp') }], ['hs_note_body', 'hubspot_owner_id']).catch(() => []),
   ])
 
-  function registra(empresa: string): AtividadeEmpresa {
-    let a = fora.get(empresa)
+  function registra(dono: string, empresa: string): AtividadeEmpresa | null {
+    const mapa = porFarmer.get(dono)
+    if (!mapa) return null
+    let a = mapa.get(empresa)
     if (!a) {
       a = { ligacoes: 0, conectadas: 0, reunioes: 0, outras: 0, texto: '', resultadoSugerido: null }
-      fora.set(empresa, a)
+      mapa.set(empresa, a)
     }
     return a
   }
@@ -102,7 +111,8 @@ export async function atividadeDoDia(farmerId: string, dia: string): Promise<Map
     const conectou = efetivas.has(c.properties.hs_call_disposition ?? '')
     const texto = semHtml(c.properties.hs_call_body ?? '')
     for (const empresa of empLigacoes.get(c.id) ?? []) {
-      const a = registra(empresa)
+      const a = registra(c.properties.hubspot_owner_id ?? '', empresa)
+      if (!a) continue
       a.ligacoes++
       if (conectou) a.conectadas++
       if (texto && texto.length > a.texto.length) a.texto = texto
@@ -112,27 +122,66 @@ export async function atividadeDoDia(farmerId: string, dia: string): Promise<Map
     const realizada = m.properties.hs_meeting_outcome === 'COMPLETED'
     const texto = semHtml(m.properties.hs_meeting_body ?? '')
     for (const empresa of empReunioes.get(m.id) ?? []) {
-      const a = registra(empresa)
+      const a = registra(m.properties.hubspot_owner_id ?? '', empresa)
+      if (!a) continue
       if (realizada) a.reunioes++
       else a.outras++
       if (texto && texto.length > a.texto.length) a.texto = texto
     }
   }
   for (const e of emails) {
-    for (const empresa of empEmails.get(e.id) ?? []) registra(empresa).outras++
+    for (const empresa of empEmails.get(e.id) ?? []) {
+      const a = registra(e.properties.hubspot_owner_id ?? '', empresa)
+      if (a) a.outras++
+    }
   }
   for (const n of notas) {
     const texto = semHtml(n.properties.hs_note_body ?? '')
     for (const empresa of empNotas.get(n.id) ?? []) {
-      const a = registra(empresa)
+      const a = registra(n.properties.hubspot_owner_id ?? '', empresa)
+      if (!a) continue
       a.outras++
       if (texto && texto.length > a.texto.length) a.texto = texto
     }
   }
 
-  for (const a of fora.values()) {
-    if (a.conectadas > 0 || a.reunioes > 0) a.resultadoSugerido = 'efetivo'
-    else if (a.ligacoes > 0 || a.outras > 0) a.resultadoSugerido = 'tentativa'
+  for (const mapa of porFarmer.values()) {
+    for (const a of mapa.values()) {
+      if (a.conectadas > 0 || a.reunioes > 0) a.resultadoSugerido = 'efetivo'
+      else if (a.ligacoes > 0 || a.outras > 0) a.resultadoSugerido = 'tentativa'
+    }
   }
-  return fora
+  return porFarmer
+}
+
+export async function atividadeDoDia(farmerId: string, dia: string): Promise<Map<string, AtividadeEmpresa>> {
+  const porFarmer = await atividadeDeVarios([farmerId], dia)
+  return porFarmer.get(farmerId) ?? new Map()
+}
+
+/**
+ * Escreve no diário o que o HubSpot já sabe. Só preenche o que está vazio:
+ * escolha feita à mão pelo farmer ou pelo líder nunca é sobrescrita.
+ * Muta os itens recebidos, para quem chamou responder com o dado já atualizado.
+ */
+export async function aplicaAtividade(
+  farmerId: string,
+  data: string,
+  itens: ItemDiario[],
+  atividade: Map<string, AtividadeEmpresa>,
+): Promise<void> {
+  for (const item of itens) {
+    const a = atividade.get(item.companyId)
+    if (!a?.resultadoSugerido) continue
+    const preencheResultado = !item.resultado
+    const preencheTexto = !item.observacaoResultado?.trim() && !!a.texto
+    if (!preencheResultado && !preencheTexto) continue
+
+    if (preencheResultado) item.resultado = a.resultadoSugerido
+    if (preencheTexto) item.observacaoResultado = a.texto.slice(0, 600)
+    await atualizaItem(farmerId, data, item.companyId, {
+      ...(preencheResultado ? { resultado: a.resultadoSugerido } : {}),
+      ...(preencheTexto ? { observacaoResultado: a.texto.slice(0, 600) } : {}),
+    }).catch(() => {})
+  }
 }
