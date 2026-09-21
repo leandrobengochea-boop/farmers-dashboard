@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { usuarioAtual } from '@/lib/diario/session'
 import {
   ABORDAGENS, BUCKETS, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, COTA_DIARIA,
-  EMPRESAS_DO_DIA, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, TENTATIVAS_ATE_AUXILIO,
+  EMPRESAS_DO_DIA, MINIMO_OBSERVACAO, RESULTADOS, TENTATIVAS_ATE_AUXILIO,
   ANTECEDENCIA_CHECKLIST_DIAS, PRAZO_ASSINATURA_DIAS, PRAZO_MINUTA_DIAS_UTEIS,
   RESULTADOS_TRAMITACAO, TRAMITACOES, TipoTramitacao,
 } from '@/lib/diario/constants'
@@ -97,8 +97,9 @@ export default function AjudaPage() {
 
       <Secao titulo="O ciclo do dia">
         <p>
-          <b>De manhã</b>, o farmer escolhe a abordagem de cada uma das {EMPRESAS_DO_DIA} e confirma o plano.
-          Não existe escolher quais atacar — a lista inteira é o compromisso. As abordagens disponíveis são:
+          <b>De manhã</b>, o farmer escolhe a abordagem de cada empresa da lista e clica em <b>Iniciar o dia</b>.
+          Não existe escolher quais atacar — a lista inteira é o compromisso, extras inclusive, e o botão só
+          libera com todas mapeadas. As abordagens disponíveis são:
         </p>
         <ul className="mt-3 space-y-1">
           {ABORDAGENS.map((a) => <li key={a} className="text-zinc-600">{a}</li>)}
@@ -107,17 +108,12 @@ export default function AjudaPage() {
           <b>No fim do dia</b>, registra o que aconteceu em cada uma:
         </p>
         <ul className="mt-3 space-y-1.5">
-          {RESULTADOS.map((r) => (
-            <li key={r.key}>
-              <b>{r.label}</b>
-              {RESULTADO_EXIGE_OBSERVACAO.includes(r.key) && (
-                <span className="text-zinc-500"> — exige observação: {r.key === 'efetivo' ? 'o que saiu da conversa' : 'por que ficou pra trás'}</span>
-              )}
-            </li>
-          ))}
+          {RESULTADOS.map((r) => <li key={r.key}><b>{r.label}</b></li>)}
         </ul>
         <p className="mt-4">
-          Os extras de {BUCKETS.extra.label.toLowerCase()} são bônus: não travam a confirmação nem o fechamento.
+          <b>A observação é obrigatória em qualquer resultado</b>, com no mínimo {MINIMO_OBSERVACAO} caracteres.
+          O mínimo existe porque &quot;ok&quot; e &quot;sem sucesso&quot; não dizem nada a quem lê depois — nem ao
+          líder, nem a você mesmo daqui a três semanas.
         </p>
       </Secao>
 

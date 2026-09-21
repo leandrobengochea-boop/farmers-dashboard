@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
-import { farmersDoLider, RESULTADO_EXIGE_OBSERVACAO, Resultado } from '@/lib/diario/constants'
+import { farmersDoLider, MINIMO_OBSERVACAO } from '@/lib/diario/constants'
 import { itensDoDia, briefing, salvaBriefing } from '@/lib/diario/db'
 
 export const dynamic = 'force-dynamic'
@@ -21,9 +21,8 @@ export async function POST(req: Request) {
     if (usuario.papel !== 'farmer') {
       return NextResponse.json({ error: 'só o farmer fecha o próprio dia' }, { status: 403 })
     }
-    const itens = await itensDoDia(usuario.id, body.data)
-    // Os extras (clientes recentes) são bônus: não travam o envio.
-    const doDia = itens.filter((i) => i.bucket !== 'extra')
+    // Todas as empresas do dia entram na conferência, extras inclusive.
+    const doDia = await itensDoDia(usuario.id, body.data)
     if (doDia.length === 0) {
       return NextResponse.json({ error: 'nenhuma empresa na lista de hoje' }, { status: 400 })
     }
@@ -48,12 +47,13 @@ export async function POST(req: Request) {
         { status: 400 },
       )
     }
-    const semObservacao = doDia.filter(
-      (i) => RESULTADO_EXIGE_OBSERVACAO.includes(i.resultado as Resultado) && !i.observacaoResultado?.trim(),
-    )
+    const semObservacao = doDia.filter((i) => (i.observacaoResultado?.trim().length ?? 0) < MINIMO_OBSERVACAO)
     if (semObservacao.length > 0) {
       return NextResponse.json(
-        { error: `${semObservacao.length} empresa(s) precisam da observação de resultado`, empresas: semObservacao.map((i) => i.companyName) },
+        {
+          error: `${semObservacao.length} empresa(s) com observação abaixo de ${MINIMO_OBSERVACAO} caracteres`,
+          empresas: semObservacao.map((i) => i.companyName),
+        },
         { status: 400 },
       )
     }

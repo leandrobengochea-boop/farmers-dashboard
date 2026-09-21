@@ -1,4 +1,4 @@
-import { FARMERS, FARMER_ALIASES, TEAMS } from '../constants'
+import { FARMERS, TEAMS } from '../constants'
 
 // ── Abordagens disponíveis no dropdown do plano do dia ──
 export const ABORDAGENS = [
@@ -7,6 +7,8 @@ export const ABORDAGENS = [
   'AGENDAR PSA FIRST',
   'ABERTURA - BUSCAR OPORTUNIDADE',
   'PRIMEIRO CONTATO',
+  'ACOMPANHAMENTO DE TRAMITAÇÃO',
+  'CONTATO PÓS-EVENTO',
 ] as const
 
 export type Abordagem = (typeof ABORDAGENS)[number]
@@ -21,11 +23,13 @@ export const RESULTADOS = [
 export type Resultado = (typeof RESULTADOS)[number]['key']
 
 /**
- * Onde a observação de resultado é obrigatória: quando houve conversa (o que
- * saiu dela) e quando a empresa ficou pra trás (por quê). "Tentei, sem sucesso"
- * se explica sozinho.
+ * Toda empresa trabalhada precisa de observação, em qualquer resultado.
+ * O mínimo de caracteres existe para evitar o "ok" e o "sem sucesso" que não
+ * dizem nada a quem lê depois.
  */
-export const RESULTADO_EXIGE_OBSERVACAO: Resultado[] = ['efetivo', 'nao_abordei']
+export const MINIMO_OBSERVACAO = 50
+
+export const RESULTADO_EXIGE_OBSERVACAO: Resultado[] = RESULTADOS.map((r) => r.key)
 
 // ── Baldes de sugestão, por tempo desde a última compra ──
 export type Bucket = 'extra' | 'nutricao' | 'recompra' | 'reativacao' | 'primeiro_contato'
@@ -165,6 +169,19 @@ export interface Usuario {
  * Farmers que não usam o diário, mesmo constando na formação de `lib/constants.ts`.
  * Fica aqui para não mexer nos outros dashboards, que dependem daquela lista.
  */
+/**
+ * Quem tem conta duplicada no HubSpot: no diário vale a conta que realmente
+ * detém a carteira e faz o login, não a canônica usada no histórico de negócios.
+ */
+export const CONTA_DO_DIARIO: Record<string, string> = {
+  '85002282': '93238814', // Sotoriva: carteira e login vivem na conta nova
+}
+
+/** Resolve a conta antiga para a que vale no diário. */
+export function contaDoDiario(id: string): string {
+  return CONTA_DO_DIARIO[id] ?? id
+}
+
 export const FORA_DO_DIARIO = new Set<string>([
   // quem sai da empresa é removido da formação em lib/constants.ts;
   // esta lista é para quem continua no time mas não usa o diário
@@ -172,20 +189,27 @@ export const FORA_DO_DIARIO = new Set<string>([
 
 /** Farmers de um líder, na formação vigente. Líder sem time vê todos. */
 export function farmersDoLider(timeKey: string | null): string[] {
-  const valido = (id: string) => !FARMER_ALIASES[id] && !FORA_DO_DIARIO.has(id)
-  if (!timeKey) {
-    return Object.values(TEAMS).flatMap((t) => t.farmerIds).filter(valido)
+  const normaliza = (ids: string[]) => {
+    const fora: string[] = []
+    for (const bruto of ids) {
+      const id = contaDoDiario(bruto)
+      if (FORA_DO_DIARIO.has(id) || fora.includes(id)) continue
+      fora.push(id)
+    }
+    return fora
   }
-  return (TEAMS[timeKey]?.farmerIds ?? []).filter(valido)
+  if (!timeKey) return normaliza(Object.values(TEAMS).flatMap((t) => t.farmerIds))
+  return normaliza(TEAMS[timeKey]?.farmerIds ?? [])
 }
 
 /** Todos os farmers em operação hoje, na ordem dos times. */
 export function farmersAtivos(): Array<{ id: string; nome: string; timeKey: string; timeLabel: string }> {
   const out: Array<{ id: string; nome: string; timeKey: string; timeLabel: string }> = []
   for (const [timeKey, time] of Object.entries(TEAMS)) {
-    for (const id of time.farmerIds) {
-      // contas duplicadas (alias) não viram um segundo farmer na lista
-      if (FARMER_ALIASES[id] || FORA_DO_DIARIO.has(id)) continue
+    for (const bruto of time.farmerIds) {
+      // conta duplicada vira uma só: a que detém a carteira
+      const id = contaDoDiario(bruto)
+      if (FORA_DO_DIARIO.has(id)) continue
       if (out.some((f) => f.id === id)) continue
       out.push({ id, nome: FARMERS[id] ?? id, timeKey, timeLabel: time.label })
     }

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ABORDAGEM_PADRAO, ABORDAGENS, Bucket, BUCKETS, COTA_DIARIA,
-  ORDEM_BUCKET, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, Resultado,
+  ABORDAGEM_PADRAO, ABORDAGENS, Bucket, BUCKETS, COTA_DIARIA, MINIMO_OBSERVACAO,
+  ORDEM_BUCKET, RESULTADOS, Resultado,
 } from '@/lib/diario/constants'
 import type { Briefing, ItemDiario } from '@/lib/diario/db'
 import type { PoolCarteira, ResumoMes } from '@/lib/diario/metrics'
@@ -103,13 +103,12 @@ export default function DiarioClient({ usuario, farmers }: Props) {
     return [...(dados?.itens ?? [])].sort((a, b) => ordem(a.bucket) - ordem(b.bucket) || a.companyName.localeCompare(b.companyName))
   }, [dados])
 
-  // Extras (clientes recentes) são bônus: não travam a confirmação nem o fechamento.
-  const doDia = useMemo(() => itens.filter((i) => i.bucket !== 'extra'), [itens])
+  // Todas as empresas do dia contam, extras inclusive: o dia começa quando as 23 estão mapeadas.
+  const doDia = itens
   const semAbordagem = useMemo(() => doDia.filter((i) => !i.abordagem).length, [doDia])
   const comResultado = useMemo(() => doDia.filter((i) => i.resultado).length, [doDia])
   const pendenciasFechamento = useMemo(
-    () => doDia.filter((i) => !i.resultado ||
-      (RESULTADO_EXIGE_OBSERVACAO.includes(i.resultado as Resultado) && !i.observacaoResultado?.trim())).length,
+    () => doDia.filter((i) => !i.resultado || (i.observacaoResultado?.trim().length ?? 0) < MINIMO_OBSERVACAO).length,
     [doDia],
   )
   const efetivos = useMemo(() => doDia.filter((i) => i.resultado === 'efetivo').length, [doDia])
@@ -235,7 +234,6 @@ export default function DiarioClient({ usuario, farmers }: Props) {
             <span className="text-sm font-semibold capitalize">{dados ? dataLonga(dados.data) : ''}</span>
             <span className="text-sm text-zinc-500">
               <b className="text-zinc-900">{doDia.length}</b> empresas para abordar
-              {itens.length > doDia.length && <> · {itens.length - doDia.length} extras</>}
             </span>
             <span className="text-sm text-zinc-500">
               <b className="text-zinc-900">{comResultado}</b>/{doDia.length} com resultado
@@ -262,7 +260,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                 className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:bg-zinc-300 disabled:cursor-not-allowed transition"
                 style={semAbordagem === 0 && !somenteLeitura ? { background: '#FF5200' } : undefined}
               >
-                {enviando ? 'Salvando...' : semAbordagem > 0 ? `${semAbordagem} sem abordagem` : 'Confirmar plano do dia'}
+                {enviando ? 'Salvando...' : semAbordagem > 0 ? `Faltam ${semAbordagem} de ${doDia.length}` : 'Iniciar o dia'}
               </button>
             )}
             {usuario.papel === 'farmer' && aba === 'fechamento' && (
@@ -377,13 +375,13 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                 <th className="text-left font-semibold px-3 py-3 w-[170px]">Fase</th>
                 <th className="text-left font-semibold px-3 py-3 w-[230px]">Abordagem planejada</th>
                 <th className="text-left font-semibold px-3 py-3 w-[330px]">Resultado</th>
-                <th className="text-left font-semibold px-3 py-3 w-[300px]">Observação do resultado</th>
+                <th className="text-left font-semibold px-3 py-3 w-[300px]">Observação do resultado · mín. {MINIMO_OBSERVACAO}</th>
               </tr>
             </thead>
             <tbody>
               {visiveis.map((i) => {
-                const exigeObs = RESULTADO_EXIGE_OBSERVACAO.includes(i.resultado as Resultado)
-                const faltaObs = exigeObs && !i.observacaoResultado?.trim()
+                const escrito = i.observacaoResultado?.trim().length ?? 0
+                const faltaObs = escrito < MINIMO_OBSERVACAO
                 return (
                   <tr key={i.companyId} className={`border-b border-zinc-50 align-top ${i.resultado === 'efetivo' ? 'bg-emerald-50/40' : ''}`}>
                     <td className="px-5 py-4"><Empresa item={i} /></td>
@@ -417,12 +415,15 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                         value={i.observacaoResultado ?? ''}
                         disabled={somenteLeitura}
                         rows={2}
-                        placeholder={exigeObs ? 'Obrigatório: o que saiu daí?' : 'Observação (opcional)'}
+                        placeholder="O que saiu daí? (obrigatório)"
                         onChange={(e) => salva(i.companyId, { observacaoResultado: e.target.value }, 600)}
                         className={`w-full rounded-lg border px-2.5 py-2 text-sm resize-y disabled:bg-zinc-50 ${
                           faltaObs ? 'border-orange-400' : 'border-zinc-200'
                         }`}
                       />
+                      <p className={`text-[10px] mt-1 ${faltaObs ? 'text-orange-600' : 'text-zinc-400'}`}>
+                        {escrito}/{MINIMO_OBSERVACAO} caracteres
+                      </p>
                     </td>
                   </tr>
                 )
