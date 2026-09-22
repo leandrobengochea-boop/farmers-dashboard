@@ -1,7 +1,7 @@
 import {
   ANTECEDENCIA_ASSINATURA_DIAS, ANTECEDENCIA_CHECKLIST_DIAS, ETAPAS_TICKET,
   PRAZO_ASSINATURA_DIAS, PRAZO_MINUTA_DIAS_UTEIS,
-  TICKET_PIPELINE_CS, TICKET_STAGES_ATIVOS, TipoTramitacao, urlTicket,
+  TICKET_PIPELINE_CS, TICKET_STAGES_TRAMITACAO, TipoTramitacao, urlTicket,
 } from './constants'
 import { searchAllPages } from './carteira'
 
@@ -72,7 +72,7 @@ export async function pendenciasDeVarios(farmerIds: string[], hoje: string): Pro
     [{ filters: [
       { propertyName: 'hubspot_owner_id', operator: 'IN', values: farmerIds },
       { propertyName: 'hs_pipeline', operator: 'EQ', value: TICKET_PIPELINE_CS },
-      { propertyName: 'hs_pipeline_stage', operator: 'IN', values: TICKET_STAGES_ATIVOS },
+      { propertyName: 'hs_pipeline_stage', operator: 'IN', values: TICKET_STAGES_TRAMITACAO },
     ] }],
     [
       'subject', 'hs_pipeline_stage', 'data_de_realizacao_do_onboarding',

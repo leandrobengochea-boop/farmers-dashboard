@@ -150,6 +150,21 @@ export const TICKET_STAGES_ATIVOS = [
   '1333136740', // Aguardando NF Palestrante
 ]
 
+/**
+ * Etapas depois do evento: o palestrante já subiu ao palco, e minuta,
+ * assinatura e checklist não fazem mais sentido ali. O ticket segue aberto
+ * para o CS acertar nota e pagamento — trabalho que não é do farmer.
+ */
+export const ETAPAS_POS_EVENTO = [
+  '1088361911', // Pagamento Pós-Palestra
+  '1333136740', // Aguardando NF Palestrante
+]
+
+/** Etapas em que o farmer ainda tem tramitação a fazer. */
+export const TICKET_STAGES_TRAMITACAO = TICKET_STAGES_ATIVOS.filter(
+  (etapa) => !ETAPAS_POS_EVENTO.includes(etapa),
+)
+
 // Etapas de negócio ganho (mesmas do salão)
 export const WON_STAGES = ['1076664462', '1076664460']
 

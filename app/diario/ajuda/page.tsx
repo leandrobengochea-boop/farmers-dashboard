@@ -204,7 +204,9 @@ export default function AjudaPage() {
         <p>
           A aba <b>Tramitações</b> é o mesmo ritual do diário, aplicado aos tickets de CS em vez das empresas:
           de manhã aparece o que tem prazo, o farmer marca o que vai tratar, e no fim do dia registra a evolução.
-          A lista sai dos tickets abertos onde o farmer é o proprietário, no pipeline CS.
+          A lista sai dos tickets abertos onde o farmer é o proprietário, no pipeline CS — fora os que já
+          passaram para <b>Pagamento pós-palestra</b> e <b>Aguardando NF palestrante</b>: ali o evento já
+          aconteceu, e o que falta é nota e pagamento, trabalho do CS e não do farmer.
         </p>
         <table className="w-full text-sm mt-4 border border-zinc-200 rounded-lg overflow-hidden">
           <thead className="bg-zinc-50 text-[11px] uppercase tracking-wide text-zinc-500">
