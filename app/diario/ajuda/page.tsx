@@ -122,6 +122,11 @@ export default function AjudaPage() {
           caixa postal viram <b>tentativa</b>; empresa sem nenhuma atividade fica como <b>não abordei</b>.
         </p>
         <p className="mt-3">
+          <b>WhatsApp conta como tentativa</b>, nunca como efetivo. O registro que a automação grava no HubSpot
+          não diz se o cliente respondeu — só que a mensagem saiu. Se a conversa aconteceu de verdade, marque
+          <b> contato efetivo</b> à mão: escolha sua nunca é sobrescrita.
+        </p>
+        <p className="mt-3">
           Isso acontece <b>sozinho, ao longo do dia</b>, e vale também para a Agenda: o líder vê o placar do time
           evoluindo mesmo que ninguém reabra o diário. O que o sistema nunca sobrescreve é escolha feita à mão —
           se você marcou algo, fica o que você marcou.

@@ -117,8 +117,15 @@ Empresa onde o proprietário **atual** registrou um negócio **e** já realizou 
 
 - ligação com disposição conectada, ou reunião realizada → **efetivo**
 - sem resposta, ocupado, caixa postal → **tentativa**
+- **mensagem de WhatsApp → tentativa, nunca efetivo** (ver abaixo)
 - nenhuma atividade → fica em branco
 - a anotação da ligação (`hs_call_body`) vira a observação
+
+> **WhatsApp é o objeto `communications`, não `calls`.** A automação grava a conversa ali, com `hs_communication_channel_type = WHATS_APP` — foi um ponto cego do diário até 23/09. São ~780 mensagens/dia no time, tocando 139 empresas, 47 delas na lista do dia.
+>
+> Fica sempre como **tentativa** porque **não existe campo de direção no HubSpot** (verifiquei as 55 propriedades do objeto). O único sinal é o HTML que a automação escreve, e ele aparece em pelo menos três formatos — inclusive export de WhatsApp com o nome de perfil do próprio farmer ("Curador de Palestras na PSA"), que um detector lê como estranho. Três tentativas de classificar a resposta do cliente deram 786, 21 e 444 positivos sobre a mesma base de ~930 registros: nenhuma confiável.
+>
+> **Para destravar isso, a correção é na automação, não no código:** gravar a direção num campo (ou separar mensagem recebida de enviada em tipos distintos). Aí "cliente respondeu → efetivo" vira uma leitura de campo.
 
 Isso roda em `/api/diario/dia` **e** em `/api/diario/agenda` — o placar do líder evolui sem o farmer reabrir a tela. **Nunca sobrescreve escolha feita à mão:** só preenche campo vazio.
 

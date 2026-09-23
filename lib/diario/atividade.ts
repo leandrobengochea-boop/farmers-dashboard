@@ -11,6 +11,7 @@ export interface AtividadeEmpresa {
   conectadas: number
   reunioes: number
   outras: number              // e-mails e notas
+  mensagens: number           // WhatsApp registrado pela automação
   texto: string               // anotação mais recente, já sem HTML
   resultadoSugerido: 'efetivo' | 'tentativa' | null
 }
@@ -81,12 +82,15 @@ export async function atividadeDeVarios(farmerIds: string[], dia: string): Promi
     { propertyName: prop, operator: 'LTE', value: fim },
   ]
 
-  const [efetivas, ligacoes, reunioes, emails, notas] = await Promise.all([
+  const [efetivas, ligacoes, reunioes, emails, notas, mensagens] = await Promise.all([
     disposicoesEfetivas(pat),
     searchAllPages(pat, 'calls', [{ filters: janela('hs_timestamp') }], ['hs_call_disposition', 'hs_call_body', 'hubspot_owner_id']).catch(() => []),
     searchAllPages(pat, 'meetings', [{ filters: janela('hs_timestamp') }], ['hs_meeting_outcome', 'hs_meeting_body', 'hubspot_owner_id']).catch(() => []),
     searchAllPages(pat, 'emails', [{ filters: janela('hs_timestamp') }], ['hubspot_owner_id']).catch(() => []),
     searchAllPages(pat, 'notes', [{ filters: janela('hs_timestamp') }], ['hs_note_body', 'hubspot_owner_id']).catch(() => []),
+    // WhatsApp entra pelo objeto `communications`, não por `calls` — a automação
+    // grava a conversa aí, e sem isso o diário não enxerga o canal mais usado.
+    searchAllPages(pat, 'communications', [{ filters: janela('hs_timestamp') }], ['hs_communication_body', 'hubspot_owner_id']).catch(() => []),
   ])
 
   function registra(dono: string, empresa: string): AtividadeEmpresa | null {
@@ -94,17 +98,18 @@ export async function atividadeDeVarios(farmerIds: string[], dia: string): Promi
     if (!mapa) return null
     let a = mapa.get(empresa)
     if (!a) {
-      a = { ligacoes: 0, conectadas: 0, reunioes: 0, outras: 0, texto: '', resultadoSugerido: null }
+      a = { ligacoes: 0, conectadas: 0, reunioes: 0, outras: 0, mensagens: 0, texto: '', resultadoSugerido: null }
       mapa.set(empresa, a)
     }
     return a
   }
 
-  const [empLigacoes, empReunioes, empEmails, empNotas] = await Promise.all([
+  const [empLigacoes, empReunioes, empEmails, empNotas, empMensagens] = await Promise.all([
     porEmpresa(pat, 'calls', ligacoes.map((c) => c.id)),
     porEmpresa(pat, 'meetings', reunioes.map((m) => m.id)),
     porEmpresa(pat, 'emails', emails.map((e) => e.id)),
     porEmpresa(pat, 'notes', notas.map((n) => n.id)),
+    porEmpresa(pat, 'communications', mensagens.map((c) => c.id)),
   ])
 
   for (const c of ligacoes) {
@@ -145,10 +150,19 @@ export async function atividadeDeVarios(farmerIds: string[], dia: string): Promi
     }
   }
 
+  for (const c of mensagens) {
+    for (const empresa of empMensagens.get(c.id) ?? []) {
+      const a = registra(c.properties.hubspot_owner_id ?? '', empresa)
+      if (a) a.mensagens++
+    }
+  }
+
   for (const mapa of porFarmer.values()) {
     for (const a of mapa.values()) {
+      // Mensagem de WhatsApp nunca vira "efetivo" sozinha: o registro não diz se
+      // o cliente respondeu, e chutar isso inflaria a efetividade do time todo.
       if (a.conectadas > 0 || a.reunioes > 0) a.resultadoSugerido = 'efetivo'
-      else if (a.ligacoes > 0 || a.outras > 0) a.resultadoSugerido = 'tentativa'
+      else if (a.ligacoes > 0 || a.outras > 0 || a.mensagens > 0) a.resultadoSugerido = 'tentativa'
     }
   }
   return porFarmer
