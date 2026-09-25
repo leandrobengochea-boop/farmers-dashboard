@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider } from '@/lib/diario/constants'
-import { emDescanso, precisaAuxilio, hojeSP, montaSugestoes } from '@/lib/diario/carteira'
+import { emDescanso, precisaAuxilio, hojeSP, montaSugestoes, negociacoesAtivas } from '@/lib/diario/carteira'
 import { poolDaCarteira, resumoDoMes } from '@/lib/diario/metrics'
 import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe, registraAcesso } from '@/lib/diario/db'
 import { empresasComSelo } from '@/lib/diario/relacionamento'
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
       itens = await itensDoDia(farmerId, data)
     }
 
-    const [resumo, brief, pool, historico, orientacoes, selos, atividade] = await Promise.all([
+    const [resumo, brief, pool, historico, orientacoes, selos, atividade, negociacoes] = await Promise.all([
       resumoDoMes([farmerId], data),
       briefing(farmerId, data),
       poolDaCarteira(farmerId, data),
@@ -51,6 +51,7 @@ export async function GET(req: Request) {
       orientacoesDe([farmerId]),
       empresasComSelo(farmerId, itens.map((i) => i.companyId)).catch(() => new Set<string>()),
       atividadeDoDia(farmerId, data).catch((e) => { console.error('atividadeDoDia falhou:', e); return new Map<string, AtividadeEmpresa>() }),
+      negociacoesAtivas(farmerId, data).catch(() => []),
     ])
     const doFarmer = orientacoes.get(farmerId)
 
@@ -79,7 +80,12 @@ export async function GET(req: Request) {
     const auxilio = comHistorico.filter((i) => i.precisaAuxilio).length
 
     return NextResponse.json(
-      { usuario, farmerId, data, itens: comHistorico, pool: { ...pool, emDescanso: descansando, precisandoAuxilio: auxilio }, resumo, briefing: brief },
+      {
+        usuario, farmerId, data, itens: comHistorico, resumo, briefing: brief,
+        pool: { ...pool, emDescanso: descansando, precisandoAuxilio: auxilio },
+        // negócios vivos no funil B2B: ficam à parte da lista do dia
+        negociacoes,
+      },
       { headers: { 'Cache-Control': 'no-store' } },
     )
   } catch (erro) {

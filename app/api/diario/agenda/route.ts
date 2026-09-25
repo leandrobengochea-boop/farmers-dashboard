@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { FARMERS, TEAMS } from '@/lib/constants'
 import { usuarioAtual } from '@/lib/diario/session'
-import { farmersDoLider, LIDERES, TRAMITACOES, TipoTramitacao } from '@/lib/diario/constants'
+import { Bucket, BUCKETS_FORA_DA_CONTA, farmersDoLider, LIDERES, TRAMITACOES, TipoTramitacao } from '@/lib/diario/constants'
 import { hojeSP } from '@/lib/diario/carteira'
 import { resumoDoMes } from '@/lib/diario/metrics'
 import {
@@ -85,8 +85,8 @@ export async function GET(req: Request) {
 
     const agenda: AgendaFarmer[] = farmerIds.map((farmerId) => {
       const doFarmer = itens.filter((i) => i.farmerId === farmerId)
-      // Os extras (clientes recentes) são bônus e não entram no placar do dia.
-      const doDia = doFarmer.filter((i) => i.bucket !== 'extra')
+      // Extras (cliente recente e negociação parada) são bônus: fora do placar do dia.
+      const doDia = doFarmer.filter((i) => !BUCKETS_FORA_DA_CONTA.includes(i.bucket as Bucket))
       const brief = briefings.find((b) => b.farmerId === farmerId)
       // Empresas com três tentativas sem contato: seguem na lista do farmer,
       // esperando uma orientação do líder.

@@ -1,5 +1,7 @@
+import { HUBSPOT_PORTAL_ID } from '../constants'
 import {
-  Bucket, COTA_DIARIA, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, LIMITE_MESES, TENTATIVAS_ATE_AUXILIO, urlEmpresa,
+  Bucket, COTA_DIARIA, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, DIAS_NEGOCIACAO_PARADA,
+  ETAPAS_FUNIL_ATIVO, LIMITE_MESES, PIPELINE_B2B, TENTATIVAS_ATE_AUXILIO, urlEmpresa,
 } from './constants'
 import { HistoricoEmpresa, ItemDiario, historicoDoFarmer, trocasPendentes } from './db'
 
@@ -13,6 +15,16 @@ export interface Empresa {
   bucket: Bucket
   diasDesdeCompra: number | null
   noFunil: boolean               // já tem negócio aberto com este farmer
+  negociacao: Negociacao | null  // negócio vivo no funil B2B, nas etapas ativas
+}
+
+/** Negócio em andamento no funil B2B — o que a empresa já tem na mesa. */
+export interface Negociacao {
+  dealId: string
+  etapa: string                  // rótulo legível, nunca o id
+  diasNaEtapa: number
+  parada: boolean                // passou de DIAS_NEGOCIACAO_PARADA sem andar
+  hubspotUrl: string
 }
 
 export interface ResumoPool {
@@ -22,6 +34,8 @@ export interface ResumoPool {
   emCooldown: number
   precisandoAuxilio: number
   noFunil: number
+  negociando: number
+  negociacaoParada: number
   contatoEfetivoNoMes: number
   trocandoSegmento: number
 }
@@ -123,7 +137,15 @@ export function classifica(ultimaCompra: string | null, hoje: string): { bucket:
 }
 
 /** Empresas com negócio aberto deste farmer — já estão sendo trabalhadas. */
-async function empresasNoFunil(pat: string, farmerId: string): Promise<Set<string>> {
+/**
+ * Negócios abertos do farmer. Devolve duas coisas: o conjunto de empresas que
+ * saem do rodízio (qualquer negócio aberto, em qualquer funil) e o detalhe das
+ * que estão numa etapa ativa do funil B2B, que é o que o farmer acompanha.
+ */
+async function empresasNoFunil(
+  pat: string, farmerId: string, hoje: string,
+): Promise<{ todas: Set<string>; negociando: Map<string, Negociacao> }> {
+  const etapas = Object.keys(ETAPAS_FUNIL_ATIVO)
   const deals = await searchAllPages(
     pat,
     'deals',
@@ -131,11 +153,13 @@ async function empresasNoFunil(pat: string, farmerId: string): Promise<Set<strin
       { propertyName: 'sdrfarmer_responsavel', operator: 'EQ', value: farmerId },
       { propertyName: 'hs_is_closed', operator: 'EQ', value: 'false' },
     ] }],
-    ['dealname'],
+    ['dealname', 'pipeline', 'dealstage', ...etapas.map((e) => `hs_v2_date_entered_${e}`)],
   ).catch(() => [])
 
   const ids = deals.map((d) => d.id)
   const empresas = new Set<string>()
+  const negociando = new Map<string, Negociacao>()
+  const porDeal = new Map<string, string[]>()
   for (let i = 0; i < ids.length; i += 100) {
     const chunk = ids.slice(i, i + 100)
     if (i > 0) await sleep(120)
@@ -148,29 +172,100 @@ async function empresasNoFunil(pat: string, farmerId: string): Promise<Set<strin
       console.error('associações deals→companies falharam:', resp.status)
       continue
     }
-    const data = (await resp.json()) as { results?: Array<{ to: Array<{ toObjectId: number | string }> }> }
+    const data = (await resp.json()) as { results?: Array<{ from: { id: string }; to: Array<{ toObjectId: number | string }> }> }
     for (const row of data.results ?? []) {
-      for (const t of row.to ?? []) empresas.add(String(t.toObjectId))
+      const alvos = (row.to ?? []).map((t) => String(t.toObjectId))
+      for (const t of alvos) empresas.add(t)
+      porDeal.set(row.from.id, alvos)
     }
   }
-  return empresas
+
+  for (const d of deals) {
+    const etapa = d.properties.dealstage ?? ''
+    if (d.properties.pipeline !== PIPELINE_B2B || !ETAPAS_FUNIL_ATIVO[etapa]) continue
+    const entrou = d.properties[`hs_v2_date_entered_${etapa}`]
+    const diasNaEtapa = entrou ? diasEntre(String(entrou).slice(0, 10), hoje) : 0
+    for (const empresa of porDeal.get(d.id) ?? []) {
+      // empresa com mais de um negócio fica com o mais parado: é o que precisa de ação
+      const atual = negociando.get(empresa)
+      if (atual && atual.diasNaEtapa >= diasNaEtapa) continue
+      negociando.set(empresa, {
+        dealId: d.id,
+        etapa: ETAPAS_FUNIL_ATIVO[etapa],
+        diasNaEtapa,
+        parada: diasNaEtapa > DIAS_NEGOCIACAO_PARADA,
+        hubspotUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/record/0-3/${d.id}`,
+      })
+    }
+  }
+  return { todas: empresas, negociando }
 }
 
-export async function fetchCarteira(farmerId: string, hoje: string): Promise<Empresa[]> {
+/** Nome das empresas, em lote. Usado quando o negócio aponta para fora da carteira. */
+async function nomesDeEmpresas(ids: string[]): Promise<Map<string, string>> {
+  const nomes = new Map<string, string>()
+  const pat = process.env.HUBSPOT_PAT
+  if (!pat || ids.length === 0) return nomes
+  for (let i = 0; i < ids.length; i += 100) {
+    const resp = await fetchWithRetry('https://api.hubapi.com/crm/v3/objects/companies/batch/read', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ properties: ['name'], inputs: ids.slice(i, i + 100).map((id) => ({ id })) }),
+    })
+    if (!resp.ok) continue
+    const data = (await resp.json()) as { results?: Array<{ id: string; properties: Record<string, string> }> }
+    for (const r of data.results ?? []) nomes.set(r.id, r.properties.name ?? `Empresa ${r.id}`)
+  }
+  return nomes
+}
+
+/**
+ * Negócios vivos do farmer no funil B2B, nas etapas ativas. Fica separado da
+ * carteira porque a lista do dia é congelada na primeira abertura, e o estado
+ * da negociação muda depois disso — o farmer precisa ver como está agora.
+ */
+export async function negociacoesAtivas(farmerId: string, hoje: string): Promise<NegociacaoEmpresa[]> {
+  const pat = process.env.HUBSPOT_PAT
+  if (!pat) return []
+  const { negociando } = await empresasNoFunil(pat, farmerId, hoje)
+  if (negociando.size === 0) return []
+
+  const ids = [...negociando.keys()]
+  const nomes = await nomesDeEmpresas(ids)
+
+  return ids
+    .map((companyId) => ({
+      companyId,
+      companyName: nomes.get(companyId) ?? `Empresa ${companyId}`,
+      empresaUrl: urlEmpresa(companyId),
+      ...negociando.get(companyId)!,
+    }))
+    .sort((a, b) => b.diasNaEtapa - a.diasNaEtapa)
+}
+
+export type NegociacaoEmpresa = Negociacao & {
+  companyId: string
+  companyName: string
+  empresaUrl: string
+}
+
+export async function fetchCarteira(
+  farmerId: string, hoje: string,
+): Promise<{ empresas: Empresa[]; negociacoes: Map<string, Negociacao> }> {
   const pat = process.env.HUBSPOT_PAT
   if (!pat) throw new Error('HUBSPOT_PAT não configurado')
 
-  const [rows, noFunil] = await Promise.all([
+  const [rows, funil] = await Promise.all([
     searchAllPages(
       pat,
       'companies',
       [{ filters: [{ propertyName: 'hubspot_owner_id', operator: 'EQ', value: farmerId }] }],
       ['name', 'data_da_ultima_compra', 'ultimo_contato_efetivo', 'city'],
     ),
-    empresasNoFunil(pat, farmerId),
+    empresasNoFunil(pat, farmerId, hoje),
   ])
 
-  return rows.map((r) => {
+  const empresas = rows.map((r) => {
     const ultimaCompra = (r.properties.data_da_ultima_compra ?? '')?.slice(0, 10) || null
     const { bucket, dias } = classifica(ultimaCompra, hoje)
     return {
@@ -182,9 +277,11 @@ export async function fetchCarteira(farmerId: string, hoje: string): Promise<Emp
       hubspotUrl: urlEmpresa(r.id),
       bucket,
       diasDesdeCompra: dias,
-      noFunil: noFunil.has(r.id),
+      noFunil: funil.todas.has(r.id),
+      negociacao: funil.negociando.get(r.id) ?? null,
     }
   })
+  return { empresas, negociacoes: funil.negociando }
 }
 
 /**
@@ -218,7 +315,7 @@ export interface Sugestoes {
  * primeiro contato, para o farmer nunca receber menos de 20.
  */
 export async function montaSugestoes(farmerId: string, hoje: string): Promise<Sugestoes> {
-  const carteira = await fetchCarteira(farmerId, hoje)
+  const { empresas: carteira, negociacoes } = await fetchCarteira(farmerId, hoje)
   const historico = await historicoDoFarmer(farmerId, hoje)
   // Empresa com troca de segmento em aberto não volta: ela é o problema,
   // não a tarefa. Volta sozinha se o líder disser que o segmento está certo.
@@ -235,6 +332,8 @@ export async function montaSugestoes(farmerId: string, hoje: string): Promise<Su
     noFunil: carteira.filter((e) => e.noFunil).length,
     contatoEfetivoNoMes: carteira.filter((e) => e.ultimoContato && e.ultimoContato >= inicioMes).length,
     trocandoSegmento: carteira.filter((e) => trocando.has(e.id)).length,
+    negociando: carteira.filter((e) => e.negociacao).length,
+    negociacaoParada: carteira.filter((e) => e.negociacao?.parada).length,
   }
   for (const e of carteira) resumo.porBucket[e.bucket] = (resumo.porBucket[e.bucket] ?? 0) + 1
 
@@ -288,8 +387,35 @@ export async function montaSugestoes(farmerId: string, hoje: string): Promise<Su
     puxa(bucket, falta)
   }
 
-  // Extras: clientes recentes, para sugerir o próximo evento. Fora da conta das 20.
-  puxa('extra', COTA_DIARIA.extra)
+  // Extras: negócio que está na mesa e parou de andar vem primeiro — destravar o
+  // que já existe vale mais que qualquer abordagem nova. O que sobrar de vaga
+  // volta a ser cliente recente. Tudo isso fora da conta das 20.
+  const porId = new Map(carteira.map((e) => [e.id, e]))
+  const paradas = [...negociacoes.entries()]
+    .filter(([id, n]) => n.parada && !usados.has(id) && !trocando.has(id) && !emDescanso(historico.get(id), hoje))
+    .sort((a, b) => b[1].diasNaEtapa - a[1].diasNaEtapa)
+    .slice(0, COTA_DIARIA.extra)
+
+  const nomes = await nomesDeEmpresas(paradas.filter(([id]) => !porId.has(id)).map(([id]) => id))
+  for (const [id, n] of paradas) {
+    usados.add(id)
+    const daCarteira = porId.get(id)
+    escolhidas.push({
+      ...(daCarteira ?? {
+        id,
+        nome: nomes.get(id) ?? `Empresa ${id}`,
+        ultimaCompra: null,
+        ultimoContato: null,
+        cidade: '',
+        hubspotUrl: urlEmpresa(id),
+        diasDesdeCompra: null,
+        noFunil: true,
+        negociacao: n,
+      }),
+      bucket: 'negociacao',
+    })
+  }
+  puxa('extra', COTA_DIARIA.extra - paradas.length)
 
   const itens: ItemDiario[] = escolhidas.map((empresa) => ({
     farmerId,

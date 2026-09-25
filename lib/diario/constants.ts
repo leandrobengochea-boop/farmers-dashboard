@@ -9,6 +9,7 @@ export const ABORDAGENS = [
   'PRIMEIRO CONTATO',
   'ACOMPANHAMENTO DE TRAMITAÇÃO',
   'CONTATO PÓS-EVENTO',
+  'ACOMPANHAR NEGOCIAÇÃO',
 ] as const
 
 export type Abordagem = (typeof ABORDAGENS)[number]
@@ -46,7 +47,13 @@ export const RESULTADO_EXIGE_OBSERVACAO: Resultado[] = ['efetivo', 'nao_abordei'
 export const RESULTADO_FORA_DO_PLACAR: Resultado[] = ['trocar_segmento']
 
 // ── Baldes de sugestão, por tempo desde a última compra ──
-export type Bucket = 'extra' | 'nutricao' | 'recompra' | 'reativacao' | 'primeiro_contato'
+export type Bucket = 'extra' | 'negociacao' | 'nutricao' | 'recompra' | 'reativacao' | 'primeiro_contato'
+
+/**
+ * Baldes que são bônus do dia e ficam fora da conta das 20 — tanto no placar
+ * do líder quanto no relatório de evolução.
+ */
+export const BUCKETS_FORA_DA_CONTA: Bucket[] = ['extra', 'negociacao']
 
 /**
  * Fronteiras em meses desde a última contratação. Mudar aqui muda a
@@ -54,7 +61,33 @@ export type Bucket = 'extra' | 'nutricao' | 'recompra' | 'reativacao' | 'primeir
  */
 export const LIMITE_MESES = { entreEventos: 3, nutricao: 8, recompra: 12 }
 
+/**
+ * Funil de Vendas B2B. ATENÇÃO: o funil foi montado em cima do pipeline padrão
+ * do HubSpot e os ids ficaram mentirosos — `closedwon` é "Proposta enviada" e
+ * `closedlost` é "Em negociação", ambas etapas ABERTAS. Nunca deduza o
+ * significado pelo id; use este mapa.
+ */
+export const PIPELINE_B2B = 'default'
+
+export const ETAPAS_FUNIL_ATIVO: Record<string, string> = {
+  decisionmakerboughtin: 'Reunião agendada',
+  closedwon: 'Proposta enviada',
+  closedlost: 'Em negociação',
+  '1167445770': 'Negociação avançada',
+}
+
+/**
+ * Dias na etapa atual até a negociação virar prioridade do dia. Passou disso,
+ * ninguém mexeu no negócio e ele entra como extra para o farmer acompanhar.
+ */
+export const DIAS_NEGOCIACAO_PARADA = 15
+
 export const BUCKETS: Record<Bucket, { label: string; faixa: string; hint: string }> = {
+  negociacao: {
+    label: 'Negociação parada',
+    faixa: `parada há mais de ${DIAS_NEGOCIACAO_PARADA} dias`,
+    hint: 'Negócio aberto no funil B2B que não anda de etapa há mais de duas semanas. Aqui não se vende de novo: se destrava o que já está na mesa.',
+  },
   extra: {
     label: 'Entre eventos',
     faixa: `até ${LIMITE_MESES.entreEventos} meses`,
@@ -84,6 +117,7 @@ export const BUCKETS: Record<Bucket, { label: string; faixa: string; hint: strin
 
 // Ordem de exibição: o que é mais quente primeiro.
 export const ORDEM_BUCKET: Record<Bucket, number> = {
+  negociacao: -1,   // negócio na mesa vem antes de qualquer abordagem nova
   recompra: 0,
   nutricao: 1,
   reativacao: 2,
@@ -133,6 +167,7 @@ export const TENTATIVAS_ATE_AUXILIO = 3
 
 // Abordagem sugerida por balde (o farmer pode trocar).
 export const ABORDAGEM_PADRAO: Record<Bucket, Abordagem> = {
+  negociacao: 'ACOMPANHAR NEGOCIAÇÃO',
   extra: 'AGENDAR PSA FIRST',
   nutricao: 'REUNIÃO DE RELACIONAMENTO',
   recompra: 'REUNIÃO DE RELACIONAMENTO',

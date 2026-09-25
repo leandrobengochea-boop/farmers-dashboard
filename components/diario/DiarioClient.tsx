@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ABORDAGEM_PADRAO, ABORDAGENS, Bucket, BUCKETS, COTA_DIARIA, MINIMO_OBSERVACAO,
-  ORDEM_BUCKET, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, Resultado, urlEmpresa,
+  DIAS_NEGOCIACAO_PARADA, ORDEM_BUCKET, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, Resultado, urlEmpresa,
 } from '@/lib/diario/constants'
 import type { Briefing, ItemDiario } from '@/lib/diario/db'
 import type { PoolCarteira, ResumoMes } from '@/lib/diario/metrics'
@@ -53,6 +53,18 @@ interface Dados {
   pool: (PoolCarteira & { emDescanso: number; precisandoAuxilio: number }) | null
   resumo: ResumoMes
   briefing: Briefing
+  negociacoes?: Negociacao[]
+}
+
+/** Negócio vivo no funil B2B — fica fora da lista do dia, mas à vista. */
+interface Negociacao {
+  companyId: string
+  companyName: string
+  empresaUrl: string
+  hubspotUrl: string
+  etapa: string
+  diasNaEtapa: number
+  parada: boolean
 }
 
 const CORES_BUCKET: Record<string, string> = {
@@ -60,6 +72,7 @@ const CORES_BUCKET: Record<string, string> = {
   nutricao: 'bg-violet-100 text-violet-800 border-violet-200',
   reativacao: 'bg-blue-100 text-blue-800 border-blue-200',
   extra: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  negociacao: 'bg-zinc-900 text-white border-zinc-900',
   primeiro_contato: 'bg-zinc-100 text-zinc-700 border-zinc-200',
 }
 
@@ -250,6 +263,51 @@ export default function DiarioClient({ usuario, farmers }: Props) {
         </div>
       )}
 
+      {(dados?.negociacoes?.length ?? 0) > 0 && (
+        <div className="mb-6 rounded-2xl border border-zinc-300 bg-white px-5 py-4">
+          <div className="flex items-baseline gap-2 mb-1">
+            <h2 className="text-sm font-bold uppercase tracking-wide">Negociações em aberto</h2>
+            <span className="text-xs text-zinc-500">
+              {dados!.negociacoes!.length} no funil B2B · {dados!.negociacoes!.filter((n) => n.parada).length} sem andar
+              há mais de {DIAS_NEGOCIACAO_PARADA} dias
+            </span>
+          </div>
+          <p className="text-xs text-zinc-500 mb-4">
+            Estas empresas estão fora da lista de abordagem — já existe negócio na mesa. As paradas entram como
+            extra do dia, para você acompanhar.
+          </p>
+          <div className="grid gap-2">
+            {dados!.negociacoes!.map((n) => (
+              <div
+                key={n.companyId}
+                className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2.5 ${
+                  n.parada ? 'border-zinc-900/20 bg-zinc-50' : 'border-zinc-200'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <a href={n.empresaUrl} target="_blank" rel="noreferrer"
+                    className="text-sm font-medium truncate hover:text-orange-600 hover:underline">
+                    {n.companyName}
+                  </a>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded border bg-white border-zinc-200 shrink-0">
+                    {n.etapa}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-xs ${n.parada ? 'font-semibold text-zinc-900' : 'text-zinc-500'}`}>
+                    {n.diasNaEtapa === 0 ? 'entrou hoje' : `${n.diasNaEtapa} dia${n.diasNaEtapa === 1 ? '' : 's'} nesta etapa`}
+                  </span>
+                  <a href={n.hubspotUrl} target="_blank" rel="noreferrer"
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-300 hover:border-zinc-500">
+                    Abrir negócio
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-zinc-100">
           <div className="flex items-center gap-3">
@@ -321,7 +379,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
             className="flex-1 min-w-[220px] rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
           <div className="flex flex-wrap gap-2">
-            {['todos', 'recompra', 'nutricao', 'reativacao', 'extra', 'primeiro_contato'].map((b) => {
+            {['todos', 'negociacao', 'recompra', 'nutricao', 'reativacao', 'extra', 'primeiro_contato'].map((b) => {
               const total = b === 'todos' ? itens.length : itens.filter((i) => i.bucket === b).length
               if (total === 0 && b !== 'todos') return null
               return (

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { usuarioAtual } from '@/lib/diario/session'
 import {
   ABORDAGENS, BUCKETS, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, COTA_DIARIA,
-  EMPRESAS_DO_DIA, MINIMO_OBSERVACAO, RESULTADOS, RESULTADO_FORA_DO_PLACAR, TENTATIVAS_ATE_AUXILIO,
+  DIAS_NEGOCIACAO_PARADA, EMPRESAS_DO_DIA, MINIMO_OBSERVACAO, RESULTADOS, RESULTADO_FORA_DO_PLACAR, TENTATIVAS_ATE_AUXILIO,
   ANTECEDENCIA_CHECKLIST_DIAS, PRAZO_ASSINATURA_DIAS, PRAZO_MINUTA_DIAS_UTEIS,
   RESULTADOS_TRAMITACAO, TRAMITACOES, TipoTramitacao,
 } from '@/lib/diario/constants'
@@ -77,9 +77,22 @@ export default function AjudaPage() {
           <li><b>{COTA_DIARIA.nutricao}</b> de {BUCKETS.nutricao.label.toLowerCase()}</li>
           <li><b>{COTA_DIARIA.reativacao}</b> de {BUCKETS.reativacao.label.toLowerCase()}</li>
           <li className="text-zinc-500">
-            + <b>{COTA_DIARIA.extra}</b> de {BUCKETS.extra.label.toLowerCase()}, como extras fora da conta das {EMPRESAS_DO_DIA}
+            + <b>{COTA_DIARIA.extra}</b> extras fora da conta das {EMPRESAS_DO_DIA}: primeiro as{' '}
+            <b>negociações paradas</b> há mais de {DIAS_NEGOCIACAO_PARADA} dias; o que sobrar de vaga vira{' '}
+            {BUCKETS.extra.label.toLowerCase()}
           </li>
         </ul>
+        <p className="mt-4">
+          <b>Empresa com negócio aberto não entra na lista de abordagem.</b> Já existe conversa na mesa, e
+          oferecer reativação para quem está negociando é ruído. Elas aparecem num bloco à parte, <b>Negociações
+          em aberto</b>, com a etapa do funil B2B e há quantos dias estão nela.
+        </p>
+        <p className="mt-3">
+          Quando a negociação passa de {DIAS_NEGOCIACAO_PARADA} dias sem mudar de etapa, ela entra como extra do
+          dia com a abordagem <b>ACOMPANHAR NEGOCIAÇÃO</b> — destravar o que já está na mesa vale mais que
+          qualquer abordagem nova. Vale a negociação de quem é <b>responsável pelo negócio</b>, mesmo que a
+          empresa esteja na carteira de outra pessoa: quem negocia é quem acompanha.
+        </p>
         <p className="mt-4">
           Dentro de cada fase, a ordem tem lógica: em recompra e nutrição vem primeiro quem está mais perto de
           estourar a janela; em reativação vem primeiro a mais morna, ou seja, a que comprou mais recentemente

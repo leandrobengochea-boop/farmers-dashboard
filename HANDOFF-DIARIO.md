@@ -71,6 +71,13 @@ A lista é gerada **na primeira abertura do dia e congela** — dar refresh não
 
 > **Por que existe cooldown:** numa carteira típica de ~296 empresas, só ~37% têm histórico de compra. Sem descanso, o pool elegível inteiro se esgota em cerca de uma semana e o farmer recebe a mesma lista toda vez. Ao mexer em `COTA_DIARIA`, recalcule se o pool sustenta o ritmo.
 
+### Negociações no funil B2B
+Empresa com negócio aberto **não entra na lista de abordagem** — já existe conversa na mesa. As que estão nas quatro etapas ativas do funil B2B aparecem num bloco à parte no diário, com a etapa e há quantos dias estão nela. Passando de 15 dias sem mudar de etapa, a negociação entra como **extra do dia** (abordagem `ACOMPANHAR NEGOCIAÇÃO`), na frente de "entre eventos".
+
+> ⚠️ **Os ids das etapas do funil B2B são mentirosos.** O funil foi montado sobre o pipeline padrão do HubSpot e ninguém trocou os ids: `closedwon` é **"Proposta enviada"** e `closedlost` é **"Em negociação"** — ambas etapas ABERTAS. Nunca deduza o significado pelo id; use `ETAPAS_FUNIL_ATIVO` em `lib/diario/constants.ts`.
+
+> **O responsável pelo negócio nem sempre é o dono da empresa.** Das 54 negociações paradas medidas em 25/09, **37 estavam em empresas da carteira de outra pessoa**. Os extras seguem o `sdrfarmer_responsavel` do negócio, não o dono da empresa: quem negocia é quem acompanha. Puxar da carteira mostraria só 15 das 54.
+
 ### Quando a empresa volta
 | Último resultado | Volta em |
 |---|---|

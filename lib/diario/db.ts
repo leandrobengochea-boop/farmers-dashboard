@@ -1,3 +1,4 @@
+import { Bucket, BUCKETS_FORA_DA_CONTA } from './constants'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
 
@@ -511,12 +512,12 @@ export async function serieDoPeriodo(farmerIds: string[], de: string, ate: strin
     await garanteSchema()
     const rows = await sql()`
       SELECT farmer_id, data::text AS dia,
-        count(*) FILTER (WHERE bucket <> 'extra' AND resultado IS DISTINCT FROM 'trocar_segmento') AS setadas,
-        count(*) FILTER (WHERE bucket <> 'extra' AND resultado = 'efetivo')     AS efetivo,
-        count(*) FILTER (WHERE bucket <> 'extra' AND resultado = 'tentativa')   AS tentativa,
-        count(*) FILTER (WHERE bucket <> 'extra' AND resultado = 'nao_abordei') AS nao_abordei,
-        count(*) FILTER (WHERE bucket <> 'extra' AND resultado IS NULL)         AS sem_registro,
-        count(*) FILTER (WHERE bucket <> 'extra' AND resultado = 'trocar_segmento') AS troca
+        count(*) FILTER (WHERE NOT (bucket = ANY(${BUCKETS_FORA_DA_CONTA})) AND resultado IS DISTINCT FROM 'trocar_segmento') AS setadas,
+        count(*) FILTER (WHERE NOT (bucket = ANY(${BUCKETS_FORA_DA_CONTA})) AND resultado = 'efetivo')     AS efetivo,
+        count(*) FILTER (WHERE NOT (bucket = ANY(${BUCKETS_FORA_DA_CONTA})) AND resultado = 'tentativa')   AS tentativa,
+        count(*) FILTER (WHERE NOT (bucket = ANY(${BUCKETS_FORA_DA_CONTA})) AND resultado = 'nao_abordei') AS nao_abordei,
+        count(*) FILTER (WHERE NOT (bucket = ANY(${BUCKETS_FORA_DA_CONTA})) AND resultado IS NULL)         AS sem_registro,
+        count(*) FILTER (WHERE NOT (bucket = ANY(${BUCKETS_FORA_DA_CONTA})) AND resultado = 'trocar_segmento') AS troca
       FROM diario_item
       WHERE farmer_id = ANY(${farmerIds}) AND data >= ${de}::date AND data <= ${ate}::date
       GROUP BY farmer_id, data
@@ -536,7 +537,7 @@ export async function serieDoPeriodo(farmerIds: string[], de: string, ate: strin
   const porChave = new Map<string, DiaDoFarmer>()
   for (const i of leLocal().itens) {
     if (!farmerIds.includes(i.farmerId) || i.data < de || i.data > ate) continue
-    if (i.bucket === 'extra') continue   // extra é bônus: fora da conta do dia
+    if (BUCKETS_FORA_DA_CONTA.includes(i.bucket as Bucket)) continue   // bônus: fora da conta do dia
     const chave = `${i.farmerId}:${i.data}`
     let d = porChave.get(chave)
     if (!d) {
