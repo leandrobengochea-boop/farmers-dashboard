@@ -273,14 +273,35 @@ const TEAMS_SEP14: TeamMap = {
   },
 }
 
+// 25/09: Nathalia sai do time do Dani para o da Camila; Matheus, da Letícia para a Katy.
+const TEAMS_SEP25: TeamMap = {
+  leticia: {
+    label: 'Time Leticia',
+    farmerIds: ['97763591', '98715090', '80688884', '98715128'],
+  },
+  katyeli: {
+    label: 'Time Katy',
+    farmerIds: ['85002282', '93238814', '95415669', '92335488', '93599591', '85846971', '97204561', '98715151'],
+  },
+  camila: {
+    label: 'Time Cami',
+    farmerIds: ['80228367', '94316537', '84497577', '95993082', '95810969', '88200239', '96589066'],
+  },
+  dani: {
+    label: 'Time Dani',
+    farmerIds: ['94028856', '81033487', '89632472', '79760745', '87159365'],
+  },
+}
+
 const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
+  { from: new Date('2026-09-25').getTime(), teams: TEAMS_SEP25 },
   { from: new Date('2026-09-14').getTime(), teams: TEAMS_SEP14 },
   { from: new Date('2026-09-01').getTime(), teams: TEAMS_SEP },
   { from: new Date('2026-08-01').getTime(), teams: TEAMS_AUG },
   { from: new Date('2026-07-01').getTime(), teams: TEAMS_JULY },
 ]
 
-export const TEAMS: TeamMap = TEAMS_SEP14
+export const TEAMS: TeamMap = TEAMS_SEP25
 
 // Metas mensais de empresas únicas, por mês de vigência (mais recente primeiro).
 // teamGoals: metas individuais por time (quando diferem entre si).
