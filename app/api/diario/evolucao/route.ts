@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider, LIDERES } from '@/lib/diario/constants'
+import { dealInTeam } from '@/lib/constants'
 import { hojeSP } from '@/lib/diario/carteira'
 import { DiaDoFarmer, serieDoPeriodo } from '@/lib/diario/db'
 
@@ -62,13 +63,15 @@ export async function GET(req: Request) {
       soma(porDia.get(d.data)!, d)
     }
 
+    // O time é o daquele dia, não o de hoje: quem mudou de time em 25/09 leva o
+    // que fez antes para a formação antiga, senão o histórico do time se altera
+    // sozinho toda vez que alguém troca de líder.
     const times = gerencia
       ? LIDERES.filter((l) => l.timeKey).map((l) => {
-          const doTime = new Set(farmersDoLider(l.timeKey))
           const total = zero()
           const dias = new Map<string, Composicao>()
           for (const d of serie) {
-            if (!doTime.has(d.farmerId)) continue
+            if (!dealInTeam(d.farmerId, d.data, l.timeKey as string)) continue
             soma(total, d)
             if (!dias.has(d.data)) dias.set(d.data, zero())
             soma(dias.get(d.data)!, d)

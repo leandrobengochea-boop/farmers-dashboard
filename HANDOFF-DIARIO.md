@@ -142,6 +142,8 @@ Isso roda em `/api/diario/dia` **e** em `/api/diario/agenda` — o placar do lí
 
 Barra de 100% por dia com a composição das empresas setadas: **efetivo / tentativa / não abordei / sem registro**. O número grande é **contato efetivo sobre as empresas setadas**, não sobre as preenchidas.
 
+Os times são os **daquele dia**, não os de hoje: o relatório usa `dealInTeam`, então quem troca de líder leva o que fez antes para a formação antiga. Sem isso, o histórico de um time mudaria sozinho toda vez que alguém mudasse de time — na troca de 25/09 eram 173 empresas trocando de dono no gráfico.
+
 A escolha do denominador foi discutida e é opinativa. Medir só o que foi preenchido premiaria quem trabalha menos (atacar 3 das 20 e conectar em 2 daria 67%). Em troca, a faixa cinza de "sem registro" fica visível, porque é ela que explica o número.
 
 **O que os dados de 21/09 mostraram, e que muda como o gráfico deve ser lido:**
