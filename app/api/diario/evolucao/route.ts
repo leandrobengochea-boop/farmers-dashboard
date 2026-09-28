@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider, LIDERES } from '@/lib/diario/constants'
-import { dealInTeam } from '@/lib/constants'
+import { dealInTeam, farmersDoPeriodo, FARMERS } from '@/lib/constants'
 import { hojeSP } from '@/lib/diario/carteira'
 import { DiaDoFarmer, serieDoPeriodo } from '@/lib/diario/db'
 
@@ -50,7 +50,11 @@ export async function GET(req: Request) {
   const dias = Math.min(Math.max(parseInt(url.searchParams.get('dias') ?? '14', 10) || 14, 1), 90)
   const de = menosDias(ate, dias - 1)
 
-  const farmerIds = usuario.papel === 'lider' ? farmersDoLider(usuario.timeKey) : [usuario.id]
+  // Quem esteve no time durante a janela, não só quem está hoje: senão o
+  // histórico encolhe toda vez que alguém sai.
+  const farmerIds = usuario.papel === 'lider'
+    ? farmersDoPeriodo(usuario.timeKey, de, ate)
+    : [usuario.id]
   // Quem enxerga mais de um time compara os times; líder de time compara os farmers.
   const gerencia = usuario.papel === 'lider' && !usuario.timeKey
 
@@ -66,12 +70,28 @@ export async function GET(req: Request) {
     // O time é o daquele dia, não o de hoje: quem mudou de time em 25/09 leva o
     // que fez antes para a formação antiga, senão o histórico do time se altera
     // sozinho toda vez que alguém troca de líder.
+    // Por farmer, sobre as linhas que interessam. Recebe um filtro porque o
+    // recorte de time é por DATA: quem mudou de time aparece nos dois, cada um
+    // com os dias que foram dele.
+    const porFarmer = (vale: (d: DiaDoFarmer) => boolean) => {
+      const mapa = new Map<string, Composicao>()
+      for (const d of serie) {
+        if (!vale(d)) continue
+        if (!mapa.has(d.farmerId)) mapa.set(d.farmerId, zero())
+        soma(mapa.get(d.farmerId)!, d)
+      }
+      return [...mapa.entries()]
+        .map(([farmerId, c]) => ({ farmerId, nome: FARMERS[farmerId] ?? farmerId, ...fecha(c) }))
+        .sort((a, b) => b.pctEfetivo - a.pctEfetivo || b.setadas - a.setadas)
+    }
+
     const times = gerencia
       ? LIDERES.filter((l) => l.timeKey).map((l) => {
+          const doTime = (d: DiaDoFarmer) => dealInTeam(d.farmerId, d.data, l.timeKey as string)
           const total = zero()
           const dias = new Map<string, Composicao>()
           for (const d of serie) {
-            if (!dealInTeam(d.farmerId, d.data, l.timeKey as string)) continue
+            if (!doTime(d)) continue
             soma(total, d)
             if (!dias.has(d.data)) dias.set(d.data, zero())
             soma(dias.get(d.data)!, d)
@@ -81,6 +101,7 @@ export async function GET(req: Request) {
             lider: l.nome,
             total: fecha(total),
             dias: [...dias.entries()].sort().map(([data, c]) => ({ data, ...fecha(c) })),
+            farmers: porFarmer(doTime),
           }
         })
       : []
@@ -94,6 +115,7 @@ export async function GET(req: Request) {
         dias: [...porDia.entries()].sort().map(([data, c]) => ({ data, ...fecha(c) })),
         total: fecha(total),
         times,
+        farmers: porFarmer(() => true),
       },
       { headers: { 'Cache-Control': 'no-store' } },
     )

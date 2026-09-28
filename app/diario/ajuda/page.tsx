@@ -326,6 +326,12 @@ export default function AjudaPage() {
           segmento ficam fora da conta, então as quatro faixas sempre somam as empresas do compromisso.
         </p>
         <p className="mt-3">
+          Abaixo do gráfico vêm duas leituras da mesma composição: <b>por time</b> e <b>por farmer</b>. Escolher
+          um time no filtro estreita a lista de farmers para os daquele time — e são os dias em que cada um
+          esteve nele, não a formação de hoje: quem muda de time leva o passado para a formação antiga, e quem
+          sai continua no histórico do período em que trabalhou.
+        </p>
+        <p className="mt-3">
           A faixa cinza clara, <b>sem registro</b>, é a que explica quase tudo: dia com muita faixa cinza não é
           time que não conecta, é lista que não foi trabalhada. Por isso ela aparece no gráfico em vez de sumir
           da conta.

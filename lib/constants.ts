@@ -47,7 +47,6 @@ export const FARMERS: Record<string, string> = {
 export const FARMER_SEGMENTS: Record<string, string> = {
   '97763591': 'Contabilidades e Advocacias',           // Leonardo Bitencourt
   '98715090': 'Prefeituras',                            // Vitor
-  '80688884': 'Sistema S',                              // Rafael Brack
   '98715128': 'Construção Civil e Imobiliário',         // Mayke
   '98715151': 'Consultorias e Educação Corporativa',    // Matheus
   '85002282': 'Cooperativas de Crédito e Unimed',      // Sotoriva
@@ -130,6 +129,7 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, DateRestriction> = {
   '96198838': { untilDate: '2026-08-18' }, // Leonardo Gomes: saiu dia 17, conta até dia 17
   '97204635': { untilDate: '2026-09-20' }, // Samuel: saiu da empresa em 19/09/26
   '94891358': { untilDate: '2026-09-01' }, // Priscila: fora da formação set/26
+  '80688884': { untilDate: '2026-09-29' }, // Rafael Brack: sai do escopo de farmer em 28/09/26
   '95811085': { untilDate: '2026-09-01' }, // Wagner: fora da formação set/26
   '96198720': { untilDate: '2026-09-01' }, // Alexcia: fora da formação set/26
   '85002012': { untilDate: '2026-09-01' }, // Bruna Machado: fora da formação set/26
@@ -293,7 +293,28 @@ const TEAMS_SEP25: TeamMap = {
   },
 }
 
+// 28/09: Felippe vai para o time da Letícia e Rafael Brack sai do escopo de farmer.
+const TEAMS_SEP28: TeamMap = {
+  leticia: {
+    label: 'Time Leticia',
+    farmerIds: ['97763591', '98715090', '98715128', '94028856'],
+  },
+  katyeli: {
+    label: 'Time Katy',
+    farmerIds: ['85002282', '93238814', '95415669', '92335488', '93599591', '85846971', '97204561', '98715151'],
+  },
+  camila: {
+    label: 'Time Cami',
+    farmerIds: ['80228367', '94316537', '84497577', '95993082', '95810969', '88200239', '96589066'],
+  },
+  dani: {
+    label: 'Time Dani',
+    farmerIds: ['81033487', '89632472', '79760745', '87159365'],
+  },
+}
+
 const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
+  { from: new Date('2026-09-28').getTime(), teams: TEAMS_SEP28 },
   { from: new Date('2026-09-25').getTime(), teams: TEAMS_SEP25 },
   { from: new Date('2026-09-14').getTime(), teams: TEAMS_SEP14 },
   { from: new Date('2026-09-01').getTime(), teams: TEAMS_SEP },
@@ -301,7 +322,7 @@ const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
   { from: new Date('2026-07-01').getTime(), teams: TEAMS_JULY },
 ]
 
-export const TEAMS: TeamMap = TEAMS_SEP25
+export const TEAMS: TeamMap = TEAMS_SEP28
 
 // Metas mensais de empresas únicas, por mês de vigência (mais recente primeiro).
 // teamGoals: metas individuais por time (quando diferem entre si).
@@ -320,6 +341,33 @@ export function monthlyGoal(monthKey: string, teamId?: string | null): number {
   const period = GOAL_PERIODS.find((p) => monthKey >= p.from) ?? GOAL_BEFORE
   if (!teamId) return period.total
   return period.teamGoals?.[teamId] ?? period.perTeam
+}
+
+/**
+ * Quem passou por um time (ou pela operação toda) dentro de um período.
+ *
+ * Relatório histórico não pode usar só a formação de hoje: quem saiu levaria o
+ * passado junto, e o número do time mudaria sozinho. Aqui entra todo mundo que
+ * esteve lá em qualquer momento da janela.
+ */
+export function farmersDoPeriodo(teamId: string | null, deIso: string, ateIso: string): string[] {
+  const de = new Date(deIso).getTime()
+  const ate = new Date(ateIso).getTime()
+  const mapas: TeamMap[] = [TEAMS_BEFORE]
+  for (let i = 0; i < TEAM_PERIODS.length; i++) {
+    const inicio = TEAM_PERIODS[i].from
+    // a formação vale do seu início até o começo da formação seguinte
+    const fim = i === 0 ? Infinity : TEAM_PERIODS[i - 1].from
+    if (inicio <= ate && fim >= de) mapas.push(TEAM_PERIODS[i].teams)
+  }
+  const fora = new Set<string>()
+  for (const mapa of mapas) {
+    for (const [chave, time] of Object.entries(mapa)) {
+      if (teamId && chave !== teamId) continue
+      for (const id of time.farmerIds) fora.add(id)
+    }
+  }
+  return [...fora]
 }
 
 export function dealInTeam(farmerId: string, dateIso: string, teamId: string): boolean {

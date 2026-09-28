@@ -39,7 +39,6 @@ const ALL_FARMERS: Record<string, { name: string; initials: string }> = {
   '97763591': { name: 'Leonardo Bitencourt', initials: 'LB' },
   '81033487': { name: 'Gustavo Pacheco', initials: 'GP' },
   '92335488': { name: 'Thaina', initials: 'TH' },
-  '80688884': { name: 'Rafael Brack', initials: 'RB' },
   '96589066': { name: 'Nathalia', initials: 'NA' },
   '97204561': { name: 'Juliano', initials: 'JM' },
   '98715090': { name: 'Vitor Martini', initials: 'VM' },

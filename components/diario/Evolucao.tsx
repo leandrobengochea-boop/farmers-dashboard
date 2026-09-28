@@ -15,12 +15,18 @@ export interface Composicao {
 
 type DiaComposto = Composicao & { data: string }
 
+type FarmerComposto = Composicao & { farmerId: string; nome: string }
+
 interface Dados {
   de: string
   ate: string
   dias: DiaComposto[]
   total: Composicao
-  times: Array<{ timeKey: string; lider: string; total: Composicao; dias: DiaComposto[] }>
+  farmers: FarmerComposto[]
+  times: Array<{
+    timeKey: string; lider: string; total: Composicao
+    dias: DiaComposto[]; farmers: FarmerComposto[]
+  }>
 }
 
 /**
@@ -40,12 +46,15 @@ const pct = (parte: number, total: number) => (total > 0 ? Math.round((parte / t
 /** Barra fina de 100%, usada na comparação entre times. */
 function BarraComposta({ c }: { c: Composicao }) {
   if (c.setadas === 0) return <div className="h-2.5 rounded-full bg-zinc-100" />
+  // um título só, com as quatro faixas: quem passa o mouse quer a linha inteira,
+  // não o número de uma faixa de cada vez
+  const resumo = FAIXAS.map((f) => `${c[f.chave]} ${f.rotulo.toLowerCase()}`).join(' · ')
   return (
-    <div className="flex h-2.5 rounded-full overflow-hidden bg-zinc-100">
+    <div className="flex h-2.5 rounded-full overflow-hidden bg-zinc-100" title={`${c.setadas} setadas: ${resumo}`}>
       {FAIXAS.map((f) => {
         const v = c[f.chave]
         if (v === 0) return null
-        return <div key={f.chave} style={{ width: `${(v / c.setadas) * 100}%`, background: f.cor }} title={`${f.rotulo}: ${v}`} />
+        return <div key={f.chave} style={{ width: `${(v / c.setadas) * 100}%`, background: f.cor }} />
       })}
     </div>
   )
@@ -104,6 +113,9 @@ export default function Evolucao({ timeFiltro, souLider }: { timeFiltro: string 
   }, [dias])
 
   const doTime = timeFiltro ? dados?.times.find((t) => t.timeKey === timeFiltro) : null
+  // Com um time escolhido, a lista de farmers é a daquele time — e são os dias
+  // em que cada um esteve nele, não a formação de hoje.
+  const listaFarmers = (doTime ? doTime.farmers : dados?.farmers) ?? []
   const serie = doTime ? doTime.dias : dados?.dias ?? []
   const total = doTime ? doTime.total : dados?.total
 
@@ -191,6 +203,29 @@ export default function Evolucao({ timeFiltro, souLider }: { timeFiltro: string 
           </div>
         </div>
       )}
+      {souLider && (listaFarmers.length > 1) && (
+        <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-5">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-400 mb-4">
+            Por farmer · {dias} dias{doTime ? ` · time de ${doTime.lider.split(' ')[0]}` : ''}
+          </p>
+          <div className="grid gap-3">
+            {listaFarmers.map((f) => (
+              <div key={f.farmerId} className="grid grid-cols-[150px_1fr_auto] items-center gap-4">
+                <span className="text-sm truncate" title={f.nome}>{f.nome}</span>
+                <BarraComposta c={f} />
+                <span className="text-sm tabular-nums whitespace-nowrap">
+                  <b style={{ color: '#059669' }}>{f.pctEfetivo}%</b>
+                  <span className="text-zinc-400 text-xs"> de {f.setadas}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-zinc-400 mt-4 pt-3 border-t border-zinc-100">
+            Passe o mouse na barra para ver a contagem de cada faixa.
+          </p>
+        </div>
+      )}
+
     </div>
   )
 }
