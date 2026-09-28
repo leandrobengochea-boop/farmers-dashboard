@@ -76,7 +76,9 @@ Empresa com negócio aberto **não entra na lista de abordagem** — já existe 
 
 > ⚠️ **Os ids das etapas do funil B2B são mentirosos.** O funil foi montado sobre o pipeline padrão do HubSpot e ninguém trocou os ids: `closedwon` é **"Proposta enviada"** e `closedlost` é **"Em negociação"** — ambas etapas ABERTAS. Nunca deduza o significado pelo id; use `ETAPAS_FUNIL_ATIVO` em `lib/diario/constants.ts`.
 
-> **O responsável pelo negócio nem sempre é o dono da empresa.** Das 54 negociações paradas medidas em 25/09, **37 estavam em empresas da carteira de outra pessoa**. Os extras seguem o `sdrfarmer_responsavel` do negócio, não o dono da empresa: quem negocia é quem acompanha. Puxar da carteira mostraria só 15 das 54.
+> **A negociação precisa ser do segmento do farmer.** O responsável pelo negócio (`sdrfarmer_responsavel`) nem sempre cuida daquele segmento: das 62 negociações paradas medidas em 28/09, **32 estavam em empresa de outro segmento** e saíram da conta, sobrando 20. O segmento da empresa vem da propriedade `teste_carteiras` (rótulo "Novas Carteiras"), que bate com `FARMER_SEGMENTS` em **99,95%** das 6659 empresas; vazia em 16 delas, e aí vale o segmento do proprietário (organograma).
+>
+> ⚠️ Três segmentos têm nome diferente no HubSpot e na lista de farmers — sem `SEGMENTO_ALIAS` em `lib/diario/constants.ts`, 632 empresas pareceriam estar no segmento errado. E o *value* da opção não é o *label*: a empresa guarda "Indústria" onde a lista diz "Indústria I".
 
 ### Quando a empresa volta
 | Último resultado | Volta em |

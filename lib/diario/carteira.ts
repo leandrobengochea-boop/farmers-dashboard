@@ -1,7 +1,8 @@
-import { HUBSPOT_PORTAL_ID } from '../constants'
+import { FARMER_SEGMENTS, HUBSPOT_PORTAL_ID } from '../constants'
 import {
   Bucket, COTA_DIARIA, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, DIAS_NEGOCIACAO_PARADA,
-  ETAPAS_FUNIL_ATIVO, LIMITE_MESES, PIPELINE_B2B, TENTATIVAS_ATE_AUXILIO, urlEmpresa,
+  ETAPAS_FUNIL_ATIVO, LIMITE_MESES, PIPELINE_B2B, PROP_SEGMENTO_EMPRESA, SEGMENTO_ALIAS,
+  TENTATIVAS_ATE_AUXILIO, urlEmpresa,
 } from './constants'
 import { HistoricoEmpresa, ItemDiario, historicoDoFarmer, trocasPendentes } from './db'
 
@@ -180,12 +181,25 @@ async function empresasNoFunil(
     }
   }
 
+  // A negociação só é do farmer se a empresa for do segmento dele. Sem isso,
+  // ele receberia para acompanhar negócio de carteira alheia — dos 62 negócios
+  // parados do time, 32 estavam em empresa de outro segmento.
+  const meuSegmento = await segmentoDoFarmer(pat, farmerId)
+  const candidatas = new Set<string>()
+  for (const d of deals) {
+    const etapa = d.properties.dealstage ?? ''
+    if (d.properties.pipeline !== PIPELINE_B2B || !ETAPAS_FUNIL_ATIVO[etapa]) continue
+    for (const c of porDeal.get(d.id) ?? []) candidatas.add(c)
+  }
+  const segmentoDaEmpresa = await segmentosDeEmpresas(pat, [...candidatas])
+
   for (const d of deals) {
     const etapa = d.properties.dealstage ?? ''
     if (d.properties.pipeline !== PIPELINE_B2B || !ETAPAS_FUNIL_ATIVO[etapa]) continue
     const entrou = d.properties[`hs_v2_date_entered_${etapa}`]
     const diasNaEtapa = entrou ? diasEntre(String(entrou).slice(0, 10), hoje) : 0
     for (const empresa of porDeal.get(d.id) ?? []) {
+      if (meuSegmento && segmentoDaEmpresa.get(empresa) !== meuSegmento) continue
       // empresa com mais de um negócio fica com o mais parado: é o que precisa de ação
       const atual = negociando.get(empresa)
       if (atual && atual.diasNaEtapa >= diasNaEtapa) continue
@@ -199,6 +213,76 @@ async function empresasNoFunil(
     }
   }
   return { todas: empresas, negociando }
+}
+
+// ── Segmento da empresa ──
+
+/**
+ * O valor guardado na empresa é o "value" da opção, que nem sempre é o rótulo
+ * que a lista de farmers usa (o value é "Indústria", o label "Indústria I").
+ * Buscamos a definição da propriedade para traduzir, com cache: ela quase não muda.
+ */
+let cacheSegmentos: { em: number; porLabel: Map<string, string> } | null = null
+const VALIDADE_SEGMENTOS = 60 * 60 * 1000
+
+async function valorPorLabel(pat: string): Promise<Map<string, string>> {
+  if (cacheSegmentos && Date.now() - cacheSegmentos.em < VALIDADE_SEGMENTOS) return cacheSegmentos.porLabel
+  const porLabel = new Map<string, string>()
+  try {
+    const resp = await fetchWithRetry(
+      `https://api.hubapi.com/crm/v3/properties/companies/${PROP_SEGMENTO_EMPRESA}`,
+      { headers: { Authorization: `Bearer ${pat}` }, cache: 'no-store' },
+    )
+    if (resp.ok) {
+      const data = (await resp.json()) as { options?: Array<{ value: string; label: string }> }
+      for (const o of data.options ?? []) porLabel.set(o.label, o.value)
+    }
+  } catch { /* sem a tradução, comparamos pelo texto cru */ }
+  cacheSegmentos = { em: Date.now(), porLabel }
+  return porLabel
+}
+
+/** Segmento do farmer, já no formato que a empresa guarda. */
+async function segmentoDoFarmer(pat: string, farmerId: string): Promise<string | null> {
+  const seg = FARMER_SEGMENTS[farmerId]
+  if (!seg) return null
+  const label = SEGMENTO_ALIAS[seg] ?? seg
+  const porLabel = await valorPorLabel(pat)
+  return porLabel.get(label) ?? porLabel.get(seg) ?? label
+}
+
+/**
+ * Segmento de cada empresa. Quando a propriedade está vazia (16 de 6659 empresas),
+ * cai no organograma: vale o segmento de quem é o proprietário da empresa.
+ */
+async function segmentosDeEmpresas(pat: string, ids: string[]): Promise<Map<string, string>> {
+  const fora = new Map<string, string>()
+  if (ids.length === 0) return fora
+  const porLabel = await valorPorLabel(pat)
+  const doOrganograma = (dono: string) => {
+    const seg = FARMER_SEGMENTS[dono]
+    if (!seg) return ''
+    const label = SEGMENTO_ALIAS[seg] ?? seg
+    return porLabel.get(label) ?? porLabel.get(seg) ?? label
+  }
+
+  for (let i = 0; i < ids.length; i += 100) {
+    const resp = await fetchWithRetry('https://api.hubapi.com/crm/v3/objects/companies/batch/read', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        properties: [PROP_SEGMENTO_EMPRESA, 'hubspot_owner_id'],
+        inputs: ids.slice(i, i + 100).map((id) => ({ id })),
+      }),
+    })
+    if (!resp.ok) continue
+    const data = (await resp.json()) as { results?: Array<{ id: string; properties: Record<string, string> }> }
+    for (const r of data.results ?? []) {
+      const gravado = r.properties[PROP_SEGMENTO_EMPRESA]
+      fora.set(r.id, gravado || doOrganograma(r.properties.hubspot_owner_id ?? ''))
+    }
+  }
+  return fora
 }
 
 /** Nome das empresas, em lote. Usado quando o negócio aponta para fora da carteira. */

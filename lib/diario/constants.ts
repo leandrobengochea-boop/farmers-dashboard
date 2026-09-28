@@ -80,6 +80,23 @@ export const ETAPAS_FUNIL_ATIVO: Record<string, string> = {
  * Dias na etapa atual até a negociação virar prioridade do dia. Passou disso,
  * ninguém mexeu no negócio e ele entra como extra para o farmer acompanhar.
  */
+/**
+ * Propriedade da empresa que guarda a carteira/segmento. O rótulo no HubSpot é
+ * "Novas Carteiras" e o valor bate com FARMER_SEGMENTS em 99,95% das empresas
+ * — as exceções estão em SEGMENTO_ALIAS.
+ */
+export const PROP_SEGMENTO_EMPRESA = 'teste_carteiras'
+
+/**
+ * Segmentos cujo nome na lista de farmers não é o mesmo da opção no HubSpot.
+ * Sem isso, 632 empresas pareceriam estar no segmento errado.
+ */
+export const SEGMENTO_ALIAS: Record<string, string> = {
+  'Associações, Conselhos e Organizações': 'Conselhos, Clubes e Organizações',
+  'Energia, Mineração e Utilities': 'Energia, Mineração e Utilities (gás, luz, água)',
+  'Agências e Assessorias de Palestras': 'Agências e Assessorias de Palestrantes',
+}
+
 export const DIAS_NEGOCIACAO_PARADA = 15
 
 export const BUCKETS: Record<Bucket, { label: string; faixa: string; hint: string }> = {

@@ -90,8 +90,10 @@ export default function AjudaPage() {
         <p className="mt-3">
           Quando a negociação passa de {DIAS_NEGOCIACAO_PARADA} dias sem mudar de etapa, ela entra como extra do
           dia com a abordagem <b>ACOMPANHAR NEGOCIAÇÃO</b> — destravar o que já está na mesa vale mais que
-          qualquer abordagem nova. Vale a negociação de quem é <b>responsável pelo negócio</b>, mesmo que a
-          empresa esteja na carteira de outra pessoa: quem negocia é quem acompanha.
+          qualquer abordagem nova. Vale a negociação de quem é <b>responsável pelo negócio</b>, desde que a empresa
+          seja do <b>segmento dele</b> — negócio de carteira alheia é assunto do líder, não tarefa do dia.
+          O segmento vem da propriedade <i>Novas Carteiras</i> da empresa; quando ela está vazia, vale o
+          organograma, ou seja, o segmento de quem é proprietário da empresa.
         </p>
         <p className="mt-4">
           Dentro de cada fase, a ordem tem lógica: em recompra e nutrição vem primeiro quem está mais perto de
