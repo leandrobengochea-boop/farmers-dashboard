@@ -41,6 +41,8 @@ export const FARMERS: Record<string, string> = {
   '98715090': 'Vitor',
   '98715128': 'Mayke',
   '98715151': 'Matheus',
+  '99956495': 'Milena',
+  '92704130': 'Talita',
 }
 
 // Segmento da carteira individual de cada farmer
@@ -313,7 +315,23 @@ const TEAMS_SEP28: TeamMap = {
   },
 }
 
+const TEAMS_OCT: TeamMap = {
+  leticia: {
+    label: 'Time Leticia',
+    farmerIds: ['99956495', '94028856', '92704130'],
+  },
+  katyeli: {
+    label: 'Time Katy',
+    farmerIds: ['85002282', '93238814', '95415669', '92335488', '93599591', '85846971', '97204561', '98715151'],
+  },
+  camila: {
+    label: 'Time Cami',
+    farmerIds: ['80228367', '94316537', '84497577', '95993082', '95810969', '88200239', '96589066'],
+  },
+}
+
 const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
+  { from: new Date('2026-10-01').getTime(), teams: TEAMS_OCT },
   { from: new Date('2026-09-28').getTime(), teams: TEAMS_SEP28 },
   { from: new Date('2026-09-25').getTime(), teams: TEAMS_SEP25 },
   { from: new Date('2026-09-14').getTime(), teams: TEAMS_SEP14 },
@@ -322,12 +340,13 @@ const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
   { from: new Date('2026-07-01').getTime(), teams: TEAMS_JULY },
 ]
 
-export const TEAMS: TeamMap = TEAMS_SEP28
+export const TEAMS: TeamMap = TEAMS_OCT
 
 // Metas mensais de empresas únicas, por mês de vigência (mais recente primeiro).
 // teamGoals: metas individuais por time (quando diferem entre si).
 type GoalPeriod = { from: string; total: number; perTeam: number; teamGoals?: Record<string, number> }
 const GOAL_PERIODS: GoalPeriod[] = [
+  { from: '2026-10', total: 340, perTeam: 140, teamGoals: { leticia: 60 } },
   { from: '2026-09', total: 400, perTeam: 110, teamGoals: { leticia: 80, dani: 100 } },
   { from: '2026-08', total: 480, perTeam: 120 }, // 4 times
   { from: '2026-07', total: 336, perTeam: 112 }, // 3 times
