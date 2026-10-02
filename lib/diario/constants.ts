@@ -46,6 +46,19 @@ export const RESULTADO_EXIGE_OBSERVACAO: Resultado[] = ['efetivo', 'nao_abordei'
  */
 export const RESULTADO_FORA_DO_PLACAR: Resultado[] = ['trocar_segmento']
 
+/**
+ * Força do resultado. O dia não tem um resultado só: tem o melhor que
+ * aconteceu até agora. Marcar "tentei" de manhã e o cliente responder à tarde
+ * é progresso, não contradição — por isso a derivação automática SOBE nesta
+ * escala, e nunca desce. Quem está fora da escala (trocar de segmento) não é
+ * resultado de abordagem e nunca é tocado.
+ */
+export const FORCA_RESULTADO: Record<string, number> = {
+  nao_abordei: 1,
+  tentativa: 2,
+  efetivo: 3,
+}
+
 // ── Baldes de sugestão, por tempo desde a última compra ──
 export type Bucket = 'extra' | 'negociacao' | 'nutricao' | 'recompra' | 'reativacao' | 'primeiro_contato'
 

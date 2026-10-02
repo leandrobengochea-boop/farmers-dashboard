@@ -136,7 +136,11 @@ Empresa onde o proprietário **atual** registrou um negócio **e** já realizou 
 >
 > **Para destravar isso, a correção é na automação, não no código:** gravar a direção num campo (ou separar mensagem recebida de enviada em tipos distintos). Aí "cliente respondeu → efetivo" vira uma leitura de campo.
 
-Isso roda em `/api/diario/dia` **e** em `/api/diario/agenda` — o placar do líder evolui sem o farmer reabrir a tela. **Nunca sobrescreve escolha feita à mão:** só preenche campo vazio.
+Isso roda em `/api/diario/dia` **e** em `/api/diario/agenda` — o placar do líder evolui sem o farmer reabrir a tela.
+
+**A derivação sobe na escala, nunca desce** (`FORCA_RESULTADO`: não abordei < tentativa < efetivo). Marcar "tentei" de manhã não congela o dia: se o cliente responde à tarde e a ligação entra conectada, vira efetivo sozinho. O caminho inverso é proibido porque o farmer vê o que o CRM não vê — medido em set/out: **18 linhas mereciam subir e 144 seriam rebaixadas por engano**.
+
+Não toca em: `trocar_segmento` (fora da escala), linha com `editado_por` (decisão do líder) e dia com briefing `revisado`.
 
 > **Consequência a vigiar:** a qualidade do dado agora depende do farmer marcar a disposição certa da ligação. Quem encerra sem escolher "Conectado" aparece como tentativa mesmo tendo falado com o cliente. Se aparecer, o ajuste é de processo no HubSpot, não de código.
 

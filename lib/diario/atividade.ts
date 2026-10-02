@@ -1,4 +1,5 @@
 import { fetchWithRetry, searchAllPages } from './carteira'
+import { FORCA_RESULTADO } from './constants'
 import { ItemDiario, atualizaItem } from './db'
 
 /**
@@ -183,11 +184,24 @@ export async function aplicaAtividade(
   data: string,
   itens: ItemDiario[],
   atividade: Map<string, AtividadeEmpresa>,
+  opcoes: { revisado?: boolean } = {},
 ): Promise<void> {
+  // Dia revisado está fechado: o líder já olhou, nada muda sozinho depois.
+  if (opcoes.revisado) return
+
   for (const item of itens) {
     const a = atividade.get(item.companyId)
     if (!a?.resultadoSugerido) continue
-    const preencheResultado = !item.resultado
+
+    // Sobe na escala, nunca desce. O CRM vê a ligação conectada que o farmer
+    // ainda não registrou; o farmer vê a conversa que não passou pelo CRM —
+    // nos dados de set/out, 144 linhas seriam REBAIXADAS por engano contra 18
+    // que mereciam subir. Edição do líder também não é desfeita por automação.
+    const forcaAtual = FORCA_RESULTADO[item.resultado ?? ''] ?? 0
+    const forcaNova = FORCA_RESULTADO[a.resultadoSugerido] ?? 0
+    const foraDaEscala = !!item.resultado && forcaAtual === 0
+    const preencheResultado = !foraDaEscala && !item.editadoPor && forcaNova > forcaAtual
+
     const preencheTexto = !item.observacaoResultado?.trim() && !!a.texto
     if (!preencheResultado && !preencheTexto) continue
 

@@ -75,7 +75,10 @@ export async function GET(req: Request) {
     for (const farmerId of farmerIds) {
       const doFarmer = itens.filter((i) => i.farmerId === farmerId)
       const dele = atividade.get(farmerId)
-      if (doFarmer.length > 0 && dele?.size) await aplicaAtividade(farmerId, data, doFarmer, dele)
+      const revisado = briefings.find((b) => b.farmerId === farmerId)?.status === 'revisado'
+      if (doFarmer.length > 0 && dele?.size) {
+        await aplicaAtividade(farmerId, data, doFarmer, dele, { revisado })
+      }
     }
 
     const timePorFarmer: Record<string, { key: string; label: string }> = {}

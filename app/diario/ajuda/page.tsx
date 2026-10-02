@@ -143,8 +143,18 @@ export default function AjudaPage() {
         </p>
         <p className="mt-3">
           Isso acontece <b>sozinho, ao longo do dia</b>, e vale também para a Agenda: o líder vê o placar do time
-          evoluindo mesmo que ninguém reabra o diário. O que o sistema nunca sobrescreve é escolha feita à mão —
-          se você marcou algo, fica o que você marcou.
+          evoluindo mesmo que ninguém reabra o diário.
+        </p>
+        <p className="mt-3">
+          <b>O dia guarda o melhor que aconteceu.</b> Se você marcou <i>tentei, sem sucesso</i> de manhã e o
+          cliente respondeu à tarde, o diário promove sozinho para <b>contato efetivo</b> — marcar cedo não
+          congela o resultado. O contrário nunca acontece: o automático <b>sobe, mas não desce</b>. Se você
+          marcou contato efetivo e o CRM só tem uma tentativa registrada, fica o que você marcou, porque a
+          conversa pode ter sido por um caminho que o HubSpot não viu.
+        </p>
+        <p className="mt-3">
+          Três coisas o automático não toca: <b>trocar de segmento</b> (não é resultado de abordagem), linha que
+          o <b>líder editou</b> à mão e <b>dia já revisado</b>.
         </p>
         <p className="mt-3">
           A observação, com no mínimo {MINIMO_OBSERVACAO} caracteres, é obrigatória só onde o CRM não tem a

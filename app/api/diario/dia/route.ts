@@ -57,7 +57,7 @@ export async function GET(req: Request) {
 
     // A efetividade é automática: o que o HubSpot registrou hoje vira o resultado
     // da empresa sem ninguém precisar clicar.
-    await aplicaAtividade(farmerId, data, itens, atividade)
+    await aplicaAtividade(farmerId, data, itens, atividade, { revisado: brief.status === 'revisado' })
 
     // Contexto de cada empresa: quantas vezes já apareceu e o que aconteceu na última.
     const comHistorico = itens.map((i) => {
