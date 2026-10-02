@@ -291,6 +291,7 @@ export const FORA_DO_DIARIO = new Set<string>([
   '87159365', // João Lucas
   '97204635', // Samuel
   '79760745', // Thiago — vinha do Time Dani, que saiu do diário em out/26
+  '80688884', // Rafael Brack — saiu do escopo de farmer em 28/09
 ])
 
 /** Farmers de um líder, na formação vigente. Líder sem time vê todos. */
