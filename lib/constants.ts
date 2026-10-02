@@ -50,11 +50,11 @@ export const FARMER_SEGMENTS: Record<string, string> = {
   '97763591': 'Contabilidades e Advocacias',           // Leonardo Bitencourt
   '98715090': 'Prefeituras',                            // Vitor
   '98715128': 'Construção Civil e Imobiliário',         // Mayke
-  '98715151': 'Consultorias e Educação Corporativa',    // Matheus
+  '98715151': 'Sistema S',                              // Matheus (assumiu a carteira em out/26)
   '85002282': 'Cooperativas de Crédito e Unimed',      // Sotoriva
   '93238814': 'Cooperativas de Crédito e Unimed',      // Sotoriva (alias)
   '95415669': 'Serviços I',                             // Gisele Santos
-  '92335488': 'Secretarias de Estado e Tribunais',      // Thaina
+  '92335488': 'Serviços II',                            // Thaina (assumiu a carteira em out/26)
   '93599591': 'Indústria I',                            // Bruna Saraiva
   '85846971': 'Indústria II',                           // Fran Lenz
   '97204561': 'Tecnologia e Software II',               // Juliano
@@ -64,12 +64,14 @@ export const FARMER_SEGMENTS: Record<string, string> = {
   '95993082': 'Energia, Mineração e Utilities',         // Hans Lopes
   '95810969': 'Educação Básico e Superior I',           // Rhayssa
   '88200239': 'Associações, Conselhos e Organizações',  // Luiza
-  '94028856': 'Saúde II (Exceto Unimed)',                 // Felippe Freitas
+  '94028856': 'Logística e Transporte',                 // Felippe Freitas (assumiu a carteira em out/26)
   '81033487': 'Serviços II',                            // Gustavo
   '89632472': 'Varejo e Comércio II',                   // Maria Eduarda Porto
   '79760745': 'Logística e Transporte',                 // Thiago
   '96589066': 'Saúde I (Exceto Unimed)',                // Nathalia
   '87159365': 'Tecnologia e Software III',              // João Lucas
+  '92704130': 'Secretarias de Estado e Tribunais',      // Talita
+  '99956495': 'Construção Civil e Imobiliário',         // Milena
   '94399135': 'Agências e Assessorias de Palestras',    // Gabriela
 }
 

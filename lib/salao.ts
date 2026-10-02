@@ -44,6 +44,8 @@ const ALL_FARMERS: Record<string, { name: string; initials: string }> = {
   '98715090': { name: 'Vitor Martini', initials: 'VM' },
   '98715128': { name: 'Mayk Schumer', initials: 'MS' },
   '98715151': { name: 'Matheus Lirio', initials: 'ML' },
+  '92704130': { name: 'Talita Cruz', initials: 'TC' },
+  '99956495': { name: 'Milena Almeida', initials: 'MA' },
 }
 
 const SALAO_DATE_RESTRICTIONS: Record<string, { untilDate: string }> = {
