@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
-import { farmersDoLider, LIDERES } from '@/lib/diario/constants'
-import { dealInTeam, farmersDoPeriodo, FARMERS } from '@/lib/constants'
+import { farmersDoLider, farmersDoPeriodoNoDiario, LIDERES } from '@/lib/diario/constants'
+import { dealInTeam, FARMERS } from '@/lib/constants'
 import { hojeSP } from '@/lib/diario/carteira'
 import { DiaDoFarmer, serieDoPeriodo } from '@/lib/diario/db'
 
@@ -53,13 +53,19 @@ export async function GET(req: Request) {
   // Quem esteve no time durante a janela, não só quem está hoje: senão o
   // histórico encolhe toda vez que alguém sai.
   const farmerIds = usuario.papel === 'lider'
-    ? farmersDoPeriodo(usuario.timeKey, de, ate)
+    ? farmersDoPeriodoNoDiario(usuario.timeKey, de, ate)
     : [usuario.id]
   // Quem enxerga mais de um time compara os times; líder de time compara os farmers.
   const gerencia = usuario.papel === 'lider' && !usuario.timeKey
 
   try {
-    const serie = await serieDoPeriodo(farmerIds, de, ate)
+    const bruta = await serieDoPeriodo(farmerIds, de, ate)
+    // O geral tem que fechar com a soma dos times da tela. Dia que pertenceu a
+    // um time que saiu do diário (o do Dani, em out/26) fica de fora dos dois,
+    // senão sobra diferença que ninguém consegue explicar.
+    const serie = gerencia
+      ? bruta.filter((d) => LIDERES.some((l) => l.timeKey && dealInTeam(d.farmerId, d.data, l.timeKey)))
+      : bruta
 
     const porDia = new Map<string, Composicao>()
     for (const d of serie) {

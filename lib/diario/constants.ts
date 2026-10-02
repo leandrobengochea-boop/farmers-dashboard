@@ -1,4 +1,4 @@
-import { FARMERS, TEAMS, HUBSPOT_PORTAL_ID } from '../constants'
+import { FARMERS, TEAMS, HUBSPOT_PORTAL_ID, farmersDoPeriodo } from '../constants'
 
 // ── Abordagens disponíveis no dropdown do plano do dia ──
 export const ABORDAGENS = [
@@ -233,8 +233,7 @@ export const LIDERES: Lider[] = [
   { id: '80454607', nome: 'Letícia Silva dos Santos', timeKey: 'leticia' },
   { id: '80454582', nome: 'Katyeli Ceroni Madril',    timeKey: 'katyeli' },
   { id: '81035544', nome: 'Camila Fay',               timeKey: 'camila'  },
-  { id: '80454577', nome: 'Daniel Bento Sias',        timeKey: 'dani'    },
-  // Gerência: vê todos os farmers dos quatro times
+  // Gerência: vê todos os farmers dos times vigentes
   { id: '80454585', nome: 'Leandro Bengochea',        timeKey: null      },
   { id: '80436289', nome: 'Márcio Spagnolo',          timeKey: null      },
   { id: '86256444', nome: 'Ana Machado',              timeKey: null      }, // owner cadastrado como "Ana Carolina Vaz"
@@ -275,9 +274,23 @@ export function contaDoDiario(id: string): string {
   return CONTA_DO_DIARIO[id] ?? id
 }
 
+/**
+ * Fora da conta do diário, inclusive no histórico do relatório.
+ *
+ * Diferente de quem só mudou de time: aqui são pessoas cuja operação não
+ * representa mais o time, e mantê-las puxava a efetividade geral para baixo
+ * com dias que ninguém trabalhou (em 02/10 eram 1157 empresas setadas, 689
+ * delas sem nenhum registro — a taxa do time inteiro ia de 25% para 21%).
+ */
 export const FORA_DO_DIARIO = new Set<string>([
-  // quem sai da empresa é removido da formação em lib/constants.ts;
-  // esta lista é para quem continua no time mas não usa o diário
+  '97763591', // Leonardo Bitencourt
+  '98715090', // Vitor
+  '98715128', // Mayke
+  '89632472', // Maria Eduarda Porto
+  '81033487', // Gustavo
+  '87159365', // João Lucas
+  '97204635', // Samuel
+  '79760745', // Thiago — vinha do Time Dani, que saiu do diário em out/26
 ])
 
 /** Farmers de um líder, na formação vigente. Líder sem time vê todos. */
@@ -293,6 +306,21 @@ export function farmersDoLider(timeKey: string | null): string[] {
   }
   if (!timeKey) return normaliza(Object.values(TEAMS).flatMap((t) => t.farmerIds))
   return normaliza(TEAMS[timeKey]?.farmerIds ?? [])
+}
+
+/**
+ * Quem esteve no time durante a janela, já sem os que ficaram fora do diário.
+ * O relatório histórico usa esta lista: quem muda de time mantém o passado,
+ * quem saiu da conta não aparece em período nenhum.
+ */
+export function farmersDoPeriodoNoDiario(timeKey: string | null, de: string, ate: string): string[] {
+  const fora: string[] = []
+  for (const bruto of farmersDoPeriodo(timeKey, de, ate)) {
+    const id = contaDoDiario(bruto)
+    if (FORA_DO_DIARIO.has(id) || fora.includes(id)) continue
+    fora.push(id)
+  }
+  return fora
 }
 
 /** Todos os farmers em operação hoje, na ordem dos times. */
