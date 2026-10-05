@@ -43,6 +43,7 @@ export const FARMERS: Record<string, string> = {
   '98715151': 'Matheus',
   '99956495': 'Milena',
   '92704130': 'Talita',
+  '100465709': 'Bruno Beck',
 }
 
 // Segmento da carteira individual de cada farmer
@@ -72,6 +73,7 @@ export const FARMER_SEGMENTS: Record<string, string> = {
   '87159365': 'Tecnologia e Software III',              // João Lucas
   '92704130': 'Secretarias de Estado e Tribunais',      // Talita
   '99956495': 'Construção Civil e Imobiliário',         // Milena
+  '100465709': 'Varejo e Comércio I',                   // Bruno Beck
   '94399135': 'Agências e Assessorias de Palestras',    // Gabriela
 }
 
@@ -172,6 +174,8 @@ export function isDealWithCreator(farmerId: string, ownerId: string): boolean {
 // Funis B2C: cada oportunidade é uma demanda única (pessoa/negócio individual),
 // então NÃO deduplica por empresa — mesmo que tenha (ou não tenha) empresa.
 export const B2C_PIPELINE_IDS = new Set(['725182862', '727938450', '904543067'])
+
+export const WON_STAGES = ['1076664462', '1076664460']
 
 // Chave de "empresa/demanda única" usada em todas as contagens de empresas únicas:
 // - B2C: sempre única (usa o id do negócio)
@@ -332,7 +336,24 @@ const TEAMS_OCT: TeamMap = {
   },
 }
 
+// 05/10: Bruno Beck entra no Time Letícia.
+const TEAMS_OCT05: TeamMap = {
+  leticia: {
+    label: 'Time Leticia',
+    farmerIds: ['99956495', '94028856', '92704130', '100465709'],
+  },
+  katyeli: {
+    label: 'Time Katy',
+    farmerIds: ['85002282', '93238814', '95415669', '92335488', '93599591', '85846971', '97204561', '98715151'],
+  },
+  camila: {
+    label: 'Time Cami',
+    farmerIds: ['80228367', '94316537', '84497577', '95993082', '95810969', '88200239', '96589066'],
+  },
+}
+
 const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
+  { from: new Date('2026-10-05').getTime(), teams: TEAMS_OCT05 },
   { from: new Date('2026-10-01').getTime(), teams: TEAMS_OCT },
   { from: new Date('2026-09-28').getTime(), teams: TEAMS_SEP28 },
   { from: new Date('2026-09-25').getTime(), teams: TEAMS_SEP25 },
@@ -342,7 +363,7 @@ const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
   { from: new Date('2026-07-01').getTime(), teams: TEAMS_JULY },
 ]
 
-export const TEAMS: TeamMap = TEAMS_OCT
+export const TEAMS: TeamMap = TEAMS_OCT05
 
 // Metas mensais de empresas únicas, por mês de vigência (mais recente primeiro).
 // teamGoals: metas individuais por time (quando diferem entre si).

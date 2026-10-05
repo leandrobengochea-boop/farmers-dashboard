@@ -1,7 +1,7 @@
 import {
   FARMERS, FARMER_ALIASES, FARMER_DATE_RESTRICTIONS, CRITERIA, HUBSPOT_PORTAL_ID,
   ORIGIN_CUTOVER, ALLOWED_ORIGEM_DO_LEAD, ALLOWED_ORIGEM_QUALIFICACAO, DEAL_FARMER_OVERRIDES,
-  ORIGIN_OVERRIDE_DEAL_IDS, BONUS_DEALS, B2C_PIPELINE_IDS,
+  ORIGIN_OVERRIDE_DEAL_IDS, BONUS_DEALS, B2C_PIPELINE_IDS, WON_STAGES,
 } from './constants'
 
 export interface Deal {
@@ -57,6 +57,7 @@ export interface FetchResult {
   validation: FetchValidation
   foraDoMOA: ForaDoMOAEntry[]
   excludedDeals: ExcludedDeal[]
+  farmerRevenue: Map<string, number>
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -558,10 +559,56 @@ export async function fetchAllDeals(): Promise<FetchResult> {
     .map(([farmerName, count]) => ({ farmerName, count }))
     .sort((a, b) => b.count - a.count)
 
+  // Receita: busca deals ganhos por closedate (independente da qualificação)
+  const farmerRevenue = new Map<string, number>()
+  const farmerIdsArray = Object.keys(FARMERS)
+  let wonAfter: string | undefined
+  while (true) {
+    if (wonAfter) await sleep(150)
+    const wonBody: Record<string, unknown> = {
+      filterGroups: [{
+        filters: [
+          { propertyName: 'sdrfarmer_responsavel', operator: 'IN', values: farmerIdsArray },
+          { propertyName: 'dealstage', operator: 'IN', values: WON_STAGES },
+          { propertyName: 'closedate', operator: 'GTE', value: '1767225600000' },
+        ],
+      }],
+      properties: ['sdrfarmer_responsavel', 'amount_in_home_currency', 'closedate'],
+      limit: 200,
+    }
+    if (wonAfter) wonBody.after = wonAfter
+    const wonResp = await fetchWithRetry('https://api.hubapi.com/crm/v3/objects/deals/search', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(wonBody),
+    })
+    if (!wonResp.ok) break
+    const wonData = await wonResp.json() as {
+      results?: Array<{ id: string; properties: Record<string, string> }>
+      paging?: { next?: { after?: string } }
+    }
+    for (const r of wonData.results ?? []) {
+      const fid = FARMER_ALIASES[r.properties.sdrfarmer_responsavel ?? ''] ?? (r.properties.sdrfarmer_responsavel ?? '')
+      if (!FARMERS[fid]) continue
+      const amount = parseFloat(r.properties.amount_in_home_currency ?? '0') || 0
+      const closeDate = r.properties.closedate ?? ''
+      farmerRevenue.set(`${fid}:${closeDate}:${r.id}`, amount)
+    }
+    wonAfter = wonData.paging?.next?.after
+    if (!wonAfter) break
+  }
+  // Aggregate by farmer
+  const revenueByFarmer = new Map<string, number>()
+  for (const [key, amount] of farmerRevenue) {
+    const fid = key.split(':')[0]
+    revenueByFarmer.set(fid, (revenueByFarmer.get(fid) ?? 0) + amount)
+  }
+
   return {
     deals,
     validation: { totalBruto, excludedFora, totalLiquido: deals.length },
     foraDoMOA,
     excludedDeals,
+    farmerRevenue: revenueByFarmer,
   }
 }

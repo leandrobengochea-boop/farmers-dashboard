@@ -8,7 +8,10 @@ export const maxDuration = 60
 export async function GET() {
   try {
     const result = await fetchAllDeals()
-    return NextResponse.json(result, {
+    return NextResponse.json({
+      ...result,
+      farmerRevenue: Object.fromEntries(result.farmerRevenue),
+    }, {
       headers: { 'Cache-Control': 'no-store' },
     })
   } catch (error) {

@@ -40,6 +40,7 @@ interface DashboardClientProps {
   initialDeals: Deal[]
   validation: FetchValidation
   excludedDeals: ExcludedDeal[]
+  farmerRevenue: Record<string, number>
   fetchError: string | null
 }
 
@@ -52,11 +53,13 @@ export default function DashboardClient({
   initialDeals,
   validation: initialValidation,
   excludedDeals: initialExcludedDeals,
+  farmerRevenue: initialFarmerRevenue,
   fetchError: initialError,
 }: DashboardClientProps) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals)
   const [validation, setValidation] = useState<FetchValidation>(initialValidation)
   const [excludedDeals, setExcludedDeals] = useState<ExcludedDeal[]>(initialExcludedDeals)
+  const [farmerRevenue, setFarmerRevenue] = useState<Record<string, number>>(initialFarmerRevenue)
   const [fetchError, setFetchError] = useState<string | null>(initialError)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
@@ -73,10 +76,11 @@ export default function DashboardClient({
         const err = await res.json() as { error?: string }
         throw new Error(err.error ?? `HTTP ${res.status}`)
       }
-      const data = await res.json() as { deals: Deal[]; validation: FetchValidation; excludedDeals: ExcludedDeal[] }
+      const data = await res.json() as { deals: Deal[]; validation: FetchValidation; excludedDeals: ExcludedDeal[]; farmerRevenue: Record<string, number> }
       setDeals(data.deals)
       setValidation(data.validation)
       setExcludedDeals(data.excludedDeals ?? [])
+      setFarmerRevenue(data.farmerRevenue ?? {})
       setLastUpdated(new Date())
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : 'Erro ao atualizar dados')
@@ -250,8 +254,8 @@ export default function DashboardClient({
         <FarmerTable
           ranking={farmerRanking}
           meetings={meetingConversion}
-          matrix={farmerMatrix}
           deals={filteredDeals}
+          farmerRevenue={farmerRevenue}
         />
 
         <ScoreDistribution data={scoreDistribution} />

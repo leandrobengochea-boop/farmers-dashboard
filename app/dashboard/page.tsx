@@ -10,6 +10,7 @@ export default async function DashboardPage() {
   let deals: Deal[] = []
   let validation: FetchValidation = { totalBruto: 0, excludedFora: 0, totalLiquido: 0 }
   let excludedDeals: ExcludedDeal[] = []
+  let farmerRevenue: Record<string, number> = {}
   let fetchError: string | null = null
 
   try {
@@ -17,6 +18,7 @@ export default async function DashboardPage() {
     deals = result.deals
     validation = result.validation
     excludedDeals = result.excludedDeals
+    farmerRevenue = Object.fromEntries(result.farmerRevenue)
   } catch (error) {
     fetchError = error instanceof Error ? error.message : 'Erro ao buscar dados'
     console.error('Dashboard fetch error:', error)
@@ -27,6 +29,7 @@ export default async function DashboardPage() {
       initialDeals={deals}
       validation={validation}
       excludedDeals={excludedDeals}
+      farmerRevenue={farmerRevenue}
       fetchError={fetchError}
     />
   )

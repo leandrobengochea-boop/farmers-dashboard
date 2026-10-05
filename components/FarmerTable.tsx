@@ -4,7 +4,6 @@ import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { FarmerStats, FarmerMeetingStats } from '@/lib/analytics'
-import { FarmerMatrixRow } from '@/lib/insights'
 import { Deal } from '@/lib/hubspot'
 import { CRITERIA, FARMER_SEGMENTS } from '@/lib/constants'
 import { scoreScaleColor, SCORE_SCALE } from '@/lib/viz'
@@ -12,14 +11,10 @@ import { scoreScaleColor, SCORE_SCALE } from '@/lib/viz'
 interface FarmerTableProps {
   ranking: FarmerStats[]
   meetings: FarmerMeetingStats[]
-  matrix: FarmerMatrixRow[]
   deals: Deal[]
+  farmerRevenue: Record<string, number>
 }
 
-// Uma linha por farmer, reunindo o que antes estava espalhado em três
-// recortes separados (volume, conversão de reuniões e deals parados). Cada
-// recorte tinha sua própria ordenação, então comparar um farmer entre eles
-// exigia reconciliação mental. Aqui qualquer coluna ordena a mesma lista.
 interface Row {
   farmerId: string
   farmerName: string
@@ -30,7 +25,7 @@ interface Row {
   scheduledPct: number
   completed: number
   completedPct: number
-  staleCount: number
+  revenue: number
 }
 
 type SortKey = keyof Omit<Row, 'farmerId'>
@@ -153,7 +148,7 @@ function PctCell({ pct, of, total }: { pct: number; of: number; total: number })
 
 type ModalFilter = 'all' | 'scheduled' | 'completed'
 
-export default function FarmerTable({ ranking, meetings, matrix, deals }: FarmerTableProps) {
+export default function FarmerTable({ ranking, meetings, deals, farmerRevenue }: FarmerTableProps) {
   const [selectedFarmer, setSelectedFarmer] = useState<string | null>(null)
   const [modalFilter, setModalFilter] = useState<ModalFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('dealCount')
@@ -161,7 +156,6 @@ export default function FarmerTable({ ranking, meetings, matrix, deals }: Farmer
 
   const rows: Row[] = useMemo(() => {
     const byMeeting = new Map(meetings.map((m) => [m.farmerId, m]))
-    const byMatrix = new Map(matrix.map((m) => [m.farmerId, m]))
     return ranking.map((f) => {
       const m = byMeeting.get(f.farmerId)
       return {
@@ -174,10 +168,10 @@ export default function FarmerTable({ ranking, meetings, matrix, deals }: Farmer
         scheduledPct: m?.scheduledPct ?? 0,
         completed: m?.completed ?? 0,
         completedPct: m?.completedPct ?? 0,
-        staleCount: byMatrix.get(f.farmerId)?.staleDealCount ?? 0,
+        revenue: farmerRevenue[f.farmerId] ?? 0,
       }
     })
-  }, [ranking, meetings, matrix])
+  }, [ranking, meetings, farmerRevenue])
 
   const sorted = useMemo(() => {
     const arr = [...rows]
@@ -264,7 +258,7 @@ export default function FarmerTable({ ranking, meetings, matrix, deals }: Farmer
                   <Th label="Nota" sortKey="avgScore" title="Nota média das oportunidades pontuadas" />
                   <Th label="Agendadas" sortKey="scheduledPct" title="% das empresas com ao menos uma reunião agendada" />
                   <Th label="Realizadas" sortKey="completedPct" title="% das empresas únicas com reunião realizada — mesma base de Agendadas" />
-                  <Th label="Parados" sortKey="staleCount" title="Negócios sem atualização há mais de 15 dias" />
+                  <Th label="Receita" sortKey="revenue" title="Receita gerada (deals ganhos)" />
                 </tr>
               </thead>
               <tbody>
@@ -318,9 +312,15 @@ export default function FarmerTable({ ranking, meetings, matrix, deals }: Farmer
                       >
                         <PctCell pct={r.completedPct} of={r.completed} total={r.companyCount} />
                       </td>
-                      <td className="py-2.5 px-3 text-right tabular-nums">
-                        {r.staleCount > 0 ? (
-                          <span className="text-red-400 font-medium">{r.staleCount}</span>
+                      <td className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap">
+                        {r.revenue > 0 ? (
+                          <span className="text-emerald-400 font-medium">
+                            {r.revenue >= 1e6
+                              ? `R$ ${(r.revenue / 1e6).toFixed(1).replace('.', ',')}M`
+                              : r.revenue >= 1e3
+                                ? `R$ ${Math.round(r.revenue / 1e3)}k`
+                                : `R$ ${Math.round(r.revenue)}`}
+                          </span>
                         ) : (
                           <span className="text-zinc-600">—</span>
                         )}
