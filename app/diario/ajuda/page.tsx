@@ -83,6 +83,13 @@ export default function AjudaPage() {
           </li>
         </ul>
         <p className="mt-4">
+          <b>Os dias anteriores ficam à mão.</b> No topo do diário há uma tira com os últimos dias que tiveram
+          lista, cada um com quantas empresas e quantos contatos efetivos deram. Clicando, você vê aquele dia
+          inteiro — empresas, abordagem escolhida, resultado e observação. Dia anterior abre <b>só para
+          leitura</b>: o compromisso daquele dia já passou, e preencher depois mudaria o histórico que o líder
+          já olhou.
+        </p>
+        <p className="mt-4">
           <b>Empresa com negócio aberto não entra na lista de abordagem.</b> Já existe conversa na mesa, e
           oferecer reativação para quem está negociando é ruído. Elas aparecem num bloco à parte, <b>Negociações
           em aberto</b>, com a etapa do funil B2B e há quantos dias estão nela.

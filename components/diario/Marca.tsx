@@ -36,6 +36,13 @@ export function dataCurta(iso: string | null): string {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'UTC' })
 }
 
+/** "Ter 22/09" — rótulo curto para a tira de dias. */
+export function diaDaSemana(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`)
+  const dia = d.toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'UTC' }).replace('.', '')
+  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)} ${iso.slice(8, 10)}/${iso.slice(5, 7)}`
+}
+
 export function meses(dias: number | null): string {
   if (dias === null) return 'sem histórico'
   const m = Math.floor(dias / 30.44)

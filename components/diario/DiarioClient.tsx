@@ -7,7 +7,7 @@ import {
 } from '@/lib/diario/constants'
 import type { Briefing, ItemDiario } from '@/lib/diario/db'
 import type { PoolCarteira, ResumoMes } from '@/lib/diario/metrics'
-import { dataLonga, meses, moeda, dataCurta } from './Marca'
+import { dataLonga, diaDaSemana, meses, moeda, dataCurta } from './Marca'
 import Cabecalho from './Cabecalho'
 
 interface Props {
@@ -54,6 +54,16 @@ interface Dados {
   resumo: ResumoMes
   briefing: Briefing
   negociacoes?: Negociacao[]
+  hoje?: string
+  dias?: DiaDaTira[]
+}
+
+/** Um dia com lista montada, para a navegação da semana. */
+interface DiaDaTira {
+  data: string
+  empresas: number
+  efetivo: number
+  pendente: number
 }
 
 /** Negócio vivo no funil B2B — fica fora da lista do dia, mas à vista. */
@@ -101,11 +111,17 @@ export default function DiarioClient({ usuario, farmers }: Props) {
   const [aba, setAba] = useState<'plano' | 'fechamento'>('plano')
   const [enviando, setEnviando] = useState(false)
   const [aviso, setAviso] = useState('')
+  // null = hoje. Dia anterior abre só para leitura: o compromisso daquele dia
+  // já passou, e deixar preencher depois distorceria o histórico.
+  const [dia, setDia] = useState<string | null>(null)
 
-  const carrega = useCallback(async (id: string) => {
+  const carrega = useCallback(async (id: string, data: string | null) => {
     setCarregando(true)
     setErro('')
-    const resp = await fetch(`/api/diario/dia?farmerId=${id}`, { cache: 'no-store' })
+    const resp = await fetch(
+      `/api/diario/dia?farmerId=${id}${data ? `&data=${data}` : ''}`,
+      { cache: 'no-store' },
+    )
     if (!resp.ok) {
       const d = await resp.json().catch(() => ({ error: 'falha ao carregar' }))
       setErro(d.error ?? 'falha ao carregar')
@@ -119,11 +135,12 @@ export default function DiarioClient({ usuario, farmers }: Props) {
     setCarregando(false)
   }, [])
 
-  useEffect(() => { if (farmerId) carrega(farmerId) }, [farmerId, carrega])
+  useEffect(() => { if (farmerId) carrega(farmerId, dia) }, [farmerId, dia, carrega])
 
   // Líder e gerência editam o plano de quem está no time deles; o farmer perde
   // a edição quando o líder já revisou o dia.
-  const somenteLeitura = usuario.papel === 'farmer' && dados?.briefing.status === 'revisado'
+  const ehHoje = !dados?.hoje || !dados.data || dados.data === dados.hoje
+  const somenteLeitura = !ehHoje || (usuario.papel === 'farmer' && dados?.briefing.status === 'revisado')
 
   const itens = useMemo(() => {
     const ordem = (b: string) => ORDEM_BUCKET[b as keyof typeof ORDEM_BUCKET] ?? 9
@@ -206,7 +223,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
     const r = await resp.json().catch(() => ({}))
     if (!resp.ok) { setAviso(r.error ?? 'não foi possível concluir'); return }
     if (tipo === 'planejar') setAba('fechamento')
-    carrega(farmerId)
+    carrega(farmerId, dia)
   }
 
   const status = ROTULO_STATUS[dados?.briefing.status ?? 'rascunho']
@@ -308,10 +325,46 @@ export default function DiarioClient({ usuario, farmers }: Props) {
         </div>
       )}
 
+      {(dados?.dias?.length ?? 0) > 1 && (
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+          {dados!.dias!.map((d) => {
+            const hoje = d.data === dados!.hoje
+            const ativo = d.data === dados!.data
+            return (
+              <button
+                key={d.data}
+                onClick={() => setDia(hoje ? null : d.data)}
+                className={`shrink-0 rounded-xl border px-3.5 py-2 text-left transition ${
+                  ativo
+                    ? 'border-zinc-900 bg-zinc-900 text-white'
+                    : 'border-zinc-200 bg-white hover:border-zinc-400'
+                }`}
+              >
+                <span className="block text-sm font-medium whitespace-nowrap">
+                  {diaDaSemana(d.data)}{hoje ? ' · hoje' : ''}
+                </span>
+                <span className={`block text-[11px] whitespace-nowrap ${ativo ? 'text-white/70' : 'text-zinc-500'}`}>
+                  {d.empresas} emp.
+                  {d.efetivo > 0 && (
+                    <span className={ativo ? '' : 'text-emerald-700'}> · {d.efetivo} efetivo</span>
+                  )}
+                  {d.pendente > 0 && (
+                    <span className={ativo ? '' : 'text-zinc-400'}> · {d.pendente} em aberto</span>
+                  )}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-zinc-100">
           <div className="flex items-center gap-3">
             <span className={`text-[11px] font-bold px-2.5 py-1 rounded ${status.cor}`}>{status.texto}</span>
+            {!ehHoje && (
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded bg-zinc-200 text-zinc-700">DIA ANTERIOR</span>
+            )}
             <span className="text-sm font-semibold capitalize">{dados ? dataLonga(dados.data) : ''}</span>
             <span className="text-sm text-zinc-500">
               <b className="text-zinc-900">{doDia.length}</b> empresas para abordar
@@ -335,7 +388,15 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                 </button>
               ))}
             </div>
-            {usuario.papel === 'farmer' && aba === 'plano' && (
+            {!ehHoje && (
+              <button
+                onClick={() => setDia(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-zinc-300 bg-white hover:border-zinc-500"
+              >
+                Voltar para hoje
+              </button>
+            )}
+            {ehHoje && usuario.papel === 'farmer' && aba === 'plano' && (
               <button
                 onClick={() => acao('planejar')}
                 disabled={enviando || somenteLeitura || semAbordagem > 0}
@@ -345,7 +406,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                 {enviando ? 'Salvando...' : semAbordagem > 0 ? `Faltam ${semAbordagem} de ${doDia.length}` : 'Iniciar o dia'}
               </button>
             )}
-            {usuario.papel === 'farmer' && aba === 'fechamento' && (
+            {ehHoje && usuario.papel === 'farmer' && aba === 'fechamento' && (
               <button
                 onClick={() => acao('fechar')}
                 disabled={enviando || somenteLeitura || pendenciasFechamento > 0}
@@ -470,7 +531,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
               {visiveis.map((i) => {
                 const escrito = i.observacaoResultado?.trim().length ?? 0
                 const exigeObs = RESULTADO_EXIGE_OBSERVACAO.includes(i.resultado as Resultado)
-                const faltaObs = exigeObs && escrito < MINIMO_OBSERVACAO
+                const faltaObs = exigeObs && escrito < MINIMO_OBSERVACAO && !somenteLeitura
                 return (
                   <tr key={i.companyId} className={`border-b border-zinc-50 align-top ${
                     i.resultado === 'efetivo' ? 'bg-emerald-50/40' : i.resultado === 'trocar_segmento' ? 'bg-red-50/40' : ''
@@ -533,7 +594,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                           faltaObs ? 'border-orange-400' : 'border-zinc-200'
                         }`}
                       />
-                      {exigeObs && (
+                      {exigeObs && !somenteLeitura && (
                         <p className={`text-[10px] mt-1 ${faltaObs ? 'text-orange-600' : 'text-zinc-400'}`}>
                           {escrito}/{MINIMO_OBSERVACAO} caracteres
                         </p>

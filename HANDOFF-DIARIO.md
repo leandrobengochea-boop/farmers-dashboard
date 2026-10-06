@@ -56,6 +56,8 @@ Painéis que sobem ao topo quando existem:
 ### Diário de bordo — `/diario`
 A lista do dia do farmer, em duas abas: **Plano do dia** (abordagem + contexto, de manhã) e **Fechamento** (resultado + observação).
 
+Uma tira no topo lista os últimos 14 dias que tiveram lista montada, com empresas e efetivos de cada um; clicar abre aquele dia inteiro. Dia anterior é **só leitura** — `/api/diario/dia` já aceitava `?data=`, e só gera lista nova quando a data é hoje. Preencher dia passado mudaria o histórico depois de o líder ter olhado.
+
 ### Tramitações — `/diario/tramitacoes`
 Os tickets de CS que pedem ação hoje, com baixa em duas mãos: o farmer marca, o líder **confirma ou nega**.
 

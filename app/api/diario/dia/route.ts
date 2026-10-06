@@ -2,8 +2,17 @@ import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider } from '@/lib/diario/constants'
 import { emDescanso, precisaAuxilio, hojeSP, montaSugestoes, negociacoesAtivas } from '@/lib/diario/carteira'
+
+/** Dias para trás que a tira de navegação oferece. */
+const DIAS_NA_TIRA = 14
+
+function menosDias(iso: string, dias: number): string {
+  const d = new Date(`${iso}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - dias)
+  return d.toISOString().slice(0, 10)
+}
 import { poolDaCarteira, resumoDoMes } from '@/lib/diario/metrics'
-import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe, registraAcesso } from '@/lib/diario/db'
+import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe, registraAcesso, serieDoPeriodo } from '@/lib/diario/db'
 import { empresasComSelo } from '@/lib/diario/relacionamento'
 import { AtividadeEmpresa, aplicaAtividade, atividadeDoDia } from '@/lib/diario/atividade'
 
@@ -43,7 +52,7 @@ export async function GET(req: Request) {
       itens = await itensDoDia(farmerId, data)
     }
 
-    const [resumo, brief, pool, historico, orientacoes, selos, atividade, negociacoes] = await Promise.all([
+    const [resumo, brief, pool, historico, orientacoes, selos, atividade, negociacoes, serie] = await Promise.all([
       resumoDoMes([farmerId], data),
       briefing(farmerId, data),
       poolDaCarteira(farmerId, data),
@@ -52,6 +61,8 @@ export async function GET(req: Request) {
       empresasComSelo(farmerId, itens.map((i) => i.companyId)).catch(() => new Set<string>()),
       atividadeDoDia(farmerId, data).catch((e) => { console.error('atividadeDoDia falhou:', e); return new Map<string, AtividadeEmpresa>() }),
       negociacoesAtivas(farmerId, data).catch(() => []),
+      // os dias que já têm lista montada, para o farmer voltar e ver o que fez
+      serieDoPeriodo([farmerId], menosDias(hojeSP(), DIAS_NA_TIRA - 1), hojeSP()).catch(() => []),
     ])
     const doFarmer = orientacoes.get(farmerId)
 
@@ -85,6 +96,15 @@ export async function GET(req: Request) {
         pool: { ...pool, emDescanso: descansando, precisandoAuxilio: auxilio },
         // negócios vivos no funil B2B: ficam à parte da lista do dia
         negociacoes,
+        hoje: hojeSP(),
+        dias: serie
+          .map((d) => ({
+            data: d.data,
+            empresas: d.setadas,
+            efetivo: d.efetivo,
+            pendente: d.semRegistro,
+          }))
+          .sort((a, b) => a.data.localeCompare(b.data)),
       },
       { headers: { 'Cache-Control': 'no-store' } },
     )
