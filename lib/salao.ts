@@ -22,6 +22,7 @@ export interface SalaoData {
 }
 
 const ALL_FARMERS: Record<string, { name: string; initials: string }> = {
+  '84497577': { name: 'Vitória', initials: 'VI' },
   '85002282': { name: 'Sotoriva', initials: 'FS' },
   '79760745': { name: 'Thiago Souza', initials: 'TS' },
   '85846971': { name: 'Francielle Lenz', initials: 'FL' },
