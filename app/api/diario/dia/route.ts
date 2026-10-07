@@ -14,6 +14,7 @@ function menosDias(iso: string, dias: number): string {
 import { poolDaCarteira, resumoDoMes } from '@/lib/diario/metrics'
 import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe, registraAcesso, serieDoPeriodo } from '@/lib/diario/db'
 import { empresasComSelo } from '@/lib/diario/relacionamento'
+import { tramitacoesDoFarmer } from '@/lib/diario/tramitacoes'
 import { AtividadeEmpresa, aplicaAtividade, atividadeDoDia } from '@/lib/diario/atividade'
 
 export const dynamic = 'force-dynamic'
@@ -52,7 +53,7 @@ export async function GET(req: Request) {
       itens = await itensDoDia(farmerId, data)
     }
 
-    const [resumo, brief, pool, historico, orientacoes, selos, atividade, negociacoes, serie] = await Promise.all([
+    const [resumo, brief, pool, historico, orientacoes, selos, atividade, negociacoes, emTramitacao, serie] = await Promise.all([
       resumoDoMes([farmerId], data),
       briefing(farmerId, data),
       poolDaCarteira(farmerId, data),
@@ -61,6 +62,7 @@ export async function GET(req: Request) {
       empresasComSelo(farmerId, itens.map((i) => i.companyId)).catch(() => new Set<string>()),
       atividadeDoDia(farmerId, data).catch((e) => { console.error('atividadeDoDia falhou:', e); return new Map<string, AtividadeEmpresa>() }),
       negociacoesAtivas(farmerId, data).catch(() => []),
+      tramitacoesDoFarmer(farmerId).catch(() => []),
       // os dias que já têm lista montada, para o farmer voltar e ver o que fez
       serieDoPeriodo([farmerId], menosDias(hojeSP(), DIAS_NA_TIRA - 1), hojeSP()).catch(() => []),
     ])
@@ -96,6 +98,8 @@ export async function GET(req: Request) {
         pool: { ...pool, emDescanso: descansando, precisandoAuxilio: auxilio },
         // negócios vivos no funil B2B: ficam à parte da lista do dia
         negociacoes,
+        // evento sendo montado pelo CS: também fora do rodízio, só para saber
+        emTramitacao,
         hoje: hojeSP(),
         dias: serie
           .map((d) => ({

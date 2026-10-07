@@ -77,9 +77,8 @@ export default function AjudaPage() {
           <li><b>{COTA_DIARIA.nutricao}</b> de {BUCKETS.nutricao.label.toLowerCase()}</li>
           <li><b>{COTA_DIARIA.reativacao}</b> de {BUCKETS.reativacao.label.toLowerCase()}</li>
           <li className="text-zinc-500">
-            + <b>{COTA_DIARIA.extra}</b> extras fora da conta das {EMPRESAS_DO_DIA}: primeiro as{' '}
-            <b>negociações paradas</b> há mais de {DIAS_NEGOCIACAO_PARADA} dias; o que sobrar de vaga vira{' '}
-            {BUCKETS.extra.label.toLowerCase()}
+            + <b>{COTA_DIARIA.extra}</b> de {BUCKETS.extra.label.toLowerCase()}, como extras fora da conta das{' '}
+            {EMPRESAS_DO_DIA}
           </li>
         </ul>
         <p className="mt-4">
@@ -95,12 +94,15 @@ export default function AjudaPage() {
           em aberto</b>, com a etapa do funil B2B e há quantos dias estão nela.
         </p>
         <p className="mt-3">
-          Quando a negociação passa de {DIAS_NEGOCIACAO_PARADA} dias sem mudar de etapa, ela entra como extra do
-          dia com a abordagem <b>ACOMPANHAR NEGOCIAÇÃO</b> — destravar o que já está na mesa vale mais que
-          qualquer abordagem nova. Vale a negociação de quem é <b>responsável pelo negócio</b>, desde que a empresa
-          seja do <b>segmento dele</b> — negócio de carteira alheia é assunto do líder, não tarefa do dia.
-          O segmento vem da propriedade <i>Novas Carteiras</i> da empresa; quando ela está vazia, vale o
-          organograma, ou seja, o segmento de quem é proprietário da empresa.
+          O bloco é <b>só informação</b>. Negociação já tem conversa na mesa, com próximo passo e data próprios —
+          virar tarefa do diário duplicaria o acompanhamento que acontece dentro do negócio. O que o bloco mostra
+          é a etapa e há quantos dias ela não anda; passando de {DIAS_NEGOCIACAO_PARADA} dias, aparece destacada.
+        </p>
+        <p className="mt-3">
+          <b>Empresa em tramitação também sai da lista.</b> Quando existe ticket de evento sendo montado pelo CS,
+          a empresa fica fora do rodízio de abordagem e aparece no bloco <b>Em tramitação</b>, com a etapa e a
+          data do evento. Nada a fazer ali — a execução é do CS. Depois do evento ela volta ao rodízio, e aí
+          <b> contato pós-evento</b> faz sentido.
         </p>
         <p className="mt-4">
           Dentro de cada fase, a ordem tem lógica: em recompra e nutrição vem primeiro quem está mais perto de

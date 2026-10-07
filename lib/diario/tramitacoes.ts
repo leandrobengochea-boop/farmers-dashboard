@@ -3,7 +3,105 @@ import {
   PRAZO_ASSINATURA_DIAS, PRAZO_MINUTA_DIAS_UTEIS,
   TICKET_PIPELINE_CS, TICKET_STAGES_TRAMITACAO, TipoTramitacao, urlTicket,
 } from './constants'
-import { searchAllPages } from './carteira'
+import { fetchWithRetry, searchAllPages } from './carteira'
+
+/** Empresa com evento sendo montado: o CS está no meio do trabalho. */
+export interface TramitacaoEmpresa {
+  ticketId: string
+  assunto: string
+  etapa: string
+  dataEvento: string | null
+  hubspotUrl: string
+  companyId: string
+  companyName: string
+  donoDaEmpresa: string
+}
+
+let cacheTramitacao: { em: number; mapa: Map<string, TramitacaoEmpresa> } | null = null
+const VALIDADE_TRAMITACAO = 10 * 60 * 1000
+
+/**
+ * Empresas com ticket vivo nas etapas ANTES do evento, independente de quem é o
+ * dono do ticket — hoje quase todos são do CS, não dos farmers.
+ *
+ * Serve para tirar a empresa do rodízio de abordagem: oferecer reativação para
+ * quem está com evento sendo montado é ruído. Etapa de pós-palestra não entra:
+ * ali o evento já aconteceu e falar com o cliente de novo faz sentido.
+ */
+export async function empresasEmTramitacao(): Promise<Map<string, TramitacaoEmpresa>> {
+  if (cacheTramitacao && Date.now() - cacheTramitacao.em < VALIDADE_TRAMITACAO) return cacheTramitacao.mapa
+  const mapa = new Map<string, TramitacaoEmpresa>()
+  const pat = process.env.HUBSPOT_PAT
+  if (!pat) return mapa
+
+  try {
+    const tickets = await searchAllPages(pat, 'tickets', [{ filters: [
+      { propertyName: 'hs_pipeline', operator: 'EQ', value: TICKET_PIPELINE_CS },
+      { propertyName: 'hs_pipeline_stage', operator: 'IN', values: TICKET_STAGES_TRAMITACAO },
+    ] }], ['subject', 'hs_pipeline_stage', 'data_do_evento__ganho_'])
+
+    const ids = tickets.map((t) => t.id)
+    const empresaDoTicket = new Map<string, string>()
+    for (let i = 0; i < ids.length; i += 100) {
+      const resp = await fetchWithRetry('https://api.hubapi.com/crm/v4/associations/tickets/companies/batch/read', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: ids.slice(i, i + 100).map((id) => ({ id })) }),
+      })
+      if (!resp.ok) continue
+      const data = (await resp.json()) as { results?: Array<{ from: { id: string }; to: Array<{ toObjectId: number | string }> }> }
+      for (const row of data.results ?? []) {
+        const alvo = row.to?.[0]?.toObjectId
+        if (alvo) empresaDoTicket.set(row.from.id, String(alvo))
+      }
+    }
+
+    // nome e dono vêm junto: assim quem precisa da lista de um farmer filtra o
+    // cache em memória, sem refazer a busca da carteira
+    const alvos = [...new Set(empresaDoTicket.values())]
+    const empresa = new Map<string, { nome: string; dono: string }>()
+    for (let i = 0; i < alvos.length; i += 100) {
+      const resp = await fetchWithRetry('https://api.hubapi.com/crm/v3/objects/companies/batch/read', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ properties: ['name', 'hubspot_owner_id'], inputs: alvos.slice(i, i + 100).map((id) => ({ id })) }),
+      })
+      if (!resp.ok) continue
+      const data = (await resp.json()) as { results?: Array<{ id: string; properties: Record<string, string> }> }
+      for (const c of data.results ?? []) {
+        empresa.set(c.id, { nome: c.properties.name ?? `Empresa ${c.id}`, dono: c.properties.hubspot_owner_id ?? '' })
+      }
+    }
+
+    for (const t of tickets) {
+      const companyId = empresaDoTicket.get(t.id)
+      if (!companyId || mapa.has(companyId)) continue
+      const dados = empresa.get(companyId)
+      mapa.set(companyId, {
+        ticketId: t.id,
+        assunto: t.properties.subject ?? `Ticket ${t.id}`,
+        etapa: ETAPAS_TICKET[t.properties.hs_pipeline_stage ?? ''] ?? '',
+        dataEvento: (t.properties.data_do_evento__ganho_ ?? '')?.slice(0, 10) || null,
+        hubspotUrl: urlTicket(t.id),
+        companyId,
+        companyName: dados?.nome ?? `Empresa ${companyId}`,
+        donoDaEmpresa: dados?.dono ?? '',
+      })
+    }
+  } catch {
+    return mapa
+  }
+  cacheTramitacao = { em: Date.now(), mapa }
+  return mapa
+}
+
+/** O que está em tramitação na carteira de um farmer. Lê do cache, sem rede. */
+export async function tramitacoesDoFarmer(farmerId: string): Promise<TramitacaoEmpresa[]> {
+  const mapa = await empresasEmTramitacao()
+  return [...mapa.values()]
+    .filter((t) => t.donoDaEmpresa === farmerId)
+    .sort((a, b) => (a.dataEvento ?? '9').localeCompare(b.dataEvento ?? '9'))
+}
 
 export interface Pendencia {
   ticketId: string

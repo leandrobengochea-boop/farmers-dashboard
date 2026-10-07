@@ -56,6 +56,17 @@ interface Dados {
   negociacoes?: Negociacao[]
   hoje?: string
   dias?: DiaDaTira[]
+  emTramitacao?: EmTramitacao[]
+}
+
+/** Evento sendo montado pelo CS: fora do rodízio, só para o farmer saber. */
+interface EmTramitacao {
+  companyId: string
+  companyName: string
+  assunto: string
+  etapa: string
+  dataEvento: string | null
+  hubspotUrl: string
 }
 
 /** Um dia com lista montada, para a navegação da semana. */
@@ -317,6 +328,41 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                   <a href={n.hubspotUrl} target="_blank" rel="noreferrer"
                     className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-300 hover:border-zinc-500">
                     Abrir negócio
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(dados?.emTramitacao?.length ?? 0) > 0 && (
+        <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50/40 px-5 py-4">
+          <div className="flex items-baseline gap-2 mb-1">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-blue-900">Em tramitação</h2>
+            <span className="text-xs text-blue-800">
+              {dados!.emTramitacao!.length} com evento sendo montado pelo CS
+            </span>
+          </div>
+          <p className="text-xs text-blue-800/80 mb-4">
+            Fora da lista de abordagem até o evento acontecer. Nada a fazer aqui — a execução é do CS.
+          </p>
+          <div className="grid gap-2">
+            {dados!.emTramitacao!.map((t) => (
+              <div key={t.companyId} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white border border-blue-200 px-3 py-2.5">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="text-sm font-medium truncate">{t.companyName}</span>
+                  {t.etapa && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded border bg-white border-zinc-200 shrink-0">
+                      {t.etapa}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  {t.dataEvento && <span className="text-xs text-zinc-500">evento {dataCurta(t.dataEvento)}</span>}
+                  <a href={t.hubspotUrl} target="_blank" rel="noreferrer"
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-300 hover:border-zinc-500">
+                    Abrir ticket
                   </a>
                 </div>
               </div>

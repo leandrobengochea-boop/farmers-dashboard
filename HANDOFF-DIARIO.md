@@ -74,7 +74,11 @@ A lista é gerada **na primeira abertura do dia e congela** — dar refresh não
 > **Por que existe cooldown:** numa carteira típica de ~296 empresas, só ~37% têm histórico de compra. Sem descanso, o pool elegível inteiro se esgota em cerca de uma semana e o farmer recebe a mesma lista toda vez. Ao mexer em `COTA_DIARIA`, recalcule se o pool sustenta o ritmo.
 
 ### Negociações no funil B2B
-Empresa com negócio aberto **não entra na lista de abordagem** — já existe conversa na mesa. As que estão nas quatro etapas ativas do funil B2B aparecem num bloco à parte no diário, com a etapa e há quantos dias estão nela. Passando de 15 dias sem mudar de etapa, a negociação entra como **extra do dia** (abordagem `ACOMPANHAR NEGOCIAÇÃO`), na frente de "entre eventos".
+Empresa com negócio aberto **não entra na lista de abordagem** — já existe conversa na mesa. As que estão nas quatro etapas ativas do funil B2B aparecem num bloco à parte no diário, com a etapa e há quantos dias estão nela.
+
+O bloco é **só informativo** (decisão de 07/10). Chegou a virar extra do dia quando passava de 15 dias parada, mas duplicava o acompanhamento que já acontece dentro do negócio. Os 3 extras voltaram a ser "entre eventos".
+
+**Empresa em tramitação também sai do rodízio**: ticket vivo nas etapas pré-evento (`TICKET_STAGES_TRAMITACAO`), independente de quem é o dono do ticket — hoje quase todos são do CS. Aparece no bloco "Em tramitação". Pós-palestra não conta: ali o evento já aconteceu e falar de novo faz sentido. `empresasEmTramitacao()` tem cache de 10 min, então não pesa no carregamento.
 
 > ⚠️ **Os ids das etapas do funil B2B são mentirosos.** O funil foi montado sobre o pipeline padrão do HubSpot e ninguém trocou os ids: `closedwon` é **"Proposta enviada"** e `closedlost` é **"Em negociação"** — ambas etapas ABERTAS. Nunca deduza o significado pelo id; use `ETAPAS_FUNIL_ATIVO` em `lib/diario/constants.ts`.
 
