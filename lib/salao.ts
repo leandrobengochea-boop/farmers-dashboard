@@ -50,7 +50,7 @@ const SALAO_DATE_RESTRICTIONS: Record<string, { untilDate: string }> = {
 const ALIAS_MAP: Record<string, string> = { '93238814': '85002282' }
 const CANONICAL_IDS = Object.keys(ALL_FARMERS)
 const ALL_SEARCH_IDS = [...CANONICAL_IDS, ...Object.keys(ALIAS_MAP)]
-const WON_STAGES = ['1076664462', '1076664460']
+const WON_STAGES = ['1076664462', '1076664460', '1105295876', '1372708683']
 
 const B2C_PIPELINE_IDS = new Set(['725182862', '727938450', '904543067'])
 
