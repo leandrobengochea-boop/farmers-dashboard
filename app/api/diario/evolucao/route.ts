@@ -3,6 +3,7 @@ import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider, farmersDoPeriodoNoDiario, LIDERES } from '@/lib/diario/constants'
 import { dealInTeam, FARMERS } from '@/lib/constants'
 import { hojeSP } from '@/lib/diario/carteira'
+import { ehDiaUtil } from '@/lib/diario/calendario'
 import { DiaDoFarmer, serieDoPeriodo } from '@/lib/diario/db'
 
 export const dynamic = 'force-dynamic'
@@ -60,12 +61,26 @@ export async function GET(req: Request) {
 
   try {
     const bruta = await serieDoPeriodo(farmerIds, de, ate)
+
+    // Sábado, domingo e feriado saem da conta: o diário monta lista em qualquer
+    // dia que alguém abre a tela, e esses dias entravam com 20 empresas e zero
+    // resultado, derrubando a efetividade sem ninguém ter trabalhado.
+    //
+    // A exceção protege quem trabalha fora do horário: se o dia tem QUALQUER
+    // resultado registrado, ele conta. Assim a regra nunca esconde trabalho.
+    const trabalhou = new Set<string>()
+    for (const d of bruta) {
+      if (d.efetivo + d.tentativa + d.naoAbordei > 0) trabalhou.add(d.data)
+    }
+    const valeODia = (data: string) => ehDiaUtil(data) || trabalhou.has(data)
+
     // O geral tem que fechar com a soma dos times da tela. Dia que pertenceu a
     // um time que saiu do diário (o do Dani, em out/26) fica de fora dos dois,
     // senão sobra diferença que ninguém consegue explicar.
-    const serie = gerencia
-      ? bruta.filter((d) => LIDERES.some((l) => l.timeKey && dealInTeam(d.farmerId, d.data, l.timeKey)))
-      : bruta
+    const serie = bruta.filter(
+      (d) => valeODia(d.data)
+        && (!gerencia || LIDERES.some((l) => l.timeKey && dealInTeam(d.farmerId, d.data, l.timeKey))),
+    )
 
     const porDia = new Map<string, Composicao>()
     for (const d of serie) {

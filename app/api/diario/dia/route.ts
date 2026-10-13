@@ -13,6 +13,7 @@ function menosDias(iso: string, dias: number): string {
 }
 import { poolDaCarteira, resumoDoMes } from '@/lib/diario/metrics'
 import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe, registraAcesso, serieDoPeriodo } from '@/lib/diario/db'
+import { ehDiaUtil } from '@/lib/diario/calendario'
 import { empresasComSelo } from '@/lib/diario/relacionamento'
 import { tramitacoesDoFarmer } from '@/lib/diario/tramitacoes'
 import { AtividadeEmpresa, aplicaAtividade, atividadeDoDia } from '@/lib/diario/atividade'
@@ -47,7 +48,9 @@ export async function GET(req: Request) {
     let itens = await itensDoDia(farmerId, data)
 
     // Primeira abertura do dia: gera a lista e congela (refresh não reembaralha).
-    if (itens.length === 0 && data === hojeSP()) {
+    // Em sábado, domingo e feriado não monta nada: a lista ficaria sem dono e
+    // entraria no relatório como um dia de zero efetividade.
+    if (itens.length === 0 && data === hojeSP() && ehDiaUtil(data)) {
       const sugestoes = await montaSugestoes(farmerId, data)
       await gravaSugestoes(sugestoes.itens)
       itens = await itensDoDia(farmerId, data)
@@ -101,7 +104,10 @@ export async function GET(req: Request) {
         // evento sendo montado pelo CS: também fora do rodízio, só para saber
         emTramitacao,
         hoje: hojeSP(),
+        // mesma régua do relatório: sábado, domingo e feriado só aparecem na
+        // tira se alguém realmente registrou algo naquele dia
         dias: serie
+          .filter((d) => ehDiaUtil(d.data) || d.efetivo + d.tentativa + d.naoAbordei > 0)
           .map((d) => ({
             data: d.data,
             empresas: d.setadas,

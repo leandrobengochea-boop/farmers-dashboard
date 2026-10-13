@@ -351,6 +351,12 @@ export default function AjudaPage() {
           sai continua no histórico do período em que trabalhou.
         </p>
         <p className="mt-3">
+          <b>Sábado, domingo e feriado ficam fora.</b> O diário monta lista em qualquer dia em que alguém abre a
+          tela, e esses dias entravam no gráfico com as empresas do dia e nenhum resultado — derrubando a
+          efetividade sem ninguém ter trabalhado. A exceção é quem trabalhou mesmo: dia não útil com qualquer
+          resultado registrado continua contando.
+        </p>
+        <p className="mt-3">
           A faixa cinza clara, <b>sem registro</b>, é a que explica quase tudo: dia com muita faixa cinza não é
           time que não conecta, é lista que não foi trabalhada. Por isso ela aparece no gráfico em vez de sumir
           da conta.

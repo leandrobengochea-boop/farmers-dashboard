@@ -156,6 +156,8 @@ Barra de 100% por dia com a composição das empresas setadas: **efetivo / tenta
 
 Abaixo do gráfico há duas leituras: **por time** e **por farmer** (a segunda estreita para o time escolhido no filtro).
 
+**Dia não útil fica fora** (`lib/diario/calendario.ts`): sábado, domingo e feriado nacional. Os feriados móveis saem do cálculo da Páscoa, então não é tabela para atualizar todo ano; carnaval entra porque a operação não trabalha. A exceção protege trabalho real: dia não útil com qualquer resultado registrado continua contando. Sem isso eram 5 dias de zero efetividade no período de set/out, custando ~3 pontos (25% → 28% em 7 dias). O `/api/diario/dia` também deixou de **montar lista** em dia não útil — é lá que o lixo nascia.
+
 Os times são os **daquele dia**, não os de hoje: o relatório usa `dealInTeam`, então quem troca de líder leva o que fez antes para a formação antiga. Sem isso, o histórico de um time mudaria sozinho toda vez que alguém mudasse de time — na troca de 25/09 eram 173 empresas trocando de dono no gráfico. Pelo mesmo motivo a consulta usa `farmersDoPeriodo`, não a formação atual: quem sai do escopo continua no histórico dos dias em que trabalhou (sem isso, a saída do Rafael Brack apagava 100 empresas da Letícia e mudava a taxa dela de 14% para 16%).
 
 A escolha do denominador foi discutida e é opinativa. Medir só o que foi preenchido premiaria quem trabalha menos (atacar 3 das 20 e conectar em 2 daria 67%). Em troca, a faixa cinza de "sem registro" fica visível, porque é ela que explica o número.
