@@ -145,20 +145,23 @@ export default function Evolucao({ timeFiltro, souLider }: { timeFiltro: string 
               {total.pctEfetivo}%
             </p>
             <p className="text-xs text-zinc-500 mt-1">
-              {total.efetivo} de {total.setadas} empresas · {serie.length} {serie.length === 1 ? 'dia' : 'dias'}
+              {total.efetivo} de {total.setadas} empresas · {serie.length} {serie.length === 1 ? 'dia útil' : 'dias úteis'}
               {doTime && ` · time de ${doTime.lider.split(' ')[0]}`}
             </p>
           </div>
-          <div className="flex rounded-full bg-zinc-100 p-1">
-            {[7, 14, 30].map((n) => (
-              <button
-                key={n}
-                onClick={() => setDias(n)}
-                className={`px-3 py-1 text-xs rounded-full transition ${dias === n ? 'bg-white shadow-sm font-medium' : 'text-zinc-500'}`}
-              >
-                {n} dias
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-zinc-400">Dias úteis</span>
+            <div className="flex rounded-full bg-zinc-100 p-1">
+              {[7, 14, 30].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setDias(n)}
+                  className={`px-3 py-1 text-xs rounded-full transition ${dias === n ? 'bg-white shadow-sm font-medium' : 'text-zinc-500'}`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -185,7 +188,7 @@ export default function Evolucao({ timeFiltro, souLider }: { timeFiltro: string 
       {souLider && (dados?.times.length ?? 0) > 0 && !timeFiltro && (
         <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-5">
           <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-400 mb-4">
-            Por time · {dias} dias
+            Por time · {dias} dias úteis
           </p>
           <div className="grid gap-3.5">
             {[...(dados?.times ?? [])]
@@ -206,7 +209,7 @@ export default function Evolucao({ timeFiltro, souLider }: { timeFiltro: string 
       {souLider && (listaFarmers.length > 1) && (
         <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-5">
           <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-400 mb-4">
-            Por farmer · {dias} dias{doTime ? ` · time de ${doTime.lider.split(' ')[0]}` : ''}
+            Por farmer · {dias} dias úteis{doTime ? ` · time de ${doTime.lider.split(' ')[0]}` : ''}
           </p>
           <div className="grid gap-3">
             {listaFarmers.map((f) => (

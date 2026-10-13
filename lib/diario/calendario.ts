@@ -71,3 +71,22 @@ export function ehDiaUtil(data: string): boolean {
   if (d === 0 || d === 6) return false
   return !feriadosNacionais(Number(data.slice(0, 4))).has(data)
 }
+
+/**
+ * Primeiro dia de uma janela de N dias úteis que termina em `ate`.
+ *
+ * A janela do relatório conta dias de trabalho, não dias de calendário: numa
+ * semana com feriado, "7 dias" corridos entregava 4 barras.
+ */
+export function inicioDaJanela(ate: string, diasUteis: number): string {
+  let contados = 0
+  const d = new Date(`${ate}T12:00:00Z`)
+  // teto de segurança: nenhuma janela razoável precisa de mais de um ano
+  for (let passos = 0; passos < 400; passos++) {
+    const atual = d.toISOString().slice(0, 10)
+    if (ehDiaUtil(atual)) contados++
+    if (contados >= diasUteis) return atual
+    d.setUTCDate(d.getUTCDate() - 1)
+  }
+  return d.toISOString().slice(0, 10)
+}

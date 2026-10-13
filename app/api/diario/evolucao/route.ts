@@ -3,7 +3,7 @@ import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider, farmersDoPeriodoNoDiario, LIDERES } from '@/lib/diario/constants'
 import { dealInTeam, FARMERS } from '@/lib/constants'
 import { hojeSP } from '@/lib/diario/carteira'
-import { ehDiaUtil } from '@/lib/diario/calendario'
+import { ehDiaUtil, inicioDaJanela } from '@/lib/diario/calendario'
 import { DiaDoFarmer, serieDoPeriodo } from '@/lib/diario/db'
 
 export const dynamic = 'force-dynamic'
@@ -36,12 +36,6 @@ const fecha = (c: Composicao): Composicao => ({
   ...c, pctEfetivo: c.setadas > 0 ? Math.round((c.efetivo / c.setadas) * 100) : 0,
 })
 
-function menosDias(hoje: string, dias: number): string {
-  const d = new Date(`${hoje}T12:00:00Z`)
-  d.setUTCDate(d.getUTCDate() - dias)
-  return d.toISOString().slice(0, 10)
-}
-
 export async function GET(req: Request) {
   const usuario = usuarioAtual()
   if (!usuario) return NextResponse.json({ error: 'não autenticado' }, { status: 401 })
@@ -49,7 +43,8 @@ export async function GET(req: Request) {
   const url = new URL(req.url)
   const ate = url.searchParams.get('ate') || hojeSP()
   const dias = Math.min(Math.max(parseInt(url.searchParams.get('dias') ?? '14', 10) || 14, 1), 90)
-  const de = menosDias(ate, dias - 1)
+  // a janela conta dias de trabalho: semana com feriado não vira gráfico curto
+  const de = inicioDaJanela(ate, dias)
 
   // Quem esteve no time durante a janela, não só quem está hoje: senão o
   // histórico encolhe toda vez que alguém sai.

@@ -351,6 +351,10 @@ export default function AjudaPage() {
           sai continua no histórico do período em que trabalhou.
         </p>
         <p className="mt-3">
+          <b>A janela conta dias úteis.</b> Escolher 7 traz os últimos 7 dias de trabalho, não os 7 dias do
+          calendário — numa semana com feriado, o gráfico continua com 7 barras.
+        </p>
+        <p className="mt-3">
           <b>Sábado, domingo e feriado ficam fora.</b> O diário monta lista em qualquer dia em que alguém abre a
           tela, e esses dias entravam no gráfico com as empresas do dia e nenhum resultado — derrubando a
           efetividade sem ninguém ter trabalhado. A exceção é quem trabalhou mesmo: dia não útil com qualquer
