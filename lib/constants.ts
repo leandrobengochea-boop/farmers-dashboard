@@ -138,6 +138,7 @@ export const FARMER_DATE_RESTRICTIONS: Record<string, DateRestriction> = {
   '97204635': { untilDate: '2026-09-20' }, // Samuel: saiu da empresa em 19/09/26
   '94891358': { untilDate: '2026-09-01' }, // Priscila: fora da formação set/26
   '80688884': { untilDate: '2026-09-29' }, // Rafael Brack: sai do escopo de farmer em 28/09/26
+  '95415669': { untilDate: '2026-10-07' }, // Gisele: carteira passou para o Eduardo em 07/10/26
   '95811085': { untilDate: '2026-09-01' }, // Wagner: fora da formação set/26
   '96198720': { untilDate: '2026-09-01' }, // Alexcia: fora da formação set/26
   '85002012': { untilDate: '2026-09-01' }, // Bruna Machado: fora da formação set/26
@@ -354,7 +355,7 @@ const TEAMS_OCT05: TeamMap = {
   },
 }
 
-// 07/10: Eduardo Godoy entra no Time Katy, assumindo a carteira de Serviços I.
+// 07/10: Eduardo Godoy assume a carteira de Serviços I e a Gisele sai do time.
 const TEAMS_OCT07: TeamMap = {
   leticia: {
     label: 'Time Leticia',
@@ -362,7 +363,7 @@ const TEAMS_OCT07: TeamMap = {
   },
   katyeli: {
     label: 'Time Katy',
-    farmerIds: ['85002282', '93238814', '95415669', '92335488', '93599591', '85846971', '97204561', '98715151', '100619918'],
+    farmerIds: ['85002282', '93238814', '92335488', '93599591', '85846971', '97204561', '98715151', '100619918'],
   },
   camila: {
     label: 'Time Cami',
