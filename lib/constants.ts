@@ -371,7 +371,24 @@ const TEAMS_OCT07: TeamMap = {
   },
 }
 
+// 20/10: Talita vai para o Time Cami e Bruno Beck para o Time Katy.
+const TEAMS_OCT20: TeamMap = {
+  leticia: {
+    label: 'Time Leticia',
+    farmerIds: ['99956495', '94028856'],
+  },
+  katyeli: {
+    label: 'Time Katy',
+    farmerIds: ['85002282', '93238814', '92335488', '93599591', '85846971', '97204561', '98715151', '100619918', '100465709'],
+  },
+  camila: {
+    label: 'Time Cami',
+    farmerIds: ['80228367', '94316537', '84497577', '95993082', '95810969', '88200239', '96589066', '92704130'],
+  },
+}
+
 const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
+  { from: new Date('2026-10-20').getTime(), teams: TEAMS_OCT20 },
   { from: new Date('2026-10-07').getTime(), teams: TEAMS_OCT07 },
   { from: new Date('2026-10-05').getTime(), teams: TEAMS_OCT05 },
   { from: new Date('2026-10-01').getTime(), teams: TEAMS_OCT },
@@ -383,7 +400,7 @@ const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
   { from: new Date('2026-07-01').getTime(), teams: TEAMS_JULY },
 ]
 
-export const TEAMS: TeamMap = TEAMS_OCT07
+export const TEAMS: TeamMap = TEAMS_OCT20
 
 // Metas mensais de empresas únicas, por mês de vigência (mais recente primeiro).
 // teamGoals: metas individuais por time (quando diferem entre si).
@@ -415,7 +432,10 @@ export function monthlyGoal(monthKey: string, teamId?: string | null): number {
 export function farmersDoPeriodo(teamId: string | null, deIso: string, ateIso: string): string[] {
   const de = new Date(deIso).getTime()
   const ate = new Date(ateIso).getTime()
-  const mapas: TeamMap[] = [TEAMS_BEFORE]
+  // TEAMS_BEFORE só entra se a janela alcançar o período anterior à primeira
+  // formação — senão arrasta para dentro do time gente que saiu há meses.
+  const maisAntiga = TEAM_PERIODS[TEAM_PERIODS.length - 1]?.from ?? Infinity
+  const mapas: TeamMap[] = de < maisAntiga ? [TEAMS_BEFORE] : []
   for (let i = 0; i < TEAM_PERIODS.length; i++) {
     const inicio = TEAM_PERIODS[i].from
     // a formação vale do seu início até o começo da formação seguinte

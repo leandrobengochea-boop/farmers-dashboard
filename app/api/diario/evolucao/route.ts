@@ -72,10 +72,14 @@ export async function GET(req: Request) {
     // O geral tem que fechar com a soma dos times da tela. Dia que pertenceu a
     // um time que saiu do diário (o do Dani, em out/26) fica de fora dos dois,
     // senão sobra diferença que ninguém consegue explicar.
-    const serie = bruta.filter(
-      (d) => valeODia(d.data)
-        && (!gerencia || LIDERES.some((l) => l.timeKey && dealInTeam(d.farmerId, d.data, l.timeKey))),
-    )
+    // Líder de time só conta quem era DELE naquele dia. Sem isso, quem já passou
+    // pelo time em alguma formação antiga voltava a aparecer no número dele.
+    const noEscopo = (d: DiaDoFarmer) => usuario.papel !== 'lider'
+      || (usuario.timeKey
+        ? dealInTeam(d.farmerId, d.data, usuario.timeKey)
+        : LIDERES.some((l) => l.timeKey && dealInTeam(d.farmerId, d.data, l.timeKey)))
+
+    const serie = bruta.filter((d) => valeODia(d.data) && noEscopo(d))
 
     const porDia = new Map<string, Composicao>()
     for (const d of serie) {
