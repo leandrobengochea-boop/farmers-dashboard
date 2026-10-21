@@ -1,6 +1,6 @@
 import { fetchWithRetry, searchAllPages } from './carteira'
 import { FORCA_RESULTADO } from './constants'
-import { ItemDiario, atualizaItem } from './db'
+import { ItemDiario, atualizaItem, briefing, itensDoDia, ultimoDiaComLista } from './db'
 
 /**
  * Atividade registrada no HubSpot hoje, por empresa. É a fonte do fechamento:
@@ -212,4 +212,25 @@ export async function aplicaAtividade(
       ...(preencheTexto ? { observacaoResultado: a.texto.slice(0, 600) } : {}),
     }).catch(() => {})
   }
+}
+
+/**
+ * Fecha o dia anterior com o que o HubSpot registrou depois que o farmer saiu.
+ *
+ * A lista de hoje é montada a partir do resultado dos dias passados, e esse
+ * resultado chega atrasado: a ligação de ontem às 18h só vira "contato efetivo"
+ * quando alguém reabre a tela. Sem isso, a empresa que foi atendida ontem volta
+ * hoje como se não tivesse sido abordada — foi o que aconteceu com a TRE-GO,
+ * cuja lista de 20/10 nasceu 17 minutos antes do resultado de 19/10 ser gravado.
+ */
+export async function completaDiaAnterior(farmerId: string, hoje: string): Promise<void> {
+  const dia = await ultimoDiaComLista(farmerId, hoje)
+  if (!dia) return
+  const [itens, brief] = await Promise.all([itensDoDia(farmerId, dia), briefing(farmerId, dia)])
+  if (itens.length === 0 || brief.status === 'revisado') return
+  if (itens.every((i) => i.resultado)) return
+
+  const atividade = await atividadeDoDia(farmerId, dia)
+  if (atividade.size === 0) return
+  await aplicaAtividade(farmerId, dia, itens, atividade)
 }

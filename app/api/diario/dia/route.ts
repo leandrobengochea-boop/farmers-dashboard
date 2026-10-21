@@ -16,7 +16,7 @@ import { itensDoDia, gravaSugestoes, briefing, historicoDoFarmer, orientacoesDe,
 import { ehDiaUtil } from '@/lib/diario/calendario'
 import { empresasComSelo } from '@/lib/diario/relacionamento'
 import { tramitacoesDoFarmer } from '@/lib/diario/tramitacoes'
-import { AtividadeEmpresa, aplicaAtividade, atividadeDoDia } from '@/lib/diario/atividade'
+import { AtividadeEmpresa, aplicaAtividade, atividadeDoDia, completaDiaAnterior } from '@/lib/diario/atividade'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -51,6 +51,9 @@ export async function GET(req: Request) {
     // Em sábado, domingo e feriado não monta nada: a lista ficaria sem dono e
     // entraria no relatório como um dia de zero efetividade.
     if (itens.length === 0 && data === hojeSP() && ehDiaUtil(data)) {
+      // antes de sortear o dia, fecha o anterior com o que o CRM já sabe:
+      // é esse resultado que decide quem está de descanso
+      await completaDiaAnterior(farmerId, data).catch(() => {})
       const sugestoes = await montaSugestoes(farmerId, data)
       await gravaSugestoes(sugestoes.itens)
       itens = await itensDoDia(farmerId, data)

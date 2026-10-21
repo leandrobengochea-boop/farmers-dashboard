@@ -489,6 +489,23 @@ export async function salvaOrientacao(o: Orientacao): Promise<void> {
   gravaLocal(dados)
 }
 
+/** Último dia anterior a `antesDe` em que este farmer teve lista montada. */
+export async function ultimoDiaComLista(farmerId: string, antesDe: string): Promise<string | null> {
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`
+      SELECT max(data)::text AS dia FROM diario_item
+      WHERE farmer_id = ${farmerId} AND data < ${antesDe}::date`
+    const dia = rows[0]?.dia
+    return dia ? String(dia) : null
+  }
+  const dias = leLocal().itens
+    .filter((i) => i.farmerId === farmerId && i.data < antesDe)
+    .map((i) => i.data)
+    .sort()
+  return dias.length ? dias[dias.length - 1] : null
+}
+
 /** Uma linha por farmer/dia, para o relatório de evolução. */
 export interface DiaDoFarmer {
   farmerId: string

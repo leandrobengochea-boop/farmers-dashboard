@@ -205,6 +205,12 @@ export default function AjudaPage() {
           </tbody>
         </table>
         <p className="mt-4">
+          <b>O dia anterior é fechado antes de a lista de hoje ser montada.</b> A ligação de ontem às 18h às
+          vezes só vira resultado quando alguém reabre a tela — e o descanso é calculado em cima desse
+          resultado. Por isso, ao gerar a lista do dia, o diário primeiro relê o que o HubSpot registrou ontem.
+          Sem isso, empresa atendida ontem voltava hoje como se não tivesse sido abordada.
+        </p>
+        <p className="mt-4">
           Cada empresa que retorna mostra o motivo no próprio card: <i>não abordada em 17/09</i>,
           <i> 2ª tentativa · sem contato desde 14/09</i> ou <i>falaram em 01/08</i>.
         </p>

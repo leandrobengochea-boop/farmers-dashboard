@@ -95,6 +95,8 @@ O bloco é **só informativo** (decisão de 07/10). Chegou a virar extra do dia 
 | Dia sem fechamento | 1 dia (trata como não abordada) |
 | Trocar de segmento | **não volta** até o líder decidir |
 
+Antes de montar a lista do dia, `completaDiaAnterior()` relê a atividade do último dia com lista e preenche o que faltava. O descanso é calculado a partir do resultado gravado, e esse resultado chega atrasado: no caso real da TRE-GO (21/10), a lista de 20/10 nasceu **17 minutos antes** de o "contato efetivo" de 19/10 ser gravado, e a empresa voltou no dia seguinte a ter sido atendida.
+
 O "dia sem fechamento volta amanhã" é proposital: senão bastaria não fechar o dia para zerar a lista.
 
 ### Auxílio do líder
