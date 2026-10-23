@@ -238,10 +238,34 @@ export default function DiarioClient({ usuario, farmers }: Props) {
     }, atraso)
   }
 
+  /**
+   * Manda agora tudo que está no debounce e espera terminar.
+   *
+   * O campo de observação salva 600ms depois da última tecla. Quem digitava a
+   * última observação e clicava em "Fechar o dia" no mesmo segundo tinha o
+   * fechamento recusado pelo servidor, que ainda não tinha recebido o texto —
+   * e a tela, otimista, continuava mostrando tudo preenchido. Era o "fecha e
+   * volta a abrir" que o farmer via.
+   */
+  async function enviaPendentes(): Promise<void> {
+    const pendentes = Object.entries(patchesPendentes.current)
+    if (pendentes.length === 0) return
+    patchesPendentes.current = {}
+    for (const companyId of Object.keys(timers.current)) clearTimeout(timers.current[companyId])
+    await Promise.all(pendentes.map(([companyId, corpo]) =>
+      fetch('/api/diario/item', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: dados?.data, farmerId: dados?.farmerId, companyId, ...corpo }),
+      }).catch(() => null),
+    ))
+  }
+
   async function acao(tipo: 'planejar' | 'fechar') {
     if (!dados) return
     setEnviando(true)
     setAviso('')
+    await enviaPendentes()
     const resp = await fetch('/api/diario/briefing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -253,8 +277,9 @@ export default function DiarioClient({ usuario, farmers }: Props) {
       // dizer QUAIS empresas travam: "Faltam 5" sem nome obriga a caçar na lista
       const nomes: string[] = Array.isArray(r.empresas) ? r.empresas : []
       setAviso(nomes.length > 0 ? `${r.error}: ${nomes.join(' · ')}` : (r.error ?? 'não foi possível concluir'))
-      // a tela era de outro dia (aba aberta de ontem): recarrega no dia certo
-      if (resp.status === 409) { setDia(null); carrega(farmerId, null) }
+      // realinha a tela com o servidor: a recusa quase sempre é por algo que a
+      // tela mostrava como preenchido e o servidor ainda não tinha recebido
+      if (resp.status === 409) { setDia(null); carrega(farmerId, null) } else carrega(farmerId, dia)
       return
     }
     if (tipo === 'planejar') setAba('fechamento')
@@ -466,7 +491,8 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                 Voltar para hoje
               </button>
             )}
-            {ehHoje && usuario.papel === 'farmer' && aba === 'plano' && (
+            {ehHoje && usuario.papel === 'farmer' && aba === 'plano'
+              && dados?.briefing.status !== 'fechado' && dados?.briefing.status !== 'revisado' && (
               <button
                 onClick={() => acao('planejar')}
                 disabled={enviando || somenteLeitura || semAbordagem > 0}

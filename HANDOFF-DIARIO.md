@@ -128,6 +128,10 @@ Baixa em duas mãos: o farmer marca como feito, fica com o selo AGUARDANDO LÍDE
 ### Fechamento do dia
 O botão "Fechar o dia" só age sobre **hoje** — `/api/diario/briefing` devolve 409 para qualquer outra data. Sem essa trava, aba esquecida aberta de ontem fechava o dia errado: aconteceu **11 vezes com 7 pessoas** até 23/10. O cliente também recarrega sozinho quando detecta que o dia virou.
 
+O clique em "Fechar o dia" **descarrega antes os salvamentos pendentes**. O campo de observação salva 600ms depois da última tecla; quem digitava a última observação e clicava no mesmo segundo tinha o fechamento recusado pelo servidor, que ainda não tinha o texto — e a tela, otimista, continuava mostrando tudo preenchido. Era o "fecha e volta a abrir" que o farmer via, sem nada de errado no banco. Na recusa a tela também recarrega, para parar de mostrar um estado que o servidor não tem.
+
+"Iniciar o dia" num dia já fechado **reabria o dia**: o botão continuava na aba de plano depois do fechamento. Agora some, e o servidor recusa com 409.
+
 Quando o fechamento é recusado por falta de preenchimento, a mensagem lista **quais empresas** travam — "Faltam 5" sozinho obrigava a caçar na lista, e o contador do topo ("17/21 com resultado") conta coisa diferente do botão, que também exige a observação mínima.
 
 Dia passado que ficou sem fechar aparece no card do farmer na Agenda (`diasEmAberto`), com as datas no tooltip. Em out/26 eram **58 dias de 234**, 18 deles com a lista inteira preenchida.

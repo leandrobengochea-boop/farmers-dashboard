@@ -40,6 +40,11 @@ export async function POST(req: Request) {
     const atual = await briefing(usuario.id, body.data)
 
     if (body.acao === 'planejar') {
+      // "Iniciar o dia" num dia já fechado reabria o dia — e a aba de plano
+      // continuava oferecendo o botão depois do fechamento.
+      if (atual.status === 'fechado' || atual.status === 'revisado') {
+        return NextResponse.json({ error: 'este dia já foi fechado' }, { status: 409 })
+      }
       const semAbordagem = doDia.filter((i) => !i.abordagem)
       if (semAbordagem.length > 0) {
         return NextResponse.json(
