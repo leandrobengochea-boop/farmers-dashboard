@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
 import { farmersDoLider, MINIMO_OBSERVACAO, RESULTADO_EXIGE_OBSERVACAO, Resultado } from '@/lib/diario/constants'
 import { itensDoDia, briefing, salvaBriefing } from '@/lib/diario/db'
+import { hojeSP } from '@/lib/diario/carteira'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +22,16 @@ export async function POST(req: Request) {
     if (usuario.papel !== 'farmer') {
       return NextResponse.json({ error: 'só o farmer fecha o próprio dia' }, { status: 403 })
     }
+    // Aba aberta de ontem continua achando que é ontem: sem esta trava, o farmer
+    // "inicia" ou "fecha" um dia que já passou. Aconteceu 11 vezes com 7 pessoas
+    // até 23/10 — o Juliano fechou o dia 22 às 9h do dia 23.
+    if (body.data !== hojeSP()) {
+      return NextResponse.json(
+        { error: 'esta tela é de outro dia — atualize a página para abrir o dia de hoje', dia: body.data, hoje: hojeSP() },
+        { status: 409 },
+      )
+    }
+
     // Todas as empresas do dia entram na conferência, extras inclusive.
     const doDia = await itensDoDia(usuario.id, body.data)
     if (doDia.length === 0) {

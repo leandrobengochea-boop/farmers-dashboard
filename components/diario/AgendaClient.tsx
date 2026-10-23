@@ -14,6 +14,7 @@ interface AgendaFarmer {
   timeKey: string
   timeLabel: string
   status: string
+  diasEmAberto: string[]
   primeiroAcesso: string | null
   comentarioLider: string | null
   itens: ItemDiario[]
@@ -95,6 +96,7 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   const souLider = usuario.papel === 'lider'
   const [dados, setDados] = useState<Dados | null>(null)
   const [carregando, setCarregando] = useState(true)
+  const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null)
   const [erro, setErro] = useState('')
   const [aberto, setAberto] = useState<string | null>(null)
   const [orientando, setOrientando] = useState<string | null>(null)
@@ -111,10 +113,28 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
       return
     }
     setDados(await resp.json())
+    setAtualizadoEm(new Date())
     setCarregando(false)
   }, [])
 
   useEffect(() => { carrega() }, [carrega])
+
+  // A agenda era uma foto do momento em que o líder abriu: o farmer trabalhava o
+  // dia inteiro e a tela dela continuava no número da manhã. Ao voltar para a
+  // aba, recarrega — com um respiro de 60s para não refazer a busca à toa.
+  useEffect(() => {
+    function aoVoltar() {
+      if (document.visibilityState !== 'visible') return
+      if (atualizadoEm && Date.now() - atualizadoEm.getTime() < 60_000) return
+      carrega()
+    }
+    document.addEventListener('visibilitychange', aoVoltar)
+    window.addEventListener('focus', aoVoltar)
+    return () => {
+      document.removeEventListener('visibilitychange', aoVoltar)
+      window.removeEventListener('focus', aoVoltar)
+    }
+  }, [atualizadoEm, carrega])
 
   // Filtro de time da gerência. A lista de farmers filtra na hora; os números
   // do mês daquele time vêm numa chamada leve, guardada depois da primeira vez.
@@ -222,6 +242,21 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
       />
 
       {erro && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">{erro}</div>}
+
+      {atualizadoEm && (
+        <div className="flex items-center gap-2 mb-4 text-xs text-zinc-400">
+          <span>
+            dados de {atualizadoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          <button
+            onClick={() => carrega()}
+            disabled={carregando}
+            className="underline underline-offset-2 hover:text-zinc-700 disabled:opacity-50"
+          >
+            {carregando ? 'atualizando...' : 'atualizar'}
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <div className="flex rounded-full bg-zinc-100 p-1 mr-1">
@@ -493,6 +528,16 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
                     <p className={`text-[10px] mt-1 ${a.primeiroAcesso ? 'text-zinc-400' : 'text-orange-600 font-medium'}`}>
                       {a.primeiroAcesso ? `abriu às ${horaCurta(a.primeiroAcesso)}` : 'não abriu hoje'}
                     </p>
+                    {/* dia passado sem fechar some da vista no dia seguinte: o líder
+                        precisa ver que ficou em aberto, com quais datas */}
+                    {a.diasEmAberto.length > 0 && (
+                      <p
+                        className="text-[10px] mt-1 font-semibold text-orange-700"
+                        title={`Sem fechar: ${a.diasEmAberto.map((d) => `${d.slice(8, 10)}/${d.slice(5, 7)}`).join(', ')}`}
+                      >
+                        {a.diasEmAberto.length} {a.diasEmAberto.length === 1 ? 'dia sem fechar' : 'dias sem fechar'}
+                      </p>
+                    )}
                   </div>
                 </div>
 

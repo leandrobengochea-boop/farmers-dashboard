@@ -3,10 +3,11 @@ import { FARMERS, TEAMS } from '@/lib/constants'
 import { usuarioAtual } from '@/lib/diario/session'
 import { Bucket, BUCKETS_FORA_DA_CONTA, farmersDoLider, LIDERES, TRAMITACOES, TipoTramitacao } from '@/lib/diario/constants'
 import { hojeSP } from '@/lib/diario/carteira'
+import { inicioDaJanela } from '@/lib/diario/calendario'
 import { resumoDoMes } from '@/lib/diario/metrics'
 import {
   itensDoDiaDeVarios, briefingsDoDia, historicoDeVarios, orientacoesDe,
-  tramitacoesDoDia, statusTramitacoes, chaveTramitacao, trocasPendentes, ItemDiario,
+  tramitacoesDoDia, statusTramitacoes, chaveTramitacao, trocasPendentes, diasEmAberto, ItemDiario,
 } from '@/lib/diario/db'
 import { precisaAuxilio } from '@/lib/diario/carteira'
 import { Pendencia, pendenciasDeVarios } from '@/lib/diario/tramitacoes'
@@ -21,6 +22,7 @@ export interface AgendaFarmer {
   timeKey: string
   timeLabel: string
   status: string
+  diasEmAberto: string[]
   primeiroAcesso: string | null
   comentarioLider: string | null
   itens: ItemDiario[]
@@ -57,7 +59,7 @@ export async function GET(req: Request) {
     : []
 
   try {
-    const [itens, briefings, resumo, historico, orientacoes, tramitacoes, pendencias, statusTram, trocas] = await Promise.all([
+    const [itens, briefings, resumo, historico, orientacoes, tramitacoes, pendencias, statusTram, trocas, emAberto] = await Promise.all([
       itensDoDiaDeVarios(farmerIds, data),
       briefingsDoDia(farmerIds, data),
       resumoDoMes(farmerIds, data),
@@ -67,6 +69,8 @@ export async function GET(req: Request) {
       pendenciasDeVarios(farmerIds, data).catch(() => new Map<string, Pendencia[]>()),
       statusTramitacoes(farmerIds),
       trocasPendentes(farmerIds),
+      // dias passados que ninguém fechou: somem da vista no dia seguinte
+      diasEmAberto(farmerIds, inicioDaJanela(data, 10), data).catch(() => new Map<string, string[]>()),
     ])
 
     // O acompanhamento do dia é automático: a agenda deriva a efetividade da
@@ -140,6 +144,7 @@ export async function GET(req: Request) {
         timeKey: timePorFarmer[farmerId]?.key ?? '',
         timeLabel: timePorFarmer[farmerId]?.label ?? '',
         status: brief?.status ?? 'rascunho',
+        diasEmAberto: emAberto.get(farmerId) ?? [],
         primeiroAcesso: brief?.primeiroAcesso ?? null,
         comentarioLider: brief?.comentarioLider ?? null,
         itens: doFarmer,

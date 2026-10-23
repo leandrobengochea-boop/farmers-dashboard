@@ -7,7 +7,7 @@ import {
 } from '@/lib/diario/constants'
 import type { Briefing, ItemDiario } from '@/lib/diario/db'
 import type { PoolCarteira, ResumoMes } from '@/lib/diario/metrics'
-import { dataLonga, diaDaSemana, meses, moeda, dataCurta } from './Marca'
+import { dataLonga, diaDaSemana, hojeNoBrasil, meses, moeda, dataCurta } from './Marca'
 import Cabecalho from './Cabecalho'
 
 interface Props {
@@ -148,6 +148,23 @@ export default function DiarioClient({ usuario, farmers }: Props) {
 
   useEffect(() => { if (farmerId) carrega(farmerId, dia) }, [farmerId, dia, carrega])
 
+  // Aba esquecida aberta de ontem continua mostrando o dia de ontem, e os botões
+  // agiam sobre aquela data. Ao voltar para a aba, se o dia virou, recarrega.
+  useEffect(() => {
+    function aoVoltar() {
+      if (document.visibilityState !== 'visible') return
+      if (!dados?.hoje || dados.hoje === hojeNoBrasil()) return
+      setDia(null)
+      carrega(farmerId, null)
+    }
+    document.addEventListener('visibilitychange', aoVoltar)
+    window.addEventListener('focus', aoVoltar)
+    return () => {
+      document.removeEventListener('visibilitychange', aoVoltar)
+      window.removeEventListener('focus', aoVoltar)
+    }
+  }, [dados?.hoje, farmerId, carrega])
+
   // Líder e gerência editam o plano de quem está no time deles; o farmer perde
   // a edição quando o líder já revisou o dia.
   const ehHoje = !dados?.hoje || !dados.data || dados.data === dados.hoje
@@ -232,7 +249,14 @@ export default function DiarioClient({ usuario, farmers }: Props) {
     })
     setEnviando(false)
     const r = await resp.json().catch(() => ({}))
-    if (!resp.ok) { setAviso(r.error ?? 'não foi possível concluir'); return }
+    if (!resp.ok) {
+      // dizer QUAIS empresas travam: "Faltam 5" sem nome obriga a caçar na lista
+      const nomes: string[] = Array.isArray(r.empresas) ? r.empresas : []
+      setAviso(nomes.length > 0 ? `${r.error}: ${nomes.join(' · ')}` : (r.error ?? 'não foi possível concluir'))
+      // a tela era de outro dia (aba aberta de ontem): recarrega no dia certo
+      if (resp.status === 409) { setDia(null); carrega(farmerId, null) }
+      return
+    }
     if (tipo === 'planejar') setAba('fechamento')
     carrega(farmerId, dia)
   }

@@ -338,6 +338,16 @@ export default function AjudaPage() {
           qualquer um deles. A gerência enxerga os quatro times, agrupados.
         </p>
         <p className="mt-3">
+          <b>Dia que não foi fechado aparece na Agenda.</b> O card do farmer mostra quantos dias passados
+          ficaram em aberto, e passando o mouse vêm as datas. Antes disso, dia não fechado simplesmente sumia
+          da vista no dia seguinte — em outubro foram 58 dias assim, 18 deles com a lista inteira preenchida.
+        </p>
+        <p className="mt-3">
+          <b>O botão de fechar só vale para o dia de hoje.</b> Aba deixada aberta de ontem continuava achando
+          que era ontem, e o clique caía no dia errado. Agora a tela se atualiza sozinha quando o dia vira, e
+          o servidor recusa ação em dia que não é o de hoje.
+        </p>
+        <p className="mt-3">
           <b>Líder e gerência também editam.</b> Abordagem, contexto, resultado e observação podem ser ajustados
           por quem lidera, inclusive depois do dia revisado — e a alteração aparece para o farmer com o nome de
           quem mexeu. A exceção é marcar uma tramitação como feita: isso continua sendo só do farmer, senão a

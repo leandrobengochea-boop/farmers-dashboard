@@ -125,6 +125,13 @@ Tickets já em **Pagamento pós-palestra** ou **Aguardando NF palestrante** não
 
 Baixa em duas mãos: o farmer marca como feito, fica com o selo AGUARDANDO LÍDER e só sai quando o líder confirma. **Negar** devolve a pendência ao board com o prazo original — vencida volta vencida — com o selo DEVOLVIDA PELO LÍDER e o motivo no card. Exceção: assinatura baixa sozinha quando `status_do_contrato = Assinado`, o que também baixa a minuta.
 
+### Fechamento do dia
+O botão "Fechar o dia" só age sobre **hoje** — `/api/diario/briefing` devolve 409 para qualquer outra data. Sem essa trava, aba esquecida aberta de ontem fechava o dia errado: aconteceu **11 vezes com 7 pessoas** até 23/10. O cliente também recarrega sozinho quando detecta que o dia virou.
+
+Quando o fechamento é recusado por falta de preenchimento, a mensagem lista **quais empresas** travam — "Faltam 5" sozinho obrigava a caçar na lista, e o contador do topo ("17/21 com resultado") conta coisa diferente do botão, que também exige a observação mínima.
+
+Dia passado que ficou sem fechar aparece no card do farmer na Agenda (`diasEmAberto`), com as datas no tooltip. Em out/26 eram **58 dias de 234**, 18 deles com a lista inteira preenchida.
+
 ### Selo de relacionamento
 Empresa onde o proprietário **atual** registrou um negócio **e** já realizou 2+ reuniões do tipo "Reunião de Relacionamento". Raro de propósito: 11 empresas no time inteiro. Provavelmente reflete sub-registro do tipo de atividade, não a realidade — decisão consciente de manter raro.
 

@@ -489,6 +489,52 @@ export async function salvaOrientacao(o: Orientacao): Promise<void> {
   gravaLocal(dados)
 }
 
+/**
+ * Dias passados que ficaram sem fechar, por farmer.
+ *
+ * O líder só via o dia de hoje, e dia não fechado some da vista no dia
+ * seguinte: em out/26, 58 de 234 dias ficaram abertos — 18 deles com a lista
+ * inteira preenchida, ou seja, trabalho feito que ninguém marcou como fechado.
+ */
+export async function diasEmAberto(
+  farmerIds: string[], de: string, ate: string,
+): Promise<Map<string, string[]>> {
+  const fora = new Map<string, string[]>()
+  if (farmerIds.length === 0) return fora
+  const guarda = (farmerId: string, data: string) => {
+    fora.set(farmerId, [...(fora.get(farmerId) ?? []), data])
+  }
+
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`
+      SELECT i.farmer_id, i.data::text AS dia
+      FROM diario_item i
+      LEFT JOIN diario_briefing b ON b.farmer_id = i.farmer_id AND b.data = i.data
+      WHERE i.farmer_id = ANY(${farmerIds})
+        AND i.data >= ${de}::date AND i.data < ${ate}::date
+        AND coalesce(b.status, 'rascunho') NOT IN ('fechado', 'revisado')
+      GROUP BY i.farmer_id, i.data
+      ORDER BY i.data`
+    for (const r of rows) guarda(String(r.farmer_id), String(r.dia))
+    return fora
+  }
+
+  const d = leLocal()
+  const chaves = new Set<string>()
+  for (const i of d.itens) {
+    if (!farmerIds.includes(i.farmerId) || i.data < de || i.data >= ate) continue
+    chaves.add(`${i.farmerId}|${i.data}`)
+  }
+  for (const chave of [...chaves].sort()) {
+    const [farmerId, data] = chave.split('|')
+    const b = d.briefings.find((x) => x.farmerId === farmerId && x.data === data)
+    if (b?.status === 'fechado' || b?.status === 'revisado') continue
+    guarda(farmerId, data)
+  }
+  return fora
+}
+
 /** Último dia anterior a `antesDe` em que este farmer teve lista montada. */
 export async function ultimoDiaComLista(farmerId: string, antesDe: string): Promise<string | null> {
   if (usandoPostgres) {
