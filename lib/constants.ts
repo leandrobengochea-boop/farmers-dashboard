@@ -50,7 +50,7 @@ export const FARMERS: Record<string, string> = {
 // Segmento da carteira individual de cada farmer
 export const FARMER_SEGMENTS: Record<string, string> = {
   '97763591': 'Bancos e Fintechs',                      // Leonardo Bitencourt
-  '98715090': 'Prefeituras',                            // Vitor (sem carteira no CRM em 03/11)
+  '98715090': 'Saúde I (Exceto Unimed)',                // Vitor (carteira multi-segmento)
   '98715128': 'Construção Civil e Imobiliário',         // Mayke
   '98715151': 'Sistema S',                              // Matheus (assumiu a carteira em out/26)
   '85002282': 'Cooperativas de Crédito e Unimed',      // Sotoriva
