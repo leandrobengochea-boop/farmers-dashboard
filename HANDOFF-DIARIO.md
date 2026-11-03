@@ -99,6 +99,8 @@ Antes de montar a lista do dia, `completaDiaAnterior()` relê a atividade do úl
 
 O "dia sem fechamento volta amanhã" é proposital: senão bastaria não fechar o dia para zerar a lista.
 
+> O selo vem do **histórico**, que não sabe de troca de carteira. Depois da redistribuição de 03/11, **49 das 60 empresas marcadas já eram de outra pessoa**. O painel da Agenda agora só mostra o que ainda é do farmer (confere o proprietário no HubSpot). Se essa consulta falhar, o filtro é ignorado de propósito — esconder todos os selos em silêncio seria pior que mostrar alguns a mais.
+
 ### Auxílio do líder
 Três tentativas frustradas seguidas dão à empresa o selo **AUXÍLIO DO LÍDER**. Ela **não sai do rodízio** — continua na lista, vai na frente do próprio balde, e o líder responde com uma orientação que aparece no card.
 

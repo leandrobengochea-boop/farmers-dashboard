@@ -225,7 +225,7 @@ async function empresasNoFunil(
  * pergunta exata. O segmento deixou de servir porque Juliano e Andrei passaram
  * a carregar seis a oito segmentos cada um.
  */
-async function donosDeEmpresas(pat: string, ids: string[]): Promise<Map<string, string>> {
+export async function donosDeEmpresas(pat: string, ids: string[]): Promise<Map<string, string>> {
   const fora = new Map<string, string>()
   if (ids.length === 0) return fora
   for (let i = 0; i < ids.length; i += 100) {
@@ -237,7 +237,9 @@ async function donosDeEmpresas(pat: string, ids: string[]): Promise<Map<string, 
         inputs: ids.slice(i, i + 100).map((id) => ({ id })),
       }),
     })
-    if (!resp.ok) continue
+    // falha vira erro: quem chama decide o que fazer, em vez de receber um
+    // mapa vazio que parece "ninguém é dono de nada"
+    if (!resp.ok) throw new Error(`donos de empresas: ${resp.status}`)
     const data = (await resp.json()) as { results?: Array<{ id: string; properties: Record<string, string> }> }
     for (const r of data.results ?? []) fora.set(r.id, r.properties.hubspot_owner_id ?? '')
   }

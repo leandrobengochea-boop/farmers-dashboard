@@ -9,7 +9,7 @@ import {
   itensDoDiaDeVarios, briefingsDoDia, historicoDeVarios, orientacoesDe,
   tramitacoesDoDia, statusTramitacoes, chaveTramitacao, trocasPendentes, diasEmAberto, ItemDiario,
 } from '@/lib/diario/db'
-import { precisaAuxilio } from '@/lib/diario/carteira'
+import { donosDeEmpresas, precisaAuxilio } from '@/lib/diario/carteira'
 import { Pendencia, pendenciasDeVarios } from '@/lib/diario/tramitacoes'
 import { AtividadeEmpresa, aplicaAtividade, atividadeDeVarios } from '@/lib/diario/atividade'
 
@@ -85,6 +85,22 @@ export async function GET(req: Request) {
       }
     }
 
+    // O selo "auxílio do líder" vem do histórico, que não sabe de troca de
+    // carteira: depois da redistribuição de 03/11, 49 das 60 empresas marcadas
+    // já eram de outra pessoa. Só continua valendo o que ainda é do farmer.
+    const candidatasAuxilio = new Set<string>()
+    for (const farmerId of farmerIds) {
+      for (const h of historico.get(farmerId)?.values() ?? []) {
+        if (precisaAuxilio(h)) candidatasAuxilio.add(h.companyId)
+      }
+    }
+    // Se a consulta de donos falhar, NÃO filtra: esconder todos os selos em
+    // silêncio seria pior que mostrar alguns a mais.
+    const donoDaEmpresa = candidatasAuxilio.size > 0
+      ? await donosDeEmpresas(process.env.HUBSPOT_PAT ?? '', [...candidatasAuxilio])
+        .catch(() => null)
+      : new Map<string, string>()
+
     const timePorFarmer: Record<string, { key: string; label: string }> = {}
     for (const [key, time] of Object.entries(TEAMS)) {
       for (const id of time.farmerIds) timePorFarmer[id] = { key, label: time.label }
@@ -99,7 +115,7 @@ export async function GET(req: Request) {
       // esperando uma orientação do líder.
       const orientacoesDoFarmer = orientacoes.get(farmerId)
       const auxilios = [...(historico.get(farmerId)?.values() ?? [])]
-        .filter(precisaAuxilio)
+        .filter((h) => precisaAuxilio(h) && (!donoDaEmpresa || donoDaEmpresa.get(h.companyId) === farmerId))
         .sort((a, b) => b.ultimaData.localeCompare(a.ultimaData))
         .map((h) => {
           const o = orientacoesDoFarmer?.get(h.companyId) ?? null
