@@ -16,38 +16,36 @@ export interface SalaoFarmerData {
 
 export interface SalaoData {
   farmers: SalaoFarmerData[]
+  bdrs: SalaoFarmerData[]
   month: string
   updatedAt: string
   daysLeft: number
 }
 
-const ALL_FARMERS: Record<string, { name: string; initials: string }> = {
-  '84497577': { name: 'Vitória', initials: 'VI' },
-  '85002282': { name: 'Sotoriva', initials: 'FS' },
-  '79760745': { name: 'Thiago Souza', initials: 'TS' },
-  '85846971': { name: 'Francielle Lenz', initials: 'FL' },
-  '80228367': { name: 'Jhuly', initials: 'JU' },
-  '95810969': { name: 'Rhayssa', initials: 'RH' },
+const FARMERS: Record<string, { name: string; initials: string }> = {
+  '85846971': { name: 'Lenz', initials: 'FL' },
   '93599591': { name: 'Bruna Saraiva', initials: 'BS' },
-  '95993082': { name: 'Hans Lopes', initials: 'HL' },
+  '89632472': { name: 'Maria Eduarda', initials: 'ME' },
   '94316537': { name: 'Maria Julia', initials: 'MJ' },
-  '95415669': { name: 'Gisele', initials: 'GI' },
-  '94028856': { name: 'Felippe Freitas', initials: 'FF' },
+  '92704130': { name: 'Talita', initials: 'TC' },
+  '81033487': { name: 'Gustavo', initials: 'GP' },
+  '97763591': { name: 'Léo', initials: 'LB' },
   '88200239': { name: 'Luiza', initials: 'LU' },
-  '92335488': { name: 'Thaina', initials: 'TH' },
-  '96589066': { name: 'Nathalia', initials: 'NA' },
-  '97204561': { name: 'Juliano', initials: 'JM' },
-  '98715151': { name: 'Matheus Lirio', initials: 'ML' },
-  '92704130': { name: 'Talita Cruz', initials: 'TC' },
-  '100465709': { name: 'Bruno Beck', initials: 'BB' },
-  '100619918': { name: 'Eduardo Godoy', initials: 'EG' },
 }
+
+const BDRS: Record<string, { name: string; initials: string }> = {
+  '94028856': { name: 'Milei', initials: 'MI' },
+  '98715090': { name: 'Vitor', initials: 'VT' },
+  '97204561': { name: 'Juliano', initials: 'JM' },
+}
+
+const ALL_MEMBERS: Record<string, { name: string; initials: string }> = { ...FARMERS, ...BDRS }
 
 const SALAO_DATE_RESTRICTIONS: Record<string, { untilDate: string }> = {
 }
 
 const ALIAS_MAP: Record<string, string> = { '93238814': '85002282' }
-const CANONICAL_IDS = Object.keys(ALL_FARMERS)
+const CANONICAL_IDS = Object.keys(ALL_MEMBERS)
 const ALL_SEARCH_IDS = [...CANONICAL_IDS, ...Object.keys(ALIAS_MAP)]
 const WON_STAGES = ['1076664462', '1076664460', '1105295876', '1372708683']
 
@@ -379,7 +377,7 @@ export async function fetchSalaoData(): Promise<SalaoData> {
   const wonValues = new Map<string, number>()
   for (const r of wonRes) {
     const fid = resolveId(r.properties.sdrfarmer_responsavel ?? '')
-    if (!ALL_FARMERS[fid]) continue
+    if (!ALL_MEMBERS[fid]) continue
     const amount = parseFloat(r.properties.amount_in_home_currency ?? '0') || 0
     wonValues.set(fid, (wonValues.get(fid) ?? 0) + amount)
   }
@@ -410,7 +408,7 @@ export async function fetchSalaoData(): Promise<SalaoData> {
   if (callsCache) {
     for (const [oid, data] of Object.entries(callsCache.calls)) {
       const fid = resolveId(oid)
-      if (!ALL_FARMERS[fid]) continue
+      if (!ALL_MEMBERS[fid]) continue
       const cur = callMap.get(fid) ?? { connected: 0, total: 0 }
       cur.total += data.total
       cur.connected += data.connected
@@ -419,7 +417,7 @@ export async function fetchSalaoData(): Promise<SalaoData> {
   } else {
     for (const r of callsRes) {
       const fid = resolveId(r.properties.hubspot_owner_id ?? '')
-      if (!ALL_FARMERS[fid]) continue
+      if (!ALL_MEMBERS[fid]) continue
       const cur = callMap.get(fid) ?? { connected: 0, total: 0 }
       cur.total++
       if (r.properties.hs_call_disposition && connectedDisps.has(r.properties.hs_call_disposition)) cur.connected++
@@ -430,17 +428,19 @@ export async function fetchSalaoData(): Promise<SalaoData> {
   const emailCounts = new Map<string, number>()
   for (const r of emailsRes) {
     const fid = resolveId(r.properties.hubspot_owner_id ?? '')
-    if (ALL_FARMERS[fid]) emailCounts.set(fid, (emailCounts.get(fid) ?? 0) + 1)
+    if (ALL_MEMBERS[fid]) emailCounts.set(fid, (emailCounts.get(fid) ?? 0) + 1)
   }
 
   const taskCounts = new Map<string, number>()
   for (const r of tasksRes) {
     const fid = resolveId(r.properties.hubspot_owner_id ?? '')
-    if (ALL_FARMERS[fid]) taskCounts.set(fid, (taskCounts.get(fid) ?? 0) + 1)
+    if (ALL_MEMBERS[fid]) taskCounts.set(fid, (taskCounts.get(fid) ?? 0) + 1)
   }
 
-  const farmers: SalaoFarmerData[] = CANONICAL_IDS.map((id) => {
-    const info = ALL_FARMERS[id]
+  const FARMER_ID_SET = new Set(Object.keys(FARMERS))
+
+  const allMembers: SalaoFarmerData[] = CANONICAL_IDS.map((id) => {
+    const info = ALL_MEMBERS[id]
     const mtg = mtgMap.get(id)
     const call = callMap.get(id)
     return {
@@ -457,8 +457,12 @@ export async function fetchSalaoData(): Promise<SalaoData> {
     }
   })
 
-  farmers.sort(olympicSort)
-  assignRanks(farmers)
+  const farmerList = allMembers.filter((f) => FARMER_ID_SET.has(f.ownerId))
+  const bdrList = allMembers.filter((f) => !FARMER_ID_SET.has(f.ownerId))
+  farmerList.sort(olympicSort)
+  assignRanks(farmerList)
+  bdrList.sort(olympicSort)
+  assignRanks(bdrList)
 
-  return { farmers, month: monthLabel, updatedAt: new Date().toISOString(), daysLeft }
+  return { farmers: farmerList, bdrs: bdrList, month: monthLabel, updatedAt: new Date().toISOString(), daysLeft }
 }
