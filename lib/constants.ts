@@ -20,7 +20,7 @@ export const FARMERS: Record<string, string> = {
   '93599591': 'Bruna Saraiva',
   '89632472': 'Maria Eduarda Porto',
   '80228367': 'Jhuly',
-  '94028856': 'Felippe Freitas',
+  '94028856': 'Andrei (Milei)',   // owner cadastrado no HubSpot como "Felippe Freitas"
   '94316537': 'Maria Julia',
   '94316538': 'Gabriel Alves',
   '94399135': 'Gabriela',
@@ -49,30 +49,30 @@ export const FARMERS: Record<string, string> = {
 
 // Segmento da carteira individual de cada farmer
 export const FARMER_SEGMENTS: Record<string, string> = {
-  '97763591': 'Contabilidades e Advocacias',           // Leonardo Bitencourt
-  '98715090': 'Prefeituras',                            // Vitor
+  '97763591': 'Bancos e Fintechs',                      // Leonardo Bitencourt
+  '98715090': 'Prefeituras',                            // Vitor (sem carteira no CRM em 03/11)
   '98715128': 'Construção Civil e Imobiliário',         // Mayke
   '98715151': 'Sistema S',                              // Matheus (assumiu a carteira em out/26)
   '85002282': 'Cooperativas de Crédito e Unimed',      // Sotoriva
   '93238814': 'Cooperativas de Crédito e Unimed',      // Sotoriva (alias)
   '95415669': 'Serviços I',                             // Gisele Santos
   '92335488': 'Serviços II',                            // Thaina (assumiu a carteira em out/26)
-  '93599591': 'Indústria I',                            // Bruna Saraiva
-  '85846971': 'Indústria II',                           // Fran Lenz
-  '97204561': 'Tecnologia e Software II',               // Juliano
+  '93599591': 'Varejo e Comércio I',                    // Bruna Saraiva
+  '85846971': 'Indústria I',                            // Fran Lenz
+  '97204561': 'Contabilidades e Advocacias',            // Juliano (carteira multi-segmento)
   '80228367': 'Agronegócio e Cooperativas do Agro',    // Jhuly
   '94316537': 'Tecnologia e Software I',                // Maria Julia
   '84497577': 'Bancos e Fintechs',                     // Vitória
   '95993082': 'Energia, Mineração e Utilities',         // Hans Lopes
   '95810969': 'Educação Básico e Superior I',           // Rhayssa
   '88200239': 'Associações, Conselhos e Organizações',  // Luiza
-  '94028856': 'Logística e Transporte',                 // Felippe Freitas (assumiu a carteira em out/26)
-  '81033487': 'Serviços II',                            // Gustavo
-  '89632472': 'Varejo e Comércio II',                   // Maria Eduarda Porto
+  '94028856': 'Construção Civil e Imobiliário',         // Andrei/Milei (carteira multi-segmento)
+  '81033487': 'Construção Civil e Imobiliário',         // Gustavo
+  '89632472': 'Agronegócio e Cooperativas do Agro',     // Maria Eduarda Porto
   '79760745': 'Logística e Transporte',                 // Thiago
   '96589066': 'Saúde I (Exceto Unimed)',                // Nathalia
   '87159365': 'Tecnologia e Software III',              // João Lucas
-  '92704130': 'Secretarias de Estado e Tribunais',      // Talita
+  '92704130': 'Educação Básico e Superior I',           // Talita
   '99956495': 'Construção Civil e Imobiliário',         // Milena
   '100465709': 'Varejo e Comércio I',                   // Bruno Beck
   '100619918': 'Serviços I',                            // Eduardo Godoy (assumiu a carteira da Gisele)
@@ -387,7 +387,24 @@ const TEAMS_OCT20: TeamMap = {
   },
 }
 
+// 03/11: formação nova, com os farmers como proprietários das empresas da carteira.
+const TEAMS_NOV03: TeamMap = {
+  camila: {
+    label: 'Time Cami',
+    farmerIds: ['92704130', '88200239', '81033487', '97763591'],
+  },
+  katyeli: {
+    label: 'Time Katy',
+    farmerIds: ['89632472', '93599591', '85846971', '94316537'],
+  },
+  leticia: {
+    label: 'Time Leticia',
+    farmerIds: ['97204561', '98715090', '94028856'],
+  },
+}
+
 const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
+  { from: new Date('2026-11-03').getTime(), teams: TEAMS_NOV03 },
   { from: new Date('2026-10-20').getTime(), teams: TEAMS_OCT20 },
   { from: new Date('2026-10-07').getTime(), teams: TEAMS_OCT07 },
   { from: new Date('2026-10-05').getTime(), teams: TEAMS_OCT05 },
@@ -400,7 +417,7 @@ const TEAM_PERIODS: { from: number; teams: TeamMap }[] = [
   { from: new Date('2026-07-01').getTime(), teams: TEAMS_JULY },
 ]
 
-export const TEAMS: TeamMap = TEAMS_OCT20
+export const TEAMS: TeamMap = TEAMS_NOV03
 
 // Metas mensais de empresas únicas, por mês de vigência (mais recente primeiro).
 // teamGoals: metas individuais por time (quando diferem entre si).

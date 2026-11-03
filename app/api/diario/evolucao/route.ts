@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
-import { farmersDoLider, farmersDoPeriodoNoDiario, LIDERES } from '@/lib/diario/constants'
+import { farmersDoLider, farmersDoPeriodoNoDiario, foraDoDiario, LIDERES } from '@/lib/diario/constants'
 import { dealInTeam, FARMERS } from '@/lib/constants'
 import { hojeSP } from '@/lib/diario/carteira'
 import { ehDiaUtil, inicioDaJanela } from '@/lib/diario/calendario'
@@ -74,10 +74,12 @@ export async function GET(req: Request) {
     // senão sobra diferença que ninguém consegue explicar.
     // Líder de time só conta quem era DELE naquele dia. Sem isso, quem já passou
     // pelo time em alguma formação antiga voltava a aparecer no número dele.
-    const noEscopo = (d: DiaDoFarmer) => usuario.papel !== 'lider'
+    // quem voltou à formação não traz o passado junto: os dias de antes da
+    // volta continuam fora da conta
+    const noEscopo = (d: DiaDoFarmer) => !foraDoDiario(d.farmerId, d.data) && (usuario.papel !== 'lider'
       || (usuario.timeKey
         ? dealInTeam(d.farmerId, d.data, usuario.timeKey)
-        : LIDERES.some((l) => l.timeKey && dealInTeam(d.farmerId, d.data, l.timeKey)))
+        : LIDERES.some((l) => l.timeKey && dealInTeam(d.farmerId, d.data, l.timeKey))))
 
     const serie = bruta.filter((d) => valeODia(d.data) && noEscopo(d))
 

@@ -295,17 +295,32 @@ export function contaDoDiario(id: string): string {
  * com dias que ninguém trabalhou (em 02/10 eram 1157 empresas setadas, 689
  * delas sem nenhum registro — a taxa do time inteiro ia de 25% para 21%).
  */
-export const FORA_DO_DIARIO = new Set<string>([
-  '97763591', // Leonardo Bitencourt
-  '98715090', // Vitor
-  '98715128', // Mayke
-  '89632472', // Maria Eduarda Porto
-  '81033487', // Gustavo
-  '87159365', // João Lucas
-  '97204635', // Samuel
-  '79760745', // Thiago — vinha do Time Dani, que saiu do diário em out/26
-  '80688884', // Rafael Brack — saiu do escopo de farmer em 28/09
-])
+export const FORA_DO_DIARIO: Record<string, { voltaEm?: string }> = {
+  // saíram de vez
+  '98715128': {}, // Mayke
+  '87159365': {}, // João Lucas
+  '97204635': {}, // Samuel
+  '79760745': {}, // Thiago — vinha do Time Dani, que saiu do diário em out/26
+  '80688884': {}, // Rafael Brack — saiu do escopo de farmer em 28/09
+  // voltaram na formação de 03/11: o passado deles continua fora da conta,
+  // senão os dias ruins de setembro voltariam junto com eles
+  '97763591': { voltaEm: '2026-11-03' }, // Leonardo Bitencourt
+  '98715090': { voltaEm: '2026-11-03' }, // Vitor
+  '89632472': { voltaEm: '2026-11-03' }, // Maria Eduarda Porto
+  '81033487': { voltaEm: '2026-11-03' }, // Gustavo
+}
+
+/** Fora da conta do diário naquela data (ou hoje, se a data não for dita). */
+export function foraDoDiario(id: string, data?: string): boolean {
+  const regra = FORA_DO_DIARIO[id]
+  if (!regra) return false
+  if (!regra.voltaEm) return true
+  return (data ?? hojeNoFuso()) < regra.voltaEm
+}
+
+function hojeNoFuso(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+}
 
 /** Farmers de um líder, na formação vigente. Líder sem time vê todos. */
 export function farmersDoLider(timeKey: string | null): string[] {
@@ -313,7 +328,7 @@ export function farmersDoLider(timeKey: string | null): string[] {
     const fora: string[] = []
     for (const bruto of ids) {
       const id = contaDoDiario(bruto)
-      if (FORA_DO_DIARIO.has(id) || fora.includes(id)) continue
+      if (foraDoDiario(id) || fora.includes(id)) continue
       fora.push(id)
     }
     return fora
@@ -331,7 +346,7 @@ export function farmersDoPeriodoNoDiario(timeKey: string | null, de: string, ate
   const fora: string[] = []
   for (const bruto of farmersDoPeriodo(timeKey, de, ate)) {
     const id = contaDoDiario(bruto)
-    if (FORA_DO_DIARIO.has(id) || fora.includes(id)) continue
+    if (foraDoDiario(id) || fora.includes(id)) continue
     fora.push(id)
   }
   return fora
@@ -344,7 +359,7 @@ export function farmersAtivos(): Array<{ id: string; nome: string; timeKey: stri
     for (const bruto of time.farmerIds) {
       // conta duplicada vira uma só: a que detém a carteira
       const id = contaDoDiario(bruto)
-      if (FORA_DO_DIARIO.has(id)) continue
+      if (foraDoDiario(id)) continue
       if (out.some((f) => f.id === id)) continue
       out.push({ id, nome: FARMERS[id] ?? id, timeKey, timeLabel: time.label })
     }
