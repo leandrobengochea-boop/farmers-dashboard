@@ -94,7 +94,14 @@ export default function AjudaPage() {
           reativação praticamente não existem: o dia vem com {EMPRESAS_DO_DIA_BDR} empresas, quase todas de
           primeiro contato. No fechamento, <b>não abordei dispensa a observação</b> — com {EMPRESAS_DO_DIA_BDR}
           por dia o motivo é quase sempre o mesmo, e trinta justificativas iguais não dizem nada. Contato
-          efetivo continua pedindo os {MINIMO_OBSERVACAO} caracteres: é ali que está o que o líder lê.
+          efetivo continua pedindo os {MINIMO_OBSERVACAO} caracteres: é ali que está o que o líder lê. No
+          <i> não abordei</i> o campo de observação aparece desligado, para deixar claro que não há nada a
+          escrever ali.
+        </p>
+        <p className="mt-3">
+          No relatório, <b>farmer e BDR são contados separados</b>. Vinte empresas de carteira e cinquenta
+          frias não cabem no mesmo número: somados, o resultado não descreve nem um grupo nem o outro. O
+          seletor <i>Farmers · BDRs</i> troca a leitura inteira — gráfico, times e lista por pessoa.
         </p>
         <p className="mt-4">
           <b>Empresa com negócio aberto não entra na lista de abordagem.</b> Já existe conversa na mesa, e

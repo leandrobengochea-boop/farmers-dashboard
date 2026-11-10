@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
-import { farmersDoLider, farmersDoPeriodoNoDiario, foraDoDiario, LIDERES } from '@/lib/diario/constants'
+import { ehBDR, farmersDoLider, farmersDoPeriodoNoDiario, foraDoDiario, LIDERES } from '@/lib/diario/constants'
 import { dealInTeam, FARMERS } from '@/lib/constants'
 import { hojeSP } from '@/lib/diario/carteira'
 import { ehDiaUtil, inicioDaJanela } from '@/lib/diario/calendario'
@@ -53,6 +53,10 @@ export async function GET(req: Request) {
     : [usuario.id]
   // Quem enxerga mais de um time compara os times; líder de time compara os farmers.
   const gerencia = usuario.papel === 'lider' && !usuario.timeKey
+  // Farmer e BDR medem coisas diferentes — 20 empresas de carteira contra 50
+  // frias — e somar os dois num número só não diz nada sobre nenhum deles.
+  const papel = url.searchParams.get('papel') === 'bdr' ? 'bdr' : 'farmer'
+  const doPapel = (farmerId: string) => (papel === 'bdr') === ehBDR(farmerId)
 
   try {
     const bruta = await serieDoPeriodo(farmerIds, de, ate)
@@ -81,7 +85,7 @@ export async function GET(req: Request) {
         ? dealInTeam(d.farmerId, d.data, usuario.timeKey)
         : LIDERES.some((l) => l.timeKey && dealInTeam(d.farmerId, d.data, l.timeKey))))
 
-    const serie = bruta.filter((d) => valeODia(d.data) && noEscopo(d))
+    const serie = bruta.filter((d) => valeODia(d.data) && doPapel(d.farmerId) && noEscopo(d))
 
     const porDia = new Map<string, Composicao>()
     for (const d of serie) {
@@ -133,7 +137,16 @@ export async function GET(req: Request) {
 
     return NextResponse.json(
       {
-        de, ate,
+        de, ate, papel,
+        // conta quem realmente tem dia na janela, não quem está na lista de
+        // busca — ali entra gente de formações antigas que não aparece na tela
+        contagem: (() => {
+          const comDia = new Set(bruta.filter((d) => valeODia(d.data) && noEscopo(d)).map((d) => d.farmerId))
+          return {
+            farmer: [...comDia].filter((f) => !ehBDR(f)).length,
+            bdr: [...comDia].filter(ehBDR).length,
+          }
+        })(),
         dias: [...porDia.entries()].sort().map(([data, c]) => ({ data, ...fecha(c) })),
         total: fecha(total),
         times,

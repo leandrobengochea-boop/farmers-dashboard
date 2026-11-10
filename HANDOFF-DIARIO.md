@@ -92,6 +92,8 @@ Vitor, Juliano e Andrei (Milei) são **BDRs** (`BDRS` em `lib/diario/constants.t
 - O dia vem com **50 empresas** em vez de 20 (`empresasDoDia(farmerId)`), quase todas de primeiro contato. Os baldes quentes continuam vindo primeiro quando existem.
 - No fechamento, **"não abordei" não exige observação** para BDR (`exigeObservacao(farmerId, resultado)`). Com 50 por dia seriam ~35 textos de 50 caracteres, ~1.800 caracteres só para conseguir fechar — e dia que não fecha foi exatamente o problema de out/26. Contato efetivo e troca de segmento seguem exigindo.
 - Eles não recebem extras: não têm clientes recentes.
+- No fechamento, o campo de observação do "não abordei" aparece **desligado** para BDR — deixa explícito que não há o que escrever, em vez de ficar convidando a digitar.
+- No relatório, `/api/diario/evolucao?papel=farmer|bdr` separa os dois grupos, e o seletor *Farmers · BDRs* troca a leitura inteira. Vinte empresas de carteira e cinquenta frias não cabem no mesmo número: num teste com os dois grupos, farmers deram 35% e BDRs 8% — a média somada não descreveria nenhum dos dois.
 
 ### Quando a empresa volta
 | Último resultado | Volta em |

@@ -627,6 +627,9 @@ export default function DiarioClient({ usuario, farmers }: Props) {
               {visiveis.map((i) => {
                 const escrito = i.observacaoResultado?.trim().length ?? 0
                 const exigeObs = exigeObservacao(farmerId, i.resultado)
+                // BDR que marcou "não abordei" não escreve nada: o campo fecha
+                // para deixar explícito, em vez de ficar convidando a digitar
+                const obsDispensada = ehBDR(farmerId) && i.resultado === 'nao_abordei'
                 const faltaObs = exigeObs && escrito < MINIMO_OBSERVACAO && !somenteLeitura
                 return (
                   <tr key={i.companyId} className={`border-b border-zinc-50 align-top ${
@@ -678,16 +681,19 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                     <td className="px-3 py-4">
                       <textarea
                         value={i.observacaoResultado ?? ''}
-                        disabled={somenteLeitura}
+                        disabled={somenteLeitura || obsDispensada}
                         rows={2}
                         placeholder={
-                          i.resultado === 'trocar_segmento'
-                            ? 'Para qual segmento ela deveria ir, e por quê? (obrigatório)'
-                            : exigeObs ? 'O que saiu daí? (obrigatório)' : 'Observação (o HubSpot já tem a evidência)'
+                          obsDispensada
+                            ? 'não precisa preencher'
+                            : i.resultado === 'trocar_segmento'
+                              ? 'Para qual segmento ela deveria ir, e por quê? (obrigatório)'
+                              : exigeObs ? 'O que saiu daí? (obrigatório)' : 'Observação (o HubSpot já tem a evidência)'
                         }
                         onChange={(e) => salva(i.companyId, { observacaoResultado: e.target.value }, 600)}
                         className={`w-full rounded-lg border px-2.5 py-2 text-sm resize-y disabled:bg-zinc-50 ${
-                          faltaObs ? 'border-orange-400' : 'border-zinc-200'
+                          obsDispensada ? 'border-zinc-100 text-zinc-400 placeholder:text-zinc-300'
+                            : faltaObs ? 'border-orange-400' : 'border-zinc-200'
                         }`}
                       />
                       {exigeObs && !somenteLeitura && (

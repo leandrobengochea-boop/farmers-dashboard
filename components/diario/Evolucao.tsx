@@ -20,6 +20,8 @@ type FarmerComposto = Composicao & { farmerId: string; nome: string }
 interface Dados {
   de: string
   ate: string
+  papel: 'farmer' | 'bdr'
+  contagem: { farmer: number; bdr: number }
   dias: DiaComposto[]
   total: Composicao
   farmers: FarmerComposto[]
@@ -100,17 +102,20 @@ export default function Evolucao({ timeFiltro, souLider }: { timeFiltro: string 
   const [dados, setDados] = useState<Dados | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [dias, setDias] = useState(14)
+  // Farmer e BDR não entram na mesma conta: 20 empresas de carteira contra 50
+  // frias. O seletor troca a leitura inteira, não filtra dentro dela.
+  const [papel, setPapel] = useState<'farmer' | 'bdr'>('farmer')
 
   useEffect(() => {
     let cancelado = false
     setCarregando(true)
-    fetch(`/api/diario/evolucao?dias=${dias}`, { cache: 'no-store' })
+    fetch(`/api/diario/evolucao?dias=${dias}&papel=${papel}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelado) setDados(d) })
       .catch(() => {})
       .finally(() => { if (!cancelado) setCarregando(false) })
     return () => { cancelado = true }
-  }, [dias])
+  }, [dias, papel])
 
   const doTime = timeFiltro ? dados?.times.find((t) => t.timeKey === timeFiltro) : null
   // Com um time escolhido, a lista de farmers é a daquele time — e são os dias
@@ -139,7 +144,7 @@ export default function Evolucao({ timeFiltro, souLider }: { timeFiltro: string 
         <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-400">
-              Contato efetivo sobre as empresas setadas
+              Contato efetivo sobre as empresas setadas{papel === 'bdr' ? ' · BDRs' : ''}
             </p>
             <p className="text-4xl font-black tracking-tight mt-1" style={{ color: '#059669' }}>
               {total.pctEfetivo}%
@@ -150,6 +155,21 @@ export default function Evolucao({ timeFiltro, souLider }: { timeFiltro: string 
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {(dados?.contagem.bdr ?? 0) > 0 && (dados?.contagem.farmer ?? 0) > 0 && (
+              <div className="flex rounded-full bg-zinc-100 p-1 mr-1">
+                {([['farmer', 'Farmers'], ['bdr', 'BDRs']] as const).map(([chave, rotulo]) => (
+                  <button
+                    key={chave}
+                    onClick={() => setPapel(chave)}
+                    className={`px-3 py-1 text-xs rounded-full transition ${
+                      papel === chave ? 'bg-white shadow-sm font-medium' : 'text-zinc-500'
+                    }`}
+                  >
+                    {rotulo} · {dados!.contagem[chave]}
+                  </button>
+                ))}
+              </div>
+            )}
             <span className="text-[11px] font-bold uppercase tracking-wide text-zinc-400">Dias úteis</span>
             <div className="flex rounded-full bg-zinc-100 p-1">
               {[7, 14, 30].map((n) => (
