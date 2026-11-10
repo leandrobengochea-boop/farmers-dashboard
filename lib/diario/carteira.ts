@@ -1,6 +1,7 @@
 import { HUBSPOT_PORTAL_ID } from '../constants'
 import {
-  Bucket, COTA_DIARIA, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, DIAS_NEGOCIACAO_PARADA,
+  Bucket, COTA_DIARIA, COOLDOWN_CONTATO_CRM, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO,
+  DIAS_NEGOCIACAO_PARADA,
   ETAPAS_FUNIL_ATIVO, LIMITE_MESES, PIPELINE_B2B, TENTATIVAS_ATE_AUXILIO, empresasDoDia, urlEmpresa,
 } from './constants'
 import { HistoricoEmpresa, ItemDiario, historicoDoFarmer, trocasPendentes } from './db'
@@ -109,8 +110,21 @@ function diasEntre(de: string, ate: string): number {
 /**
  * Descanso depende do que aconteceu da última vez: 1 dia se não foi abordada,
  * 3 se tentou e não falou, 30 se o contato foi efetivo.
+ *
+ * Duas fontes, e vale a mais recente: o histórico do diário e o
+ * `ultimo_contato_efetivo` da empresa no CRM. O diário só registra o que passou
+ * por ele; o contato do líder, do CS, de outro time ou a resposta que o farmer
+ * anotou direto no HubSpot não aparecem ali — e a empresa voltava à lista dias
+ * depois de alguém já ter conversado com ela.
  */
-export function emDescanso(h: HistoricoEmpresa | undefined, hoje: string): boolean {
+export function emDescanso(
+  h: HistoricoEmpresa | undefined,
+  hoje: string,
+  ultimoContatoCRM?: string | null,
+): boolean {
+  // Data futura (erro de digitação na propriedade) cai aqui como descanso:
+  // segurar a empresa por engano custa menos que sugerir contato repetido.
+  if (ultimoContatoCRM && diasEntre(ultimoContatoCRM, hoje) < COOLDOWN_CONTATO_CRM) return true
   if (!h?.ultimaData) return false
   const exigido = h.ultimoResultado
     ? (COOLDOWN_POR_RESULTADO[h.ultimoResultado] ?? COOLDOWN_SEM_RESULTADO)
@@ -374,7 +388,7 @@ export async function montaSugestoes(farmerId: string, hoje: string): Promise<Su
     carteira: carteira.length,
     comHistorico: carteira.filter((e) => e.ultimaCompra).length,
     porBucket: {},
-    emCooldown: carteira.filter((e) => emDescanso(historico.get(e.id), hoje)).length,
+    emCooldown: carteira.filter((e) => emDescanso(historico.get(e.id), hoje, e.ultimoContato)).length,
     precisandoAuxilio: carteira.filter((e) => precisaAuxilio(historico.get(e.id))).length,
     noFunil: carteira.filter((e) => e.noFunil).length,
     contatoEfetivoNoMes: carteira.filter((e) => e.ultimoContato && e.ultimoContato >= inicioMes).length,
@@ -386,7 +400,8 @@ export async function montaSugestoes(farmerId: string, hoje: string): Promise<Su
   for (const e of carteira) resumo.porBucket[e.bucket] = (resumo.porBucket[e.bucket] ?? 0) + 1
 
   const disponiveis = carteira.filter(
-    (e) => !emDescanso(historico.get(e.id), hoje) && !e.noFunil && !e.tramitacao && !trocando.has(e.id),
+    (e) => !emDescanso(historico.get(e.id), hoje, e.ultimoContato)
+      && !e.noFunil && !e.tramitacao && !trocando.has(e.id),
   )
   const pools = {} as Record<Bucket, Empresa[]>
   for (const b of ['recompra', 'nutricao', 'reativacao', 'extra', 'primeiro_contato'] as Bucket[]) {

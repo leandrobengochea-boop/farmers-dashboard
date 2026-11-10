@@ -1,7 +1,7 @@
 import {
   ORIGIN_CUTOVER, ALLOWED_ORIGEM_DO_LEAD, ALLOWED_ORIGEM_QUALIFICACAO,
 } from '../constants'
-import { LIMITE_MESES, TICKET_PIPELINE_CS, TICKET_STAGES_ATIVOS, WON_STAGES } from './constants'
+import { COOLDOWN_CONTATO_CRM, LIMITE_MESES, TICKET_PIPELINE_CS, TICKET_STAGES_ATIVOS, WON_STAGES } from './constants'
 import { fetchWithRetry, searchAllPages } from './carteira'
 
 export interface ResumoMes {
@@ -132,12 +132,17 @@ export async function resumoDoMes(farmerIds: string[], hoje: string): Promise<Re
 
 export interface PoolCarteira {
   carteira: number
+  contatoRecente: number   // contato efetivo no CRM dentro da janela de descanso
   recompra: number
   nutricao: number
   reativacao: number
   extra: number
   semHistorico: number
   negociosAbertos: number
+}
+
+function msMenosDias(hoje: string, dias: number): string {
+  return String(new Date(`${hoje}T00:00:00Z`).getTime() - dias * 86_400_000)
 }
 
 function msMenosMeses(hoje: string, meses: number): string {
@@ -159,8 +164,12 @@ export async function poolDaCarteira(farmerId: string, hoje: string): Promise<Po
   const ms8 = msMenosMeses(hoje, LIMITE_MESES.nutricao)
   const ms12 = msMenosMeses(hoje, LIMITE_MESES.recompra)
 
-  const [carteira, recompra, nutricao, reativacao, extra, semHistorico, negociosAbertos] = await Promise.all([
+  const [carteira, contatoRecente, recompra, nutricao, reativacao, extra, semHistorico, negociosAbertos] = await Promise.all([
     conta(pat, 'companies', [dono]).catch(() => 0),
+    // seguradas pelo contato efetivo registrado no CRM, seja de quem for
+    conta(pat, 'companies', [dono,
+      { propertyName: 'ultimo_contato_efetivo', operator: 'GTE', value: msMenosDias(hoje, COOLDOWN_CONTATO_CRM) },
+    ]).catch(() => 0),
     conta(pat, 'companies', [dono,
       { propertyName: 'data_da_ultima_compra', operator: 'GT', value: ms12 },
       { propertyName: 'data_da_ultima_compra', operator: 'LTE', value: ms8 },
@@ -184,5 +193,5 @@ export async function poolDaCarteira(farmerId: string, hoje: string): Promise<Po
     ]).catch(() => 0),
   ])
 
-  return { carteira, recompra, nutricao, reativacao, extra, semHistorico, negociosAbertos }
+  return { carteira, contatoRecente, recompra, nutricao, reativacao, extra, semHistorico, negociosAbertos }
 }

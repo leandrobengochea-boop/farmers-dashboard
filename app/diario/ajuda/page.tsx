@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { usuarioAtual } from '@/lib/diario/session'
 import {
-  ABORDAGENS, BUCKETS, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, COTA_DIARIA,
+  ABORDAGENS, BUCKETS, COOLDOWN_CONTATO_CRM, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, COTA_DIARIA,
   DIAS_NEGOCIACAO_PARADA, EMPRESAS_DO_DIA, EMPRESAS_DO_DIA_BDR, MINIMO_OBSERVACAO, RESULTADOS, RESULTADO_FORA_DO_PLACAR, TENTATIVAS_ATE_AUXILIO,
   ANTECEDENCIA_CHECKLIST_DIAS, PRAZO_ASSINATURA_DIAS, PRAZO_MINUTA_DIAS_UTEIS,
   RESULTADOS_TRAMITACAO, TRAMITACOES, TipoTramitacao,
@@ -219,6 +219,13 @@ export default function AjudaPage() {
             </tr>
           </tbody>
         </table>
+        <p className="mt-4">
+          <b>O contato efetivo que está no HubSpot também segura a empresa, seja de quem for.</b> O diário
+          só registra o que passou por ele — se o líder, o CS, outro time ou você mesmo falou com a empresa e
+          anotou direto no CRM, a empresa fica fora da sua lista pelos {COOLDOWN_CONTATO_CRM} dias seguintes
+          à data de <i>Último Contato Efetivo</i> dela. Vale sempre a data mais recente entre as duas fontes:
+          nenhuma encurta o descanso da outra.
+        </p>
         <p className="mt-4">
           <b>O dia anterior é fechado antes de a lista de hoje ser montada.</b> A ligação de ontem às 18h às
           vezes só vira resultado quando alguém reabre a tela — e o descanso é calculado em cima desse

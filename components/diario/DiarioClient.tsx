@@ -334,6 +334,9 @@ export default function DiarioClient({ usuario, farmers }: Props) {
           <PoolItem rotulo="Sem histórico" valor={dados.pool.semHistorico} />
           <span className="text-zinc-500">{dados.pool.negociosAbertos} negócios abertos no funil</span>
           <span className="text-zinc-500">{dados.pool.emDescanso} em descanso</span>
+          {dados.pool.contatoRecente > 0 && (
+            <span className="text-zinc-500">{dados.pool.contatoRecente} com contato efetivo nos últimos 30 dias</span>
+          )}
           {dados.pool.precisandoAuxilio > 0 && (
             <span className="text-orange-600 font-medium">{dados.pool.precisandoAuxilio} pedindo auxílio do líder</span>
           )}

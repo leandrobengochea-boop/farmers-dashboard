@@ -225,6 +225,18 @@ export const COOLDOWN_POR_RESULTADO: Record<string, number> = {
 export const COOLDOWN_SEM_RESULTADO = 1
 
 /**
+ * O descanso de 30 dias também conta o contato efetivo que está no CRM, feito
+ * por quem quer que seja.
+ *
+ * O histórico do diário só enxerga o que passou pelo diário: contato do líder,
+ * do CS, de BDR, resposta de inbound e conversa que o farmer registrou direto
+ * no HubSpot ficavam de fora, e a empresa voltava a ser sugerida poucos dias
+ * depois de alguém ter falado com ela. Vale sempre a data mais recente entre
+ * as duas fontes — nenhuma das duas encurta o descanso da outra.
+ */
+export const COOLDOWN_CONTATO_CRM = COOLDOWN_POR_RESULTADO.efetivo
+
+/**
  * Tentativas frustradas seguidas até a empresa pedir auxílio do líder. Três
  * "não atendeu" seguidos normalmente é dado ruim (telefone velho, contato saiu)
  * ou porta que não abre sozinha — não falta de esforço.
