@@ -139,7 +139,7 @@ lib/diario/carteira.ts     carteira + montagem da lista do dia
 lib/diario/atividade.ts    derivação do resultado a partir do CRM
 lib/diario/calendario.ts   dia útil e feriados (Páscoa calculada)
 lib/diario/tramitacoes.ts  pendências de ticket
-app/api/diario/*           14 rotas
+app/api/diario/*           12 rotas
 app/diario/ajuda           a página de regras que lê as constantes
 ```
 
