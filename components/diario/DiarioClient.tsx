@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ABORDAGEM_PADRAO, ABORDAGENS, Bucket, BUCKETS, COTA_DIARIA, MINIMO_OBSERVACAO,
-  DIAS_NEGOCIACAO_PARADA, ORDEM_BUCKET, RESULTADOS, RESULTADO_EXIGE_OBSERVACAO, Resultado, urlEmpresa,
+  DIAS_NEGOCIACAO_PARADA, ORDEM_BUCKET, RESULTADOS, Resultado, ehBDR, exigeObservacao, urlEmpresa,
 } from '@/lib/diario/constants'
 import type { Briefing, ItemDiario } from '@/lib/diario/db'
 import type { PoolCarteira, ResumoMes } from '@/lib/diario/metrics'
@@ -181,9 +181,9 @@ export default function DiarioClient({ usuario, farmers }: Props) {
   const comResultado = useMemo(() => doDia.filter((i) => i.resultado).length, [doDia])
   const pendenciasFechamento = useMemo(
     () => doDia.filter((i) => !i.resultado ||
-      (RESULTADO_EXIGE_OBSERVACAO.includes(i.resultado as Resultado) &&
+      (exigeObservacao(farmerId, i.resultado) &&
         (i.observacaoResultado?.trim().length ?? 0) < MINIMO_OBSERVACAO)).length,
-    [doDia],
+    [doDia, farmerId],
   )
 
   // Quantas vieram prontas do CRM, para o farmer saber que não foi ele que marcou.
@@ -626,7 +626,7 @@ export default function DiarioClient({ usuario, farmers }: Props) {
             <tbody>
               {visiveis.map((i) => {
                 const escrito = i.observacaoResultado?.trim().length ?? 0
-                const exigeObs = RESULTADO_EXIGE_OBSERVACAO.includes(i.resultado as Resultado)
+                const exigeObs = exigeObservacao(farmerId, i.resultado)
                 const faltaObs = exigeObs && escrito < MINIMO_OBSERVACAO && !somenteLeitura
                 return (
                   <tr key={i.companyId} className={`border-b border-zinc-50 align-top ${

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { usuarioAtual } from '@/lib/diario/session'
-import { farmersDoLider, MINIMO_OBSERVACAO, RESULTADO_EXIGE_OBSERVACAO, Resultado } from '@/lib/diario/constants'
+import { exigeObservacao, farmersDoLider, MINIMO_OBSERVACAO } from '@/lib/diario/constants'
 import { itensDoDia, briefing, salvaBriefing } from '@/lib/diario/db'
 import { hojeSP } from '@/lib/diario/carteira'
 
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       )
     }
     const semObservacao = doDia.filter(
-      (i) => RESULTADO_EXIGE_OBSERVACAO.includes(i.resultado as Resultado) &&
+      (i) => exigeObservacao(usuario.id, i.resultado) &&
         (i.observacaoResultado?.trim().length ?? 0) < MINIMO_OBSERVACAO,
     )
     if (semObservacao.length > 0) {

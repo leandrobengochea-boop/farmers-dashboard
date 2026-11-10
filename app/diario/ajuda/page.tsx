@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { usuarioAtual } from '@/lib/diario/session'
 import {
   ABORDAGENS, BUCKETS, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, COTA_DIARIA,
-  DIAS_NEGOCIACAO_PARADA, EMPRESAS_DO_DIA, MINIMO_OBSERVACAO, RESULTADOS, RESULTADO_FORA_DO_PLACAR, TENTATIVAS_ATE_AUXILIO,
+  DIAS_NEGOCIACAO_PARADA, EMPRESAS_DO_DIA, EMPRESAS_DO_DIA_BDR, MINIMO_OBSERVACAO, RESULTADOS, RESULTADO_FORA_DO_PLACAR, TENTATIVAS_ATE_AUXILIO,
   ANTECEDENCIA_CHECKLIST_DIAS, PRAZO_ASSINATURA_DIAS, PRAZO_MINUTA_DIAS_UTEIS,
   RESULTADOS_TRAMITACAO, TRAMITACOES, TipoTramitacao,
 } from '@/lib/diario/constants'
@@ -34,7 +34,8 @@ export default function AjudaPage() {
       <Secao titulo="Para que serve">
         <p>
           O diário existe para o dia começar decidido. Em vez de abrir o CRM e escolher por intuição quem
-          procurar, o farmer recebe de manhã uma lista de <b>{EMPRESAS_DO_DIA} empresas da própria carteira</b>,
+          procurar, o farmer recebe de manhã uma lista de <b>{EMPRESAS_DO_DIA} empresas da própria carteira</b>
+          — e o BDR, <b>{EMPRESAS_DO_DIA_BDR}</b>, porque a base dele é de prospecção e o dia é de volume —,
           escolhidas pelo tempo desde a última contratação, define como vai abordar cada uma e, no fim do dia,
           registra o que conseguiu.
         </p>
@@ -87,6 +88,13 @@ export default function AjudaPage() {
           inteiro — empresas, abordagem escolhida, resultado e observação. Dia anterior abre <b>só para
           leitura</b>: o compromisso daquele dia já passou, e preencher depois mudaria o histórico que o líder
           já olhou.
+        </p>
+        <p className="mt-4">
+          <b>BDR tem outra rotina.</b> A base dele é grande e quase sem histórico de compra, então recompra e
+          reativação praticamente não existem: o dia vem com {EMPRESAS_DO_DIA_BDR} empresas, quase todas de
+          primeiro contato. No fechamento, <b>não abordei dispensa a observação</b> — com {EMPRESAS_DO_DIA_BDR}
+          por dia o motivo é quase sempre o mesmo, e trinta justificativas iguais não dizem nada. Contato
+          efetivo continua pedindo os {MINIMO_OBSERVACAO} caracteres: é ali que está o que o líder lê.
         </p>
         <p className="mt-4">
           <b>Empresa com negócio aberto não entra na lista de abordagem.</b> Já existe conversa na mesa, e

@@ -86,6 +86,13 @@ O bloco é **só informativo** (decisão de 07/10). Chegou a virar extra do dia 
 >
 > ⚠️ Três segmentos têm nome diferente no HubSpot e na lista de farmers — sem `SEGMENTO_ALIAS` em `lib/diario/constants.ts`, 632 empresas pareceriam estar no segmento errado. E o *value* da opção não é o *label*: a empresa guarda "Indústria" onde a lista diz "Indústria I".
 
+### BDR: rotina de volume
+Vitor, Juliano e Andrei (Milei) são **BDRs** (`BDRS` em `lib/diario/constants.ts`). A base deles é de ~950 empresas com ~1% de histórico de compra, espalhada por 6 a 9 segmentos — recompra e reativação praticamente não existem ali.
+
+- O dia vem com **50 empresas** em vez de 20 (`empresasDoDia(farmerId)`), quase todas de primeiro contato. Os baldes quentes continuam vindo primeiro quando existem.
+- No fechamento, **"não abordei" não exige observação** para BDR (`exigeObservacao(farmerId, resultado)`). Com 50 por dia seriam ~35 textos de 50 caracteres, ~1.800 caracteres só para conseguir fechar — e dia que não fecha foi exatamente o problema de out/26. Contato efetivo e troca de segmento seguem exigindo.
+- Eles não recebem extras: não têm clientes recentes.
+
 ### Quando a empresa volta
 | Último resultado | Volta em |
 |---|---|

@@ -1,7 +1,7 @@
 import { HUBSPOT_PORTAL_ID } from '../constants'
 import {
   Bucket, COTA_DIARIA, COOLDOWN_POR_RESULTADO, COOLDOWN_SEM_RESULTADO, DIAS_NEGOCIACAO_PARADA,
-  ETAPAS_FUNIL_ATIVO, LIMITE_MESES, PIPELINE_B2B, TENTATIVAS_ATE_AUXILIO, urlEmpresa,
+  ETAPAS_FUNIL_ATIVO, LIMITE_MESES, PIPELINE_B2B, TENTATIVAS_ATE_AUXILIO, empresasDoDia, urlEmpresa,
 } from './constants'
 import { HistoricoEmpresa, ItemDiario, historicoDoFarmer, trocasPendentes } from './db'
 import { TramitacaoEmpresa, empresasEmTramitacao } from './tramitacoes'
@@ -416,16 +416,16 @@ export async function montaSugestoes(farmerId: string, hoje: string): Promise<Su
     return pegos
   }
 
+  // O alvo do dia depende do papel: farmer recebe a carteira do Pareto, BDR
+  // recebe volume de prospecção. Os baldes quentes vêm primeiro nos dois casos
+  // — o BDR quase não tem, mas quando tem é o que vale mais.
+  const alvo = empresasDoDia(farmerId)
   const cotas: Array<[Bucket, number]> = [
     ['recompra', COTA_DIARIA.recompra],
     ['nutricao', COTA_DIARIA.nutricao],
     ['reativacao', COTA_DIARIA.reativacao],
   ]
-  let alvo = 0
-  for (const [bucket, cota] of cotas) {
-    alvo += cota
-    puxa(bucket, cota)
-  }
+  for (const [bucket, cota] of cotas) puxa(bucket, cota)
 
   // Completa o que faltou para fechar as 20, do balde mais cheio de oportunidade
   // para o mais frio.

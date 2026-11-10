@@ -40,6 +40,23 @@ export const MINIMO_OBSERVACAO = 50
 export const RESULTADO_EXIGE_OBSERVACAO: Resultado[] = ['efetivo', 'nao_abordei', 'trocar_segmento']
 
 /**
+ * BDR não escreve em "não abordei".
+ *
+ * Com 50 empresas por dia, o motivo de não ter abordado é quase sempre o mesmo
+ * — não deu tempo — e trinta justificativas iguais não informam nada a ninguém.
+ * Em compensação o fechamento deixa de ser um muro de 1.800 caracteres, que foi
+ * o que deixou 58 dias em aberto em outubro com uma lista bem menor.
+ */
+export const RESULTADO_EXIGE_OBSERVACAO_BDR: Resultado[] = ['efetivo', 'trocar_segmento']
+
+/** A regra de observação obrigatória depende do papel de quem preenche. */
+export function exigeObservacao(farmerId: string, resultado: string | null | undefined): boolean {
+  if (!resultado) return false
+  const regra = ehBDR(farmerId) ? RESULTADO_EXIGE_OBSERVACAO_BDR : RESULTADO_EXIGE_OBSERVACAO
+  return regra.includes(resultado as Resultado)
+}
+
+/**
  * "Trocar de segmento" não é abordagem: a empresa está na carteira errada.
  * Fica fora do placar de efetividade para o farmer não precisar marcar contato
  * efetivo só para a empresa sumir da lista — que era o que acontecia antes.
@@ -168,6 +185,28 @@ export const COTA_DIARIA: Record<'recompra' | 'nutricao' | 'reativacao' | 'extra
 }
 
 export const EMPRESAS_DO_DIA = COTA_DIARIA.recompra + COTA_DIARIA.nutricao + COTA_DIARIA.reativacao
+
+/**
+ * BDRs: base grande de empresas que nunca compraram, rotina de volume.
+ *
+ * A cota de farmer não serve para eles — a base é de ~950 empresas sem
+ * histórico, onde recompra e reativação não existem. O dia é de prospecção, e
+ * o número que faz sentido é o de contatos, não o de empresas da carteira.
+ */
+export const BDRS = new Set<string>([
+  '98715090', // Vitor
+  '97204561', // Juliano
+  '94028856', // Andrei (Milei)
+])
+
+export const EMPRESAS_DO_DIA_BDR = 50
+
+export const ehBDR = (farmerId: string) => BDRS.has(farmerId)
+
+/** Quantas empresas o dia pede, conforme o papel de quem recebe a lista. */
+export function empresasDoDia(farmerId: string): number {
+  return ehBDR(farmerId) ? EMPRESAS_DO_DIA_BDR : EMPRESAS_DO_DIA
+}
 
 /**
  * Quantos dias a empresa descansa antes de voltar à lista, conforme o que
