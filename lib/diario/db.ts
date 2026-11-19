@@ -272,6 +272,41 @@ export async function gravaSugestoes(itens: ItemDiario[]): Promise<void> {
   gravaLocal(dados)
 }
 
+/**
+ * Tira do dia as empresas que não deveriam ter entrado, sem encostar no que já
+ * foi trabalhado: só sai linha **sem resultado e sem edição do líder**. A regra
+ * está no SQL de propósito — é a última barreira antes de apagar trabalho de
+ * alguém.
+ *
+ * Devolve os ids que realmente saíram.
+ */
+export async function removeItensIntocados(
+  farmerId: string, data: string, companyIds: string[],
+): Promise<string[]> {
+  if (companyIds.length === 0) return []
+  if (usandoPostgres) {
+    await garanteSchema()
+    const rows = await sql()`
+      DELETE FROM diario_item
+      WHERE farmer_id = ${farmerId} AND data = ${data}::date
+        AND company_id = ANY(${companyIds})
+        AND resultado IS NULL AND editado_por IS NULL
+        AND (observacao IS NULL OR observacao = '')
+      RETURNING company_id`
+    return rows.map((r) => String(r.company_id))
+  }
+  const dados = leLocal()
+  const saem = new Set(
+    dados.itens
+      .filter((i) => i.farmerId === farmerId && i.data === data && companyIds.includes(i.companyId)
+        && !i.resultado && !i.editadoPor && !i.observacao)
+      .map((i) => i.companyId),
+  )
+  dados.itens = dados.itens.filter((i) => !(i.farmerId === farmerId && i.data === data && saem.has(i.companyId)))
+  gravaLocal(dados)
+  return [...saem]
+}
+
 export async function atualizaItem(farmerId: string, data: string, companyId: string, patch: PatchItem): Promise<void> {
   // Só sobrescreve o que veio no patch — `undefined` nunca apaga valor salvo.
   const campos: PatchItem = {}

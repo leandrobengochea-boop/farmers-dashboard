@@ -102,6 +102,8 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   const [orientando, setOrientando] = useState<string | null>(null)
   const [rascunho, setRascunho] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [reconferindo, setReconferindo] = useState<string | null>(null)
+  const [resultadoReconf, setResultadoReconf] = useState<string | null>(null)
 
   const carrega = useCallback(async () => {
     setCarregando(true)
@@ -118,6 +120,34 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
   }, [])
 
   useEffect(() => { carrega() }, [carrega])
+
+  // A lista do dia é congelada na primeira abertura. Quando uma regra muda de
+  // manhã, quem já abriu fica com a lista velha até amanhã — isto reconfere o
+  // dia que já existe, um farmer por vez, sem encostar no que já foi
+  // trabalhado.
+  const reconfere = useCallback(async (farmers: AgendaFarmer[]) => {
+    setResultadoReconf(null)
+    let removidas = 0
+    let pessoas = 0
+    for (const f of farmers) {
+      setReconferindo(f.nome)
+      const resp = await fetch('/api/diario/dia/reconfere', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ farmerId: f.farmerId }),
+      })
+      if (!resp.ok) continue
+      const d = await resp.json()
+      if (d.removidas > 0) { removidas += d.removidas; pessoas++ }
+    }
+    setReconferindo(null)
+    setResultadoReconf(
+      removidas === 0
+        ? 'nenhuma empresa precisava sair — as listas já estavam conferidas'
+        : `${removidas} empresa(s) trocadas em ${pessoas} ${pessoas === 1 ? 'farmer' : 'farmers'}`,
+    )
+    await carrega()
+  }, [carrega])
 
   // A agenda era uma foto do momento em que o líder abriu: o farmer trabalhava o
   // dia inteiro e a tela dela continuava no número da manhã. Ao voltar para a
@@ -255,6 +285,20 @@ export default function AgendaClient({ usuario }: { usuario: { id: string; nome:
           >
             {carregando ? 'atualizando...' : 'atualizar'}
           </button>
+          {souLider && (
+            <>
+              <span className="text-zinc-300">·</span>
+              <button
+                onClick={() => reconfere(visiveis)}
+                disabled={!!reconferindo || carregando}
+                title="Tira da lista de hoje quem já teve contato efetivo no CRM e repõe pela próxima da fila. Não mexe no que já foi trabalhado."
+                className="underline underline-offset-2 hover:text-zinc-700 disabled:opacity-50"
+              >
+                {reconferindo ? `reconferindo ${primeiroNome(reconferindo)}...` : 'reconferir listas de hoje'}
+              </button>
+            </>
+          )}
+          {resultadoReconf && <span className="text-zinc-500">{resultadoReconf}</span>}
         </div>
       )}
 

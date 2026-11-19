@@ -389,7 +389,9 @@ export interface Sugestoes {
  * completado pelos outros, na ordem reativação → nutrição → recompra →
  * primeiro contato, para o farmer nunca receber menos de 20.
  */
-export async function montaSugestoes(farmerId: string, hoje: string): Promise<Sugestoes> {
+export async function montaSugestoes(
+  farmerId: string, hoje: string, opcoes: { excluir?: Set<string> } = {},
+): Promise<Sugestoes> {
   const { empresas: carteira } = await fetchCarteira(farmerId, hoje)
   const historico = await historicoDoFarmer(farmerId, hoje)
   // Empresa com troca de segmento em aberto não volta: ela é o problema,
@@ -414,9 +416,12 @@ export async function montaSugestoes(farmerId: string, hoje: string): Promise<Su
   }
   for (const e of carteira) resumo.porBucket[e.bucket] = (resumo.porBucket[e.bucket] ?? 0) + 1
 
+  // `excluir` é para quando a lista está sendo completada, não montada do zero:
+  // o que já está no dia não pode ser sorteado de novo. O histórico não resolve
+  // isso sozinho porque ele só olha os dias anteriores a hoje.
   const disponiveis = carteira.filter(
     (e) => !emDescanso(historico.get(e.id), hoje, e.ultimoContato)
-      && !e.noFunil && !e.tramitacao && !trocando.has(e.id),
+      && !e.noFunil && !e.tramitacao && !trocando.has(e.id) && !opcoes.excluir?.has(e.id),
   )
   /**
    * Monta a lista com o que sobrou. É pura de propósito: roda de novo quando a
