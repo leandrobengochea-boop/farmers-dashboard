@@ -5,6 +5,7 @@ import {
   ETAPAS_FUNIL_ATIVO, LIMITE_MESES, PIPELINE_B2B, TENTATIVAS_ATE_AUXILIO, empresasDoDia, urlEmpresa,
 } from './constants'
 import { HistoricoEmpresa, ItemDiario, historicoDoFarmer, trocasPendentes } from './db'
+import { contatoEfetivoNoCRM } from './conversas'
 import { TramitacaoEmpresa, empresasEmTramitacao } from './tramitacoes'
 
 export interface Empresa {
@@ -41,6 +42,7 @@ export interface ResumoPool {
   negociacaoParada: number
   emTramitacao: number
   contatoEfetivoNoMes: number
+  contatoRecenteNoCRM: number    // derrubadas na conferência do engajamento
   trocandoSegmento: number
 }
 
@@ -99,6 +101,18 @@ function menosMeses(isoDate: string, meses: number): string {
   const d = new Date(`${isoDate}T12:00:00Z`)
   d.setUTCMonth(d.getUTCMonth() - meses)
   return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Quantas vezes a lista é refeita quando a conferência derruba empresas. Cada
+ * rodada só consulta as substitutas, então sobra barata — e o teto existe para
+ * a geração do dia não ficar presa num caso patológico.
+ */
+const RODADAS_DE_CONFERENCIA = 6
+
+/** A data de `dias` atrás, em YYYY-MM-DD. */
+function menosDias(iso: string, dias: number): string {
+  return new Date(new Date(`${iso}T12:00:00Z`).getTime() - dias * 86_400_000).toISOString().slice(0, 10)
 }
 
 function diasEntre(de: string, ate: string): number {
@@ -396,6 +410,7 @@ export async function montaSugestoes(farmerId: string, hoje: string): Promise<Su
     negociando: carteira.filter((e) => e.negociacao).length,
     negociacaoParada: carteira.filter((e) => e.negociacao?.parada).length,
     emTramitacao: carteira.filter((e) => e.tramitacao).length,
+    contatoRecenteNoCRM: 0,
   }
   for (const e of carteira) resumo.porBucket[e.bucket] = (resumo.porBucket[e.bucket] ?? 0) + 1
 
@@ -403,60 +418,105 @@ export async function montaSugestoes(farmerId: string, hoje: string): Promise<Su
     (e) => !emDescanso(historico.get(e.id), hoje, e.ultimoContato)
       && !e.noFunil && !e.tramitacao && !trocando.has(e.id),
   )
-  const pools = {} as Record<Bucket, Empresa[]>
-  for (const b of ['recompra', 'nutricao', 'reativacao', 'extra', 'primeiro_contato'] as Bucket[]) {
-    pools[b] = disponiveis
-      .filter((e) => e.bucket === b)
-      // quem pediu auxílio vai na frente do próprio balde: de nada adianta
-      // marcar a empresa se ela não entrar na lista do dia
-      .sort((x, y) => {
-        const ax = precisaAuxilio(historico.get(x.id)) ? 0 : 1
-        const ay = precisaAuxilio(historico.get(y.id)) ? 0 : 1
-        return ax - ay || ordena(b, x, y)
-      })
-  }
-
-  const escolhidas: Empresa[] = []
-  const usados = new Set<string>()
-
-  function puxa(bucket: Bucket, quantidade: number): number {
-    let pegos = 0
-    for (const e of pools[bucket]) {
-      if (pegos >= quantidade) break
-      if (usados.has(e.id)) continue
-      usados.add(e.id)
-      escolhidas.push(e)
-      pegos++
+  /**
+   * Monta a lista com o que sobrou. É pura de propósito: roda de novo quando a
+   * conferência no CRM derruba alguma das escolhidas, e as substitutas saem da
+   * mesma ordem de prioridade — não de uma sobra qualquer.
+   */
+  function seleciona(bloqueadas: Set<string>): Empresa[] {
+    const livres = disponiveis.filter((e) => !bloqueadas.has(e.id))
+    const pools = {} as Record<Bucket, Empresa[]>
+    for (const b of ['recompra', 'nutricao', 'reativacao', 'extra', 'primeiro_contato'] as Bucket[]) {
+      pools[b] = livres
+        .filter((e) => e.bucket === b)
+        // quem pediu auxílio vai na frente do próprio balde: de nada adianta
+        // marcar a empresa se ela não entrar na lista do dia
+        .sort((x, y) => {
+          const ax = precisaAuxilio(historico.get(x.id)) ? 0 : 1
+          const ay = precisaAuxilio(historico.get(y.id)) ? 0 : 1
+          return ax - ay || ordena(b, x, y)
+        })
     }
-    return pegos
+
+    const escolhidas: Empresa[] = []
+    const usados = new Set<string>()
+
+    function puxa(bucket: Bucket, quantidade: number): number {
+      let pegos = 0
+      for (const e of pools[bucket]) {
+        if (pegos >= quantidade) break
+        if (usados.has(e.id)) continue
+        usados.add(e.id)
+        escolhidas.push(e)
+        pegos++
+      }
+      return pegos
+    }
+
+    // O alvo do dia depende do papel: farmer recebe a carteira do Pareto, BDR
+    // recebe volume de prospecção. Os baldes quentes vêm primeiro nos dois casos
+    // — o BDR quase não tem, mas quando tem é o que vale mais.
+    const alvo = empresasDoDia(farmerId)
+    const cotas: Array<[Bucket, number]> = [
+      ['recompra', COTA_DIARIA.recompra],
+      ['nutricao', COTA_DIARIA.nutricao],
+      ['reativacao', COTA_DIARIA.reativacao],
+    ]
+    for (const [bucket, cota] of cotas) puxa(bucket, cota)
+
+    // Completa o que faltou para fechar as 20, do balde mais cheio de oportunidade
+    // para o mais frio.
+    for (const bucket of ['reativacao', 'nutricao', 'recompra', 'primeiro_contato'] as Bucket[]) {
+      const falta = alvo - escolhidas.length
+      if (falta <= 0) break
+      puxa(bucket, falta)
+    }
+
+    // Extras: clientes recentes, para sugerir o próximo evento. Fora da conta das 20.
+    //
+    // Negociação em aberto NÃO entra aqui. Ela já tem conversa na mesa, com data e
+    // próximo passo próprios; transformar isso em tarefa do dia duplicava o
+    // acompanhamento que já acontece no negócio. Fica no bloco informativo do
+    // diário, com a etapa e os dias parada.
+    puxa('extra', COTA_DIARIA.extra)
+    return escolhidas
   }
 
-  // O alvo do dia depende do papel: farmer recebe a carteira do Pareto, BDR
-  // recebe volume de prospecção. Os baldes quentes vêm primeiro nos dois casos
-  // — o BDR quase não tem, mas quando tem é o que vale mais.
-  const alvo = empresasDoDia(farmerId)
-  const cotas: Array<[Bucket, number]> = [
-    ['recompra', COTA_DIARIA.recompra],
-    ['nutricao', COTA_DIARIA.nutricao],
-    ['reativacao', COTA_DIARIA.reativacao],
-  ]
-  for (const [bucket, cota] of cotas) puxa(bucket, cota)
-
-  // Completa o que faltou para fechar as 20, do balde mais cheio de oportunidade
-  // para o mais frio.
-  for (const bucket of ['reativacao', 'nutricao', 'recompra', 'primeiro_contato'] as Bucket[]) {
-    const falta = alvo - escolhidas.length
-    if (falta <= 0) break
-    puxa(bucket, falta)
-  }
-
-  // Extras: clientes recentes, para sugerir o próximo evento. Fora da conta das 20.
+  // Conferência final: a empresa pode ter sido atendida por fora do diário e
+  // sem ninguém preencher `ultimo_contato_efetivo` na mão. Aqui o dado é o
+  // próprio engajamento no CRM — ligação atendida, reunião realizada, conversa
+  // de WhatsApp em que o cliente respondeu — e vale de quem quer que seja.
   //
-  // Negociação em aberto NÃO entra aqui. Ela já tem conversa na mesa, com data e
-  // próximo passo próprios; transformar isso em tarefa do dia duplicava o
-  // acompanhamento que já acontece no negócio. Fica no bloco informativo do
-  // diário, com a etapa e os dias parada.
-  puxa('extra', COTA_DIARIA.extra)
+  // Só as escolhidas são conferidas, não a carteira inteira: a consulta carrega
+  // o corpo das conversas e olhar as ~270 empresas de cada um custaria a manhã
+  // do farmer. Quem cai é substituído e a lista é conferida de novo, até
+  // `RODADAS_DE_CONFERENCIA` vezes — na prática uma ou duas resolvem.
+  const bloqueadas = new Set<string>()
+  const conferidas = new Set<string>()
+  const desde = menosDias(hoje, COOLDOWN_CONTATO_CRM)
+  let escolhidas = seleciona(bloqueadas)
+  for (let rodada = 0; rodada < RODADAS_DE_CONFERENCIA; rodada++) {
+    const novas = escolhidas.filter((e) => !conferidas.has(e.id)).map((e) => e.id)
+    if (novas.length === 0) break
+    // Falha de rede não pode deixar o farmer sem lista: sem a conferência,
+    // volta a valer o que a propriedade e o histórico já diziam.
+    const contato = await contatoEfetivoNoCRM(novas, desde).catch((erro) => {
+      console.error('contatoEfetivoNoCRM falhou:', erro)
+      return new Map<string, string>()
+    })
+    for (const id of novas) conferidas.add(id)
+    const caidas = novas.filter((id) => contato.has(id))
+    if (caidas.length === 0) break
+    for (const id of caidas) bloqueadas.add(id)
+    escolhidas = seleciona(bloqueadas)
+    if (rodada === RODADAS_DE_CONFERENCIA - 1) {
+      console.warn(`diário: ${farmerId} fechou a conferência no limite de rodadas com ${bloqueadas.size} empresas derrubadas`)
+    }
+  }
+  resumo.contatoRecenteNoCRM = bloqueadas.size
+  if (bloqueadas.size > 0) {
+    console.log(`diário: ${farmerId} — ${bloqueadas.size} empresa(s) fora da lista por contato efetivo no CRM nos últimos ${COOLDOWN_CONTATO_CRM} dias`)
+  }
 
   const itens: ItemDiario[] = escolhidas.map((empresa) => ({
     farmerId,

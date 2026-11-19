@@ -38,6 +38,11 @@ A propriedade que guarda a carteira (rótulo "Novas Carteiras") tem **value dife
 
 E três segmentos têm nome diferente dos dois lados; sem um mapa de apelidos, **632 empresas** pareciam estar no segmento errado.
 
+### Propriedade preenchida à mão mente mais do que parece
+`Último Contato Efetivo` é um campo de data comum, sem cálculo por trás — alguém preenche. Numa amostra de 60 empresas livres de uma farmer, **26 tinham contato efetivo registrado no CRM nos últimos 30 dias** com a propriedade parada em maio, junho ou julho. Eram ligações atendidas pela própria dona da carteira.
+
+> **Regra que adotamos:** propriedade preenchida à mão serve como reforço, nunca como fonte única. O dado verdadeiro é o engajamento (`calls` com disposição conectada, `meetings` com `COMPLETED`, `communications` respondida). Para consultar isso barato, a busca aceita `associations.company` como filtro — dá para perguntar "o que aconteceu com estas 40 empresas" em vez de varrer por dono.
+
 ### Mapa de segmento por pessoa desatualiza sozinho
 Quando alguém sai, a carteira é redistribuída no CRM e o mapa hardcoded fica mentindo. Em out/26 três pessoas estavam com segmento errado, e o efeito era **zero negociações** no diário delas, sem erro visível.
 
@@ -46,7 +51,11 @@ Quando alguém sai, a carteira é redistribuída no CRM e o mapa hardcoded fica 
 ### WhatsApp não é `call`
 A automação grava a conversa no objeto **`communications`** (`hs_communication_channel_type = WHATS_APP`), não em `calls`. Eram ~780 mensagens/dia invisíveis para o diário.
 
-E **não existe campo de direção**: nenhuma das 55 propriedades diz se a mensagem foi enviada ou recebida. Tentamos três formas de inferir pelo HTML do corpo e nenhuma passou de ~60% de precisão. Por isso WhatsApp conta como **tentativa**, nunca como efetivo.
+**Não existe campo de direção**: nenhuma das 55 propriedades diz se a mensagem foi enviada ou recebida. Mas o corpo entrega: a automação grava o fio inteiro em HTML, e cada mensagem é um bloco `<div style="margin-bottom:12px...">` — o que saiu daqui vem com `text-align:right` e o nome em azul (`#0066cc`), o que o cliente mandou vem sem.
+
+O corte tem que ser no bloco de mensagem, não em qualquer `<div>`: o corpo tem divs de embrulho, e contar todas dava "respondida" para 99% dos registros. Com o corte certo, numa semana: 2.273 conversas respondidas, 27 só de saída, 1.188 sem corpo (as que vêm da caixa de entrada — essas não dá para classificar e ficam como tentativa).
+
+Com isso, **WhatsApp respondido pelo cliente conta como contato efetivo**; mensagem que só saiu continua tentativa.
 
 ---
 

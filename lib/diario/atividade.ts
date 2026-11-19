@@ -1,5 +1,6 @@
-import { fetchWithRetry, searchAllPages } from './carteira'
 import { FORCA_RESULTADO } from './constants'
+import { searchAllPages } from './carteira'
+import { conversaRespondida, disposicoesEfetivas, porEmpresa } from './conversas'
 import { ItemDiario, atualizaItem, briefing, itensDoDia, ultimoDiaComLista } from './db'
 
 /**
@@ -13,55 +14,13 @@ export interface AtividadeEmpresa {
   reunioes: number
   outras: number              // e-mails e notas
   mensagens: number           // WhatsApp registrado pela automação
+  respondidas: number         // conversas de WhatsApp em que o cliente respondeu
   texto: string               // anotação mais recente, já sem HTML
   resultadoSugerido: 'efetivo' | 'tentativa' | null
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
 function semHtml(valor: string): string {
   return valor.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
-}
-
-/** Disposições que significam que alguém do outro lado atendeu. */
-async function disposicoesEfetivas(pat: string): Promise<Set<string>> {
-  try {
-    const resp = await fetchWithRetry('https://api.hubapi.com/calling/v1/dispositions', {
-      headers: { Authorization: `Bearer ${pat}` },
-      cache: 'no-store',
-    })
-    if (!resp.ok) return new Set()
-    const data = (await resp.json()) as Array<{ id: string; label: string; deleted: boolean }>
-    return new Set(
-      data
-        .filter((o) => {
-          if (o.deleted) return false
-          const l = o.label.toLowerCase()
-          return l.includes('conect') || l.includes('connect') || l.includes('atend') || l.includes('reunião agendada')
-        })
-        .map((o) => o.id),
-    )
-  } catch {
-    return new Set()
-  }
-}
-
-async function porEmpresa(pat: string, objeto: string, ids: string[]): Promise<Map<string, string[]>> {
-  const mapa = new Map<string, string[]>()
-  for (let i = 0; i < ids.length; i += 100) {
-    if (i > 0) await sleep(120)
-    const resp = await fetchWithRetry(`https://api.hubapi.com/crm/v4/associations/${objeto}/companies/batch/read`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inputs: ids.slice(i, i + 100).map((id) => ({ id })) }),
-    })
-    if (!resp.ok) continue
-    const data = (await resp.json()) as { results?: Array<{ from: { id: string }; to: Array<{ toObjectId: number | string }> }> }
-    for (const row of data.results ?? []) {
-      mapa.set(row.from.id, (row.to ?? []).map((t) => String(t.toObjectId)))
-    }
-  }
-  return mapa
 }
 
 /**
@@ -99,7 +58,7 @@ export async function atividadeDeVarios(farmerIds: string[], dia: string): Promi
     if (!mapa) return null
     let a = mapa.get(empresa)
     if (!a) {
-      a = { ligacoes: 0, conectadas: 0, reunioes: 0, outras: 0, mensagens: 0, texto: '', resultadoSugerido: null }
+      a = { ligacoes: 0, conectadas: 0, reunioes: 0, outras: 0, mensagens: 0, respondidas: 0, texto: '', resultadoSugerido: null }
       mapa.set(empresa, a)
     }
     return a
@@ -152,17 +111,21 @@ export async function atividadeDeVarios(farmerIds: string[], dia: string): Promi
   }
 
   for (const c of mensagens) {
+    const respondeu = conversaRespondida(c.properties.hs_communication_body ?? '')
     for (const empresa of empMensagens.get(c.id) ?? []) {
       const a = registra(c.properties.hubspot_owner_id ?? '', empresa)
-      if (a) a.mensagens++
+      if (!a) continue
+      a.mensagens++
+      if (respondeu) a.respondidas++
     }
   }
 
   for (const mapa of porFarmer.values()) {
     for (const a of mapa.values()) {
-      // Mensagem de WhatsApp nunca vira "efetivo" sozinha: o registro não diz se
-      // o cliente respondeu, e chutar isso inflaria a efetividade do time todo.
-      if (a.conectadas > 0 || a.reunioes > 0) a.resultadoSugerido = 'efetivo'
+      // Conversa de WhatsApp conta como efetivo quando o cliente respondeu —
+      // é isso que o alinhamento dos blocos do corpo diz. Mensagem que só saiu
+      // daqui continua sendo tentativa: ninguém falou com ninguém.
+      if (a.conectadas > 0 || a.reunioes > 0 || a.respondidas > 0) a.resultadoSugerido = 'efetivo'
       else if (a.ligacoes > 0 || a.outras > 0 || a.mensagens > 0) a.resultadoSugerido = 'tentativa'
     }
   }

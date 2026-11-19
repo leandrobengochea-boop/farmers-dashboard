@@ -104,6 +104,16 @@ Vitor, Juliano e Andrei (Milei) são **BDRs** (`BDRS` em `lib/diario/constants.t
 | Dia sem fechamento | 1 dia (trata como não abordada) |
 | Trocar de segmento | **não volta** até o líder decidir |
 
+O descanso de 30 dias lê **três fontes**, e vale sempre a data mais recente — nenhuma encurta a outra:
+
+1. o histórico do diário (o que passou pela tela);
+2. a propriedade `ultimo_contato_efetivo` da empresa;
+3. o engajamento no CRM: ligação atendida, reunião `COMPLETED`, conversa de WhatsApp respondida (`contatoEfetivoNoCRM()`).
+
+As três existem porque as duas primeiras falham caladas. O diário só vê o que passou por ele — contato de líder, CS, outro time ou do próprio farmer fora da lista fica de fora. E a propriedade é preenchida à mão: numa amostra de 60 empresas livres de uma farmer, **26 tinham contato efetivo no CRM nos últimos 30 dias** com a propriedade parada em maio, junho ou julho.
+
+A fonte 3 é conferida **só nas empresas escolhidas**, não na carteira inteira: a consulta carrega o corpo das conversas, e varrer as ~270 de cada um custaria a manhã do farmer. Quem cai é substituído e a lista é conferida de novo. Custo medido: **+4 a 7s** na geração do dia, e de 1 a 17 empresas derrubadas por pessoa.
+
 Antes de montar a lista do dia, `completaDiaAnterior()` relê a atividade do último dia com lista e preenche o que faltava. O descanso é calculado a partir do resultado gravado, e esse resultado chega atrasado: no caso real da TRE-GO (21/10), a lista de 20/10 nasceu **17 minutos antes** de o "contato efetivo" de 19/10 ser gravado, e a empresa voltou no dia seguinte a ter sido atendida.
 
 O "dia sem fechamento volta amanhã" é proposital: senão bastaria não fechar o dia para zerar a lista.
@@ -156,15 +166,17 @@ Empresa onde o proprietário **atual** registrou um negócio **e** já realizou 
 
 - ligação com disposição conectada, ou reunião realizada → **efetivo**
 - sem resposta, ocupado, caixa postal → **tentativa**
-- **mensagem de WhatsApp → tentativa, nunca efetivo** (ver abaixo)
+- **conversa de WhatsApp respondida pelo cliente → efetivo**; só de saída → tentativa (ver abaixo)
 - nenhuma atividade → fica em branco
 - a anotação da ligação (`hs_call_body`) vira a observação
 
 > **WhatsApp é o objeto `communications`, não `calls`.** A automação grava a conversa ali, com `hs_communication_channel_type = WHATS_APP` — foi um ponto cego do diário até 23/09. São ~780 mensagens/dia no time, tocando 139 empresas, 47 delas na lista do dia.
 >
-> Fica sempre como **tentativa** porque **não existe campo de direção no HubSpot** (verifiquei as 55 propriedades do objeto). O único sinal é o HTML que a automação escreve, e ele aparece em pelo menos três formatos — inclusive export de WhatsApp com o nome de perfil do próprio farmer ("Curador de Palestras na PSA"), que um detector lê como estranho. Três tentativas de classificar a resposta do cliente deram 786, 21 e 444 positivos sobre a mesma base de ~930 registros: nenhuma confiável.
+> **Não existe campo de direção** (verifiquei as 55 propriedades do objeto), mas o corpo entrega. A automação grava o fio inteiro em HTML e cada mensagem é um bloco `<div style="margin-bottom:12px...">`: o que saiu daqui vem com `text-align:right` e o nome em azul (`#0066cc`), o que o cliente mandou vem sem. `conversaRespondida()`, em `lib/diario/conversas.ts`, é esse corte.
 >
-> **Para destravar isso, a correção é na automação, não no código:** gravar a direção num campo (ou separar mensagem recebida de enviada em tipos distintos). Aí "cliente respondeu → efetivo" vira uma leitura de campo.
+> **O corte é no bloco de mensagem, não em qualquer `<div>`.** O corpo tem divs de embrulho; contar todas dá "respondida" para 99% dos registros — foi assim que as tentativas antigas de inferir direção erraram. Com o corte certo, numa semana: 2.273 respondidas, 27 só de saída, 1.188 sem corpo.
+>
+> **Registro sem corpo não dá para classificar.** São os que vêm da caixa de entrada (`hs_communication_logged_from = CONVERSATIONS`): ficam como tentativa, e o farmer marca à mão se a conversa aconteceu. Resolver isso de vez continua sendo trabalho na automação, não no código.
 
 Isso roda em `/api/diario/dia` **e** em `/api/diario/agenda` — o placar do líder evolui sem o farmer reabrir a tela.
 

@@ -153,17 +153,18 @@ export default function AjudaPage() {
           <b>O fechamento é conferência, não digitação.</b> O diário lê o que você já registrou no HubSpot hoje
           — ligações com a disposição, reuniões realizadas, e-mails e notas — e propõe o resultado de cada
           empresa. O botão <b>Preencher pelo HubSpot</b> aplica tudo de uma vez, inclusive trazendo a anotação
-          da ligação como observação. Você corrige o que estiver errado e completa o que o CRM não sabe, como
-          um contato por WhatsApp.
+          da ligação como observação. Você corrige o que estiver errado e completa o que o CRM não sabe.
         </p>
         <p className="mt-3">
           Ligação conectada ou reunião realizada viram <b>contato efetivo</b>; ligação sem resposta, ocupado ou
           caixa postal viram <b>tentativa</b>; empresa sem nenhuma atividade fica como <b>não abordei</b>.
         </p>
         <p className="mt-3">
-          <b>WhatsApp conta como tentativa</b>, nunca como efetivo. O registro que a automação grava no HubSpot
-          não diz se o cliente respondeu — só que a mensagem saiu. Se a conversa aconteceu de verdade, marque
-          <b> contato efetivo</b> à mão: escolha sua nunca é sobrescrita.
+          <b>WhatsApp com resposta do cliente conta como contato efetivo.</b> O registro da automação não tem
+          campo de direção, mas o corpo da conversa guarda os dois lados: o que saiu daqui vem alinhado à
+          direita, o que o cliente mandou vem à esquerda. Conversa em que só saiu mensagem continua sendo
+          <b> tentativa</b> — ninguém falou com ninguém. Conversa que veio da caixa de entrada sem corpo o
+          diário não consegue ler: nesse caso marque à mão, que escolha sua nunca é sobrescrita.
         </p>
         <p className="mt-3">
           Isso acontece <b>sozinho, ao longo do dia</b>, e vale também para a Agenda: o líder vê o placar do time
@@ -222,9 +223,14 @@ export default function AjudaPage() {
         <p className="mt-4">
           <b>O contato efetivo que está no HubSpot também segura a empresa, seja de quem for.</b> O diário
           só registra o que passou por ele — se o líder, o CS, outro time ou você mesmo falou com a empresa e
-          anotou direto no CRM, a empresa fica fora da sua lista pelos {COOLDOWN_CONTATO_CRM} dias seguintes
-          à data de <i>Último Contato Efetivo</i> dela. Vale sempre a data mais recente entre as duas fontes:
-          nenhuma encurta o descanso da outra.
+          anotou direto no CRM, a empresa fica fora da sua lista pelos {COOLDOWN_CONTATO_CRM} dias seguintes.
+          São três fontes, e vale sempre a data mais recente: o histórico do diário, a propriedade
+          <i> Último Contato Efetivo</i> da empresa e o próprio engajamento registrado — ligação atendida,
+          reunião realizada e conversa de WhatsApp respondida pelo cliente. Nenhuma encurta o descanso da outra.
+        </p>
+        <p className="mt-4">
+          O engajamento é conferido na hora de montar a lista, empresa por empresa: a propriedade é preenchida
+          à mão e falha calada, então ela não é mais a única coisa que segura a empresa.
         </p>
         <p className="mt-4">
           <b>O dia anterior é fechado antes de a lista de hoje ser montada.</b> A ligação de ontem às 18h às

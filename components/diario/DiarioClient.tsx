@@ -35,6 +35,7 @@ export interface AtividadeItem {
   outras: number
   texto: string
   mensagens: number
+  respondidas: number
   resultadoSugerido: 'efetivo' | 'tentativa' | null
 }
 
@@ -654,7 +655,9 @@ export default function DiarioClient({ usuario, farmers }: Props) {
                             i.atividade.conectadas > 0 && `${i.atividade.conectadas} conectada(s)`,
                             i.atividade.reunioes > 0 && `${i.atividade.reunioes} reunião(ões)`,
                             i.atividade.outras > 0 && `${i.atividade.outras} e-mail/nota`,
-                            i.atividade.mensagens > 0 && `${i.atividade.mensagens} no WhatsApp`,
+                            i.atividade.mensagens > 0 && (i.atividade.respondidas > 0
+                              ? `${i.atividade.mensagens} no WhatsApp · cliente respondeu`
+                              : `${i.atividade.mensagens} no WhatsApp`),
                           ].filter(Boolean).join(' · ')}
                         </p>
                       )}
